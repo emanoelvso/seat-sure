@@ -11,20 +11,6 @@ export const databaseSchema = z.object({
   username: z.string(),
 });
 
-export const movieDbSchema = z.object({
-  url: z.string(),
-  apiKey: z.string(),
-});
-
-export const billingSchema = z.object({
-  url: z.string(),
-});
-
-export const geminiApiSchema = z.object({
-  apiKey: z.string(),
-  url: z.string(),
-});
-
 export const redisSchema = z.object({
   host: z.string(),
   port: z.coerce.number(),
@@ -34,8 +20,5 @@ export const configSchema = z.object({
   env: environmentSchema,
   port: z.coerce.number().positive().int(),
   database: databaseSchema,
-  movieDb: movieDbSchema,
-  billingApi: billingSchema,
-  geminiApi: geminiApiSchema,
   redis: redisSchema,
 });
