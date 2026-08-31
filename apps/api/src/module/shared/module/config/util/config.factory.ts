@@ -14,17 +14,6 @@ export const factory = (): Config => {
       url: process.env.DATABASE_URL,
       username: process.env.DATABASE_USERNAME,
     },
-    movieDb: {
-      url: process.env.MOVIEDB_BASE_URL,
-      apiKey: process.env.MOVIEDB_API_TOKEN,
-    },
-    billingApi: {
-      url: process.env.BILLING_API_URL,
-    },
-    geminiApi: {
-      apiKey: process.env.GEMINI_API_KEY,
-      url: process.env.GEMINI_API_URL,
-    },
     redis: {
       host: process.env.REDIS_HOST,
       port: process.env.REDIS_PORT,
