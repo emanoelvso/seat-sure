@@ -5,6 +5,72 @@
   --foreground: #171717;
 }
 
+@theme {
+  /* Brand Colors */
+  --color-primary: #c14fe6;
+
+  --color-tint-600: #a62fca;
+  --color-tint-500: #c14fe6;
+  --color-tint-400: #d580f2;
+  --color-tint-300: #e4aff8;
+  --color-tint-200: #efd2fc;
+  --color-tint-100: #f1e3f6;
+
+  --color-shade-600: #0e0411;
+  --color-shade-500: #1c0722;
+  --color-shade-400: #2b0b33;
+  --color-shade-300: #390e44;
+  --color-shade-200: #551666;
+  --color-shade-100: #721d88;
+
+  /* State Colors */
+  --color-error-500: #850d06;
+  --color-error-400: #941a13;
+  --color-error-300: #f44336;
+  --color-error-200: #f66359;
+  --color-error-100: #fbbab5;
+
+  --color-warning-400: #994a00;
+  --color-warning-300: #ff9800;
+  --color-warning-200: #ffbe5d;
+  --color-warning-100: #ffefbf;
+
+  --color-info-400: #0c4691;
+  --color-info-300: #2196f3;
+  --color-info-200: #49a8f5;
+  --color-info-100: #c7edfc;
+
+  --color-success-400: #1b691e;
+  --color-success-300: #4caf50;
+  --color-success-200: #6bbe6e;
+  --color-success-100: #caebd7;
+
+  /* Neutral Colors */
+  --color-white: #ffffff;
+
+  --color-neutral-1000: #121212;
+  --color-neutral-900: #191919;
+  --color-neutral-800: #1b1b1b;
+  --color-neutral-700: #1f1f1f;
+  --color-neutral-600: #242424;
+  --color-neutral-500: #303030;
+  --color-neutral-400: #363636;
+  --color-neutral-300: #454545;
+  --color-neutral-200: #999999;
+  --color-neutral-100: #b3b3b3;
+}
+
+@theme inline {
+  --color-background: var(--background);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
