@@ -23,30 +23,54 @@ export default function Footer() {
         <span className={`${lobster.className} text-[2.5rem]`}>Evenjo</span>
       </Link>
 
-      <nav className="flex gap-10 text-white text-base mb-[2.625rem]">
-        <Link href="">Home</Link>
-        <Link href="">Contact us</Link>
-        <Link href="">About us</Link>
-        <Link href="">Privacy Policy</Link>
+      <nav>
+        <ul className="flex gap-10 text-white text-base mb-[2.625rem]">
+          <li>
+            <Link href="">Home</Link>
+          </li>
+          <li>
+            <Link href="">Contact us</Link>
+          </li>
+          <li>
+            <Link href="">About us</Link>
+          </li>
+          <li>
+            <Link href="">Privacy Policy</Link>
+          </li>
+        </ul>
       </nav>
 
-      <div className="flex gap-8 mb-[2.625rem]">
-        <a href="">
-          <FacebookIcon />
-        </a>
-        <a href="">
-          <InstagramIcon />
-        </a>
-        <a href="">
-          <LinkedinIcon />
-        </a>
-        <a href="">
-          <YoutubeIcon />
-        </a>
-        <a href="">
-          <TelegramIcon />
-        </a>
-      </div>
+      <ul className="flex gap-8 mb-[2.625rem]">
+        <li>
+          <a href="">
+            <FacebookIcon />
+          </a>
+        </li>
+
+        <li>
+          <a href="">
+            <InstagramIcon />
+          </a>
+        </li>
+
+        <li>
+          <a href="">
+            <LinkedinIcon />
+          </a>
+        </li>
+
+        <li>
+          <a href="">
+            <YoutubeIcon />
+          </a>
+        </li>
+
+        <li>
+          <a href="">
+            <TelegramIcon />
+          </a>
+        </li>
+      </ul>
 
       <hr className="border-white/20 self-stretch mx-[111px] mb-[2rem]" />
 
