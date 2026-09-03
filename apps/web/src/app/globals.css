@@ -49,6 +49,7 @@
 
   /* Neutral Colors */
   --color-white: #ffffff;
+  --color-background: #0d0d0d;
 
   --color-neutral-1000: #121212;
   --color-neutral-900: #191919;
@@ -62,15 +63,7 @@
   --color-neutral-100: #b3b3b3;
 }
 
-/* @media (prefers-color-scheme: dark) { */
-/*   :root { */
-/*     --background: #0a0a0a; */
-/*     --foreground: #ededed; */
-/*   } */
-/* } */
-
-/* body { */
-/*   background: var(--background); */
-/*   color: var(--foreground); */
-/*   font-family: Inter; */
-/* } */
+body {
+  background-color: var(--color-background);
+  color: var(--color-white);
+}
