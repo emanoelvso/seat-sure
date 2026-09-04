@@ -8,6 +8,7 @@ import {
   MagnifierIcon,
 } from "@solar-icons/react/outline";
 import Image from "next/image";
+import Input from "./Input";
 const lobster = Lobster({
   weight: "400",
   subsets: ["latin"],
@@ -24,14 +25,7 @@ export default function Header({ avatarUrl, searchMode = false }: HeaderProps) {
       className={`flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"}`}
     >
       {searchMode ? (
-        <div className="relative w-full max-w-xl">
-          <MagnifierIcon className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-300" />
-          <input
-            type="text"
-            placeholder="Search events, artists..."
-            className="w-full bg-neutral-700 border border-neutral-800 rounded-lg pl-11 pr-4 py-2 text-sm text-white outline-none placeholder:text-neutral-300"
-          />
-        </div>
+        <Input />
       ) : (
         <>
           <Link
