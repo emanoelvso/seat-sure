@@ -35,8 +35,6 @@ export const Playground: Story = {
     label: "Email",
     size: "md",
     variant: "default",
-    leftIcon: false,
-    rightIcon: false,
     supportingText: "Supporting text",
     counter: "",
   },
