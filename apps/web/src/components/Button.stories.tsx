@@ -1,30 +1,30 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ArrowRightIcon } from "@solar-icons/react/outline";
+import React from "react";
 import Button from "./Button";
 
 const meta: Meta<typeof Button> = {
   title: "Components/Button",
   component: Button,
+  tags: ["autodocs"],
   args: {
     variant: "primary",
-    text: "Button",
+    size: "md",
+    disabled: false,
+    iconSize: 18,
   },
-  tags: ["autodocs"],
   argTypes: {
     variant: {
-      options: ["primary", "outline", "ghost"],
       control: { type: "select" },
-      defaultValue: "primary",
+      options: ["primary", "outline", "ghost"],
     },
     size: {
+      control: { type: "radio" },
       options: ["sm", "md", "lg", "xl", "icon"],
-      control: { type: "select" },
-      defaultValue: "md",
     },
     iconSize: {
-      options: [16, 24],
       control: { type: "select" },
-      defaultValue: 16,
+      options: [16, 18, 24],
     },
     leftIcon: {
       control: { type: "boolean" },
@@ -36,7 +36,6 @@ const meta: Meta<typeof Button> = {
     },
     disabled: {
       control: { type: "boolean" },
-      mapping: { true: true, false: false },
     },
   },
 } satisfies Meta<typeof Button>;
@@ -45,10 +44,6 @@ export default meta;
 
 type Story = StoryObj<typeof Button>;
 
-export const Default: Story = {
-  args: {
-    variant: "primary",
-    text: "Button",
-    disabled: true,
-  },
+export const Playground: Story = {
+  render: (args) => <Button {...args}>Button</Button>,
 } satisfies Story;

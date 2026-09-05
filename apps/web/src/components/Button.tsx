@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, ReactNode } from "react";
 import { Icon } from "@solar-icons/react/lib/types";
 import { cva, VariantProps } from "class-variance-authority";
 
@@ -29,27 +29,28 @@ const buttonVariants = cva(
   },
 );
 
-interface ButtonProps extends VariantProps<typeof buttonVariants> {
-  text: string;
+interface ButtonProps
+  extends VariantProps<typeof buttonVariants>,
+    React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children?: ReactNode;
   leftIcon?: Icon;
   rightIcon?: Icon;
   iconSize?: number;
-  disabled?: boolean;
 }
 
 export default function Button({
   variant,
   size,
-  text,
+  children,
   leftIcon,
   rightIcon,
-  iconSize,
+  iconSize = 18,
   ...props
 }: ButtonProps) {
   return (
     <button className={buttonVariants({ variant, size })} {...props}>
       {leftIcon && createElement(leftIcon, { size: iconSize })}
-      {text}
+      {size !== "icon" && children}
       {rightIcon && createElement(rightIcon, { size: iconSize })}
     </button>
   );
