@@ -7,6 +7,14 @@ const meta: Meta<typeof Input> = {
   tags: ["autodocs"],
   component: Input,
   argTypes: {
+    variant: {
+      control: { type: "select" },
+      options: ["default", "success", "error", "disabled"],
+    },
+    size: {
+      control: { type: "radio" },
+      options: ["sm", "md"],
+    },
     leftIcon: {
       control: { type: "boolean" },
       mapping: { true: MagnifierIcon, false: undefined },
@@ -22,4 +30,14 @@ export default meta;
 
 type Story = StoryObj<typeof Input>;
 
-export const Default: Story = {} satisfies Story;
+export const Playground: Story = {
+  args: {
+    label: "Email",
+    size: "md",
+    variant: "default",
+    leftIcon: false,
+    rightIcon: false,
+    supportingText: "Supporting text",
+    counter: "",
+  },
+} satisfies Story;

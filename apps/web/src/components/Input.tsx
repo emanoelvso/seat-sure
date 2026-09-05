@@ -1,28 +1,70 @@
 import { Icon } from "@solar-icons/react/lib/types";
+import { cva, VariantProps } from "class-variance-authority";
 import { createElement } from "react";
 
-interface InputProps {
+const fieldsetVariants = cva(
+  "relative w-full bg-neutral-700 border rounded-lg",
+  {
+    variants: {
+      variant: {
+        default: "border-neutral-800",
+        success: "border-success-400",
+        error: "border-error-400",
+        disabled: "border-neutral-800/50",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  },
+);
+
+const supportingTextVariants = cva("flex justify-between text-xs", {
+  variants: {
+    variant: {
+      default: "text-neutral-400",
+      success: "text-success-400",
+      error: "text-error-400",
+      disabled: "text-neutral-400",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+const inputVariants = cva(
+  "w-full bg-transparent outline-none text-white placeholder:text-neutral-300",
+  {
+    variants: {
+      size: {
+        sm: "text-sm",
+        md: "text-md",
+      },
+    },
+    defaultVariants: { size: "sm" },
+  },
+);
+
+interface InputProps
+  extends
+    VariantProps<typeof fieldsetVariants>,
+    VariantProps<typeof inputVariants> {
   label?: string;
   leftIcon?: Icon;
   rightIcon?: Icon;
   supportingText?: string;
-  counter?: number;
-  success?: boolean;
-  error?: boolean;
+  counter?: string;
 }
 
 export default function Input({
+  variant,
+  size,
   label,
   leftIcon,
   rightIcon,
   supportingText,
   counter,
-  success,
-  error,
 }: InputProps) {
   return (
     <div className="w-full max-w-xl flex flex-col gap-1">
-      <fieldset className="relative w-full bg-neutral-700 border border-neutral-800 rounded-lg">
+      <fieldset className={fieldsetVariants({ variant })}>
         {label && (
           <legend className="ml-3 px-1 text-xs text-neutral-200 leading-none">
             {label}
@@ -37,7 +79,7 @@ export default function Input({
         <input
           type="text"
           placeholder="Search events, artists..."
-          className={`w-full bg-transparent ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon ? "pr-12" : "pr-4"} py-2 text-sm text-white outline-none placeholder:text-neutral-300`}
+          className={`${inputVariants({ size })} ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon ? "pr-12" : "pr-4"} py-2`}
         />
         {rightIcon && (
           <button
@@ -48,9 +90,9 @@ export default function Input({
           </button>
         )}
       </fieldset>
-      <div className="flex justify-between text-xs text-neutral-400">
-        <span>Supporting text</span>
-        <span>10/20</span>
+      <div className={supportingTextVariants({ variant })}>
+        <span>{supportingText}</span>
+        <span>{counter}</span>
       </div>
     </div>
   );
