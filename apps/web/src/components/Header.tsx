@@ -2,11 +2,7 @@ import { Lobster } from "next/font/google";
 import Link from "next/link";
 import Button from "./Button";
 import UsaIcon from "./icons/UsaIcon";
-import {
-  AltArrowDownIcon,
-  BellIcon,
-  MagnifierIcon,
-} from "@solar-icons/react/outline";
+import { AltArrowDownIcon, BellIcon } from "@solar-icons/react/outline";
 import Image from "next/image";
 import Input from "./Input";
 const lobster = Lobster({
@@ -17,12 +13,17 @@ const lobster = Lobster({
 interface HeaderProps {
   avatarUrl?: string;
   searchMode?: boolean;
+  className?: string;
 }
 
-export default function Header({ avatarUrl, searchMode = false }: HeaderProps) {
+export default function Header({
+  avatarUrl,
+  searchMode = false,
+  className,
+}: HeaderProps) {
   return (
     <header
-      className={`flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"}`}
+      className={`flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"} ${className}`}
     >
       {searchMode ? (
         <Input />
@@ -119,7 +120,7 @@ export default function Header({ avatarUrl, searchMode = false }: HeaderProps) {
             />
           </div>
         ) : (
-          <Button text="Signup" />
+          <Button>Signup</Button>
         )}
       </div>
     </header>
