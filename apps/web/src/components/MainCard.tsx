@@ -17,12 +17,12 @@ export default function MainCard({ avatarUrl, timeToEnd }: MainCardProps) {
         <Image
           className="object-cover w-full h-full"
           src={avatarUrl}
-          alt="Profile Avatar"
+          alt="Avatar"
           width={40}
           height={40}
         />
       </div>
-      <div className="absolute left-12 top-70 w-2xs">
+      <div className="absolute left-12 top-70 w-2xs border border-neutral-500 rounded-2xl">
         {timeToEnd && (
           <div className="flex justify-between items-ceenter bg-error-500 text-xs px-4 py-2 rounded-t-2xl">
             <div className="flex items-center gap-2">
