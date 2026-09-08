@@ -5,51 +5,62 @@ import {
 } from "@solar-icons/react/outline";
 import Image from "next/image";
 
-interface MainCardProps {
+export interface MainCardProps {
   avatarUrl: string;
   timeToEnd?: string;
+  name: string;
+  date: string;
+  location: string;
+  price: number;
 }
 
-export default function MainCard({ avatarUrl, timeToEnd }: MainCardProps) {
+export default function MainCard({
+  avatarUrl,
+  timeToEnd,
+  name,
+  date,
+  location,
+  price,
+}: MainCardProps) {
   return (
-    <>
-      <div className="relative w-xs h-[336px] rounded-2xl overflow-hidden">
+    <div className="relative mt-6 w-2xs">
+      <div className="w-full h-[336px] rounded-2xl overflow-hidden">
         <Image
           className="object-cover w-full h-full"
           src={avatarUrl}
           alt="Avatar"
-          width={40}
-          height={40}
+          width={400}
+          height={336}
         />
       </div>
-      <div className="absolute left-12 top-70 w-2xs border border-neutral-500 rounded-2xl">
+      <div className="absolute left-1/2 -translate-x-1/2 -bottom-16 w-[90%] border border-neutral-500 rounded-2xl">
         {timeToEnd && (
-          <div className="flex justify-between items-ceenter bg-error-500 text-xs px-4 py-2 rounded-t-2xl">
+          <div className="flex justify-between items-center bg-error-500 text-xs px-4 py-2 rounded-t-2xl">
             <div className="flex items-center gap-2">
               <ClockCircleIcon size={16} />
               <span>Time to end</span>
             </div>
-            <span>06:34:15</span>
+            <span>{timeToEnd}</span>
           </div>
         )}
 
         <div
           className={`bg-neutral-800 p-4 ${timeToEnd ? "rounded-b-2xl" : "rounded-2xl"}`}
         >
-          <span className="font-xl font-bold">Jennifer Lopez</span>
+          <span className="font-xl font-bold">{name}</span>
           <div className="flex justify-between mt-4 mb-4 text-neutral-200 text-sm">
             <div className="flex items-center gap-1">
               <CalendarIcon size={16} />
-              <span>22 November</span>
+              <span>{date}</span>
             </div>
             <div className="flex items-center gap-1">
               <MapPointIcon size={16} />
-              <span>Myanmar</span>
+              <span>{location}</span>
             </div>
           </div>
-          <span className="font-bold font-lg text-tint-400">from $140</span>
+          <span className="font-bold font-lg text-tint-400">from ${price}</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

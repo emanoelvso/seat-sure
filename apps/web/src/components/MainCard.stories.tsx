@@ -21,6 +21,16 @@ const meta: Meta<typeof MainCard> = {
         false: undefined,
       },
     },
+    name: { table: { disable: true } },
+    date: { table: { disable: true } },
+    location: { table: { disable: true } },
+    price: { table: { disable: true } },
+  },
+  args: {
+    name: "Jennifer Lopez",
+    date: "22 November",
+    location: "Myanmar",
+    price: "from $140",
   },
 } satisfies Meta<typeof MainCard>;
 
