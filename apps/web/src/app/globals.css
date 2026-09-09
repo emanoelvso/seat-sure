@@ -94,3 +94,20 @@ body {
 .animate-scroll-right {
   animation: scroll-right 50s linear infinite;
 }
+
+.bg-section-gradient {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(27, 27, 27, 0.48) 0%,
+      rgba(14, 4, 17, 0.12) 48%,
+      rgba(27, 27, 27, 0.48) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(27, 27, 27, 0.30) 0%,
+      rgba(14, 4, 17, 0.06) 50%,
+      rgba(27, 27, 27, 0.30) 100%
+    ),
+    var(--color-neutral-800);
+}

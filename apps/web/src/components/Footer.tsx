@@ -14,7 +14,7 @@ const lobster = Lobster({
 
 export default function Footer() {
   return (
-    <footer className="flex flex-col items-center justify-center">
+    <footer className="flex flex-col items-center justify-center mb-10">
       <Link
         href=""
         className="flex gap-2 text-primary items-center mb-[2.625rem]"
