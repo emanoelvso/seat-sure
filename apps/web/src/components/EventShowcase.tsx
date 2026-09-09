@@ -1,3 +1,4 @@
+import Link from "next/link";
 import MainCard, { MainCardProps } from "./MainCard";
 import SubCategoriePill from "./SubCategoriePill";
 
@@ -13,10 +14,10 @@ export default function EventShowcase({
   events,
 }: EventShowcaseProps) {
   return (
-    <div className="w-full px-27 mb-25">
+    <section aria-label={title} className="w-full px-27 mb-25">
       <div className="flex items-center justify-between py-5">
-        <span className="text-3xl font-semibold">{title}</span>
-        <span>See all</span>
+        <h2 className="text-3xl font-semibold">{title}</h2>
+        <Link href="#" className="text-neutral-200 hover:text-white transition">See all</Link>
       </div>
 
       <hr className="border-neutral-700 w-full mb-6" />
@@ -45,6 +46,6 @@ export default function EventShowcase({
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 }

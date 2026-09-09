@@ -8,23 +8,24 @@ import WatchIcon from "@/components/icons/WatchIcon";
 import { QuestionAccordion } from "@/components/QuestionAccordion";
 import SearchBox from "@/components/SearchBox";
 import SingersCarousel from "@/components/SingersCarousel";
-import Image from "next/image";
 
 export default function Home() {
   return (
     <>
       <Header className="py-4 px-8 mb-35" />
-      <div className="flex flex-col items-center">
-        <h2 className="font-bold text-7xl max-w-3xl text-center mb-8">
-          What <span className="text-tint-400">Concert</span> would you like to
-          go to?
-        </h2>
-        <p className="text-xl mb-22">
-          More than 100 concerts in different countries are now available to
-          you.
-        </p>
+      <main className="flex flex-col items-center">
+        <section aria-label="Hero" className="flex flex-col items-center">
+          <h1 className="font-bold text-7xl max-w-3xl text-center mb-8">
+            What <span className="text-tint-400">Concert</span> would you like
+            to go to?
+          </h1>
+          <p className="text-xl mb-22">
+            More than 100 concerts in different countries are now available to
+            you.
+          </p>
 
-        <SearchBox />
+          <SearchBox />
+        </section>
 
         <EventShowcase
           title="Concert"
@@ -110,12 +111,13 @@ export default function Home() {
           ]}
         />
 
-        <h3 className="font-medium text-2xl mb-2">Top Singers</h3>
-        <p className="text-[#999999] mb-8">
-          Find the singers you&apos;re looking for quickly.{" "}
-          <span className="text-tint-400">You can see more</span>.
-        </p>
-        <SingersCarousel
+        <section aria-label="Top Singers" className="flex flex-col items-center w-full">
+          <h2 className="font-medium text-2xl mb-2">Top Singers</h2>
+          <p className="text-[#999999] mb-8">
+            Find the singers you&apos;re looking for quickly.{" "}
+            <span className="text-tint-400">You can see more</span>.
+          </p>
+          <SingersCarousel
           row1={[
             { name: "Adele", date: "5 May", location: "New York" },
             { name: "Drake", date: "20 June", location: "Toronto" },
@@ -138,7 +140,8 @@ export default function Home() {
               location: "Los Angeles",
             },
           ]}
-        />
+          />
+        </section>
 
         <EventShowcase
           title="Sport"
@@ -186,12 +189,12 @@ export default function Home() {
           ]}
         />
 
-        <div className="flex gap-6 mt-53">
+        <section aria-label="Features" className="flex gap-6 mt-53">
           <div className="flex flex-col gap-6">
             <div className="flex items-center bg-section-gradient pr-13 pl-27 py-11 rounded-2xl gap-28">
               <InvestimentIcon />
               <div className="flex flex-col text-center">
-                <h5 className="text-2xl font-bold">Refundable Tickets</h5>
+                <h2 className="text-2xl font-bold">Refundable Tickets</h2>
                 <span className="max-w-2xs text-neutral-100">
                   You can pay a ticket in 2 portions throughout a fixed period
                   of time. Start invoicing for free.
@@ -201,7 +204,7 @@ export default function Home() {
             <div className="flex items-center bg-section-gradient pr-13 pl-27 py-11 rounded-2xl gap-28">
               <SmartDealIcon />
               <div className="flex flex-col text-center">
-                <h5 className="text-2xl font-bold">Smart Deals</h5>
+                <h2 className="text-2xl font-bold">Smart Deals</h2>
                 <span className="max-w-2xs text-neutral-100">
                   of You can pay a ticket in 2 portions throughout a fixed
                   period time. Start invoicing for free.
@@ -211,7 +214,7 @@ export default function Home() {
           </div>
           <div className="flex flex-col items-center bg-section-gradient rounded-2xl gap-28 pt-8 px-12">
             <div className="flex flex-col text-center">
-              <h5 className="text-2xl font-bold">Book Anytime!</h5>
+              <h2 className="text-2xl font-bold">Book Anytime!</h2>
               <span className="text-neutral-100">
                 of You can pay a ticket in 2 portions throughout a fixed period
                 time. Start invoicing for free.
@@ -220,13 +223,14 @@ export default function Home() {
 
             <WatchIcon />
           </div>
-        </div>
+        </section>
 
-        <h3 className="font-medium text-2xl mt-49 mb-2">Loved by Thousands</h3>
-        <p className="text-[#999999] mb-8">
-          Smooth easy ticket buying - hear it from our happy users.
-        </p>
-        <FeedbacksCarousel
+        <section aria-label="Testimonials" className="flex flex-col items-center w-full">
+          <h2 className="font-medium text-2xl mt-49 mb-2">Loved by Thousands</h2>
+          <p className="text-[#999999] mb-8">
+            Smooth easy ticket buying - hear it from our happy users.
+          </p>
+          <FeedbacksCarousel
           row1={[
             {
               comment:
@@ -295,51 +299,54 @@ export default function Home() {
               rating: 4,
             },
           ]}
-        />
-
-        <div className="mt-34 text-center max-w-xl">
-          <h5 className="text-3xl font-bold mb-2">
-            Frequently Asked <span className="text-tint-400">Questions</span>
-          </h5>
-          <p className="text-neutral-200">
-            Explore the most common questions and detailed answers about our
-            events ot concerts, and security to help guide your journey in the
-            EVENJO.
-          </p>
-        </div>
-
-        <div className="w-full max-w-3xl mt-10 mb-34 px-4">
-          <QuestionAccordion
-            items={[
-              {
-                value: "q1",
-                question: "When Exclusive Private Market for Event ticket sale Opportunities?",
-                answer: "Our exclusive private market opens periodically for verified members. Sign up to receive early access notifications and be the first to grab limited ticket opportunities.",
-              },
-              {
-                value: "q2",
-                question: "How do refundable tickets work?",
-                answer: "Refundable tickets can be returned up to 48 hours before the event for a full refund. Simply go to your order history and select the refund option.",
-              },
-              {
-                value: "q3",
-                question: "Can I split my payment into installments?",
-                answer: "Yes! With Smart Deals you can split your ticket cost into 2 installments over a fixed period. No hidden fees — start for free.",
-              },
-              {
-                value: "q4",
-                question: "How do I find events near me?",
-                answer: "Use the search box on the home page and filter by location. You can also browse by category to discover events you didn't know were happening nearby.",
-              },
-              {
-                value: "q5",
-                question: "Is my payment information secure?",
-                answer: "Absolutely. All transactions are encrypted with industry-standard SSL and we never store your full card details on our servers.",
-              },
-            ]}
           />
-        </div>
-      </div>
+        </section>
+
+        <section aria-label="FAQ" className="flex flex-col items-center w-full">
+          <div className="mt-34 text-center max-w-xl">
+            <h2 className="text-3xl font-bold mb-2">
+              Frequently Asked <span className="text-tint-400">Questions</span>
+            </h2>
+            <p className="text-neutral-200">
+              Explore the most common questions and detailed answers about our
+              events ot concerts, and security to help guide your journey in the
+              EVENJO.
+            </p>
+          </div>
+
+          <div className="w-full max-w-3xl mt-10 mb-34 px-4">
+            <QuestionAccordion
+              items={[
+                {
+                  value: "q1",
+                  question: "When Exclusive Private Market for Event ticket sale Opportunities?",
+                  answer: "Our exclusive private market opens periodically for verified members. Sign up to receive early access notifications and be the first to grab limited ticket opportunities.",
+                },
+                {
+                  value: "q2",
+                  question: "How do refundable tickets work?",
+                  answer: "Refundable tickets can be returned up to 48 hours before the event for a full refund. Simply go to your order history and select the refund option.",
+                },
+                {
+                  value: "q3",
+                  question: "Can I split my payment into installments?",
+                  answer: "Yes! With Smart Deals you can split your ticket cost into 2 installments over a fixed period. No hidden fees — start for free.",
+                },
+                {
+                  value: "q4",
+                  question: "How do I find events near me?",
+                  answer: "Use the search box on the home page and filter by location. You can also browse by category to discover events you didn't know were happening nearby.",
+                },
+                {
+                  value: "q5",
+                  question: "Is my payment information secure?",
+                  answer: "Absolutely. All transactions are encrypted with industry-standard SSL and we never store your full card details on our servers.",
+                },
+              ]}
+            />
+          </div>
+        </section>
+      </main>
       <Footer />
     </>
   );
