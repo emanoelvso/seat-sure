@@ -68,3 +68,29 @@ body {
   background-color: var(--color-background);
   color: var(--color-white);
 }
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-25%);
+  }
+}
+
+@keyframes scroll-right {
+  0% {
+    transform: translateX(-25%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-scroll-left {
+  animation: scroll-left 50s linear infinite;
+}
+
+.animate-scroll-right {
+  animation: scroll-right 50s linear infinite;
+}
