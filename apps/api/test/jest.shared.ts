@@ -3,7 +3,7 @@ export default {
   rootDir: '..',
   testEnvironment: 'node',
   moduleNameMapper: {
-    '^@contentModule/(.*)$': '<rootDir>/src/module/content/$1',
+    '^@catalogModule/(.*)$': '<rootDir>/src/module/catalog/$1',
     '^@identityModule/(.*)$': '<rootDir>/src/module/identity/$1',
     '^@billingModule/(.*)$': '<rootDir>/src/module/billing/$1',
     '^@sharedModules/(.*)$': '<rootDir>/src/module/shared/module/$1',
