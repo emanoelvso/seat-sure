@@ -1,0 +1,73 @@
+---
+config:
+  theme: dark
+  layout: elk
+---
+flowchart TB
+ subgraph Client["Client Layer"]
+        WebApp("Web")
+        Mobile("Mobile")
+  end
+
+ subgraph Gateway["API Gateway & Load Balancing"]
+        LB[Load Balancer]
+        APIGateway[API Gateway]
+  end
+
+  subgraph Services["Microservices"]
+    AuthService
+    EventService
+    TicketService
+    PaymentService
+    NotificationService
+    UserService
+  end
+
+  subgraph Data["Data Layer"]
+    EventDB[(Event DB)]
+    TicketDB[(Ticket DB)]
+    UserDB[(User DB)]
+    Cache[Redis Cache]
+  end
+
+  subgraph Storage["Store & Messaging"]
+    S3[Cloud Storage]
+    MessageQueue[Message Queue]
+  end
+
+  subgraph External["External Services"]
+    PaymentGateway
+    EmailService
+    SMSService
+  end
+
+  WebApp --> |HTTP/HTTPS| LB
+  Mobile --> |HTTP/HTTPS| LB
+
+  LB --> APIGateway
+
+  APIGateway --> AuthService
+  APIGateway --> EventService
+  APIGateway --> TicketService
+  APIGateway --> PaymentService
+  APIGateway --> NotificationService
+  APIGateway --> UserService
+
+  AuthService --> UserDB
+  UserService --> UserDB
+
+  TicketService --> TicketDB
+
+  EventService --> EventDB
+  EventService --> Cache
+  EventService --> S3
+
+  TicketService --> TicketDB
+  TicketService --> Cache
+  TicketService --> S3
+
+  PaymentService --> PaymentGateway
+  PaymentService --> MessageQueue
+
+  NotificationService --> EmailService
+  NotificationService --> SMSService
