@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ConfigModule } from '@sharedModules/config/config.module';
 import { DataSource } from 'typeorm';

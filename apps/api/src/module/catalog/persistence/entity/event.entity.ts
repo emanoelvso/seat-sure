@@ -8,13 +8,13 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'enum', enum: EventType })
   type: EventType;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   name: string;
 
   @Column({ type: 'timestamp' })
   date: Date;
 
-  @Column()
+  @Column({ type: 'varchar' })
   venue: string;
 
   @Column({ type: 'timestamp' })
@@ -29,6 +29,6 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'enum', enum: EventStatus })
   status: EventStatus;
 
-  @Column()
+  @Column({ type: 'varchar' })
   category: string;
 }
