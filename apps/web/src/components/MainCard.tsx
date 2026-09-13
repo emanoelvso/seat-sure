@@ -11,7 +11,7 @@ export interface MainCardProps {
   name: string;
   date: string;
   location: string;
-  price: number;
+  price?: number;
 }
 
 export default function MainCard({
@@ -58,7 +58,9 @@ export default function MainCard({
               <span>{location}</span>
             </div>
           </div>
-          <span className="font-bold font-lg text-tint-400">from ${price}</span>
+          {price !== undefined && (
+            <span className="font-bold font-lg text-tint-400">from ${price}</span>
+          )}
         </div>
       </div>
     </div>
