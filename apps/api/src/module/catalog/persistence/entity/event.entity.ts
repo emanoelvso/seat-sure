@@ -11,6 +11,9 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
+  @Column({ type: 'varchar' })
+  coverImage: string;
+
   @Column({ type: 'timestamp' })
   date: Date;
 
@@ -24,7 +27,7 @@ export class Event extends DefaultEntity<Event> {
   endsAt: Date;
 
   @Column({ type: 'timestamp' })
-  doors_open: Date;
+  doorsOpen: Date;
 
   @Column({ type: 'enum', enum: EventStatus })
   status: EventStatus;

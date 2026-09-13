@@ -6,23 +6,9 @@ import {
   IsEnum,
   IsNotEmpty,
   IsString,
+  IsUrl,
   IsUUID,
 } from 'class-validator';
-
-@ObjectType()
-export class HomeSections {
-  @Field(() => [Event], { nullable: true })
-  shows: Event[] | null;
-
-  @Field(() => [Event], { nullable: true })
-  concerts: Event[] | null;
-
-  @Field(() => [Event], { nullable: true })
-  sports: Event[] | null;
-
-  @Field(() => [Event], { nullable: true })
-  festivals: Event[] | null;
-}
 
 @ObjectType()
 export class Event {
@@ -32,9 +18,19 @@ export class Event {
   id: string;
 
   @IsNotEmpty()
+  @IsString()
+  @Field()
+  name: string;
+
+  @IsNotEmpty()
   @IsEnum(EventType)
   @Field()
   type: EventType;
+
+  @IsNotEmpty()
+  @IsUrl()
+  @Field()
+  coverImage: string;
 
   @IsNotEmpty()
   @IsString()
@@ -59,7 +55,7 @@ export class Event {
   @IsNotEmpty()
   @IsDateString()
   @Field()
-  doors_open: Date;
+  doorsOpen: Date;
 
   @IsNotEmpty()
   @IsEnum(EventStatus)
