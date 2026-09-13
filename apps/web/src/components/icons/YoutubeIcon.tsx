@@ -7,7 +7,7 @@ export default function YoutubeIcon() {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g clip-path="url(#clip0_2593_5968)">
+      <g clipPath="url(#clip0_2593_5968)">
         <path
           d="M18.4883 16.9771L25.0397 21.0002L18.4883 25.0261V16.9771Z"
           fill="white"

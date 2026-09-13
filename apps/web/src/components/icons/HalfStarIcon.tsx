@@ -20,8 +20,8 @@ export default function HalfStarIcon() {
           y2="3.35575"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0.5" stop-color="#C14FE6" />
-          <stop offset="0.5" stop-color="#303030" />
+          <stop offset="0.5" stopColor="#C14FE6" />
+          <stop offset="0.5" stopColor="#303030" />
         </linearGradient>
       </defs>
     </svg>

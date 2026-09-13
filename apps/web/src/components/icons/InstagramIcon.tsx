@@ -7,7 +7,7 @@ export default function InstagramIcon() {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g clip-path="url(#clip0_2593_5960)">
+      <g clipPath="url(#clip0_2593_5960)">
         <path
           d="M20.9999 24.3187C22.8327 24.3187 24.3185 22.833 24.3185 21.0002C24.3185 19.1674 22.8327 17.6816 20.9999 17.6816C19.1672 17.6816 17.6814 19.1674 17.6814 21.0002C17.6814 22.833 19.1672 24.3187 20.9999 24.3187Z"
           fill="white"
