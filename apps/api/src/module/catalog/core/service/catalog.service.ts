@@ -43,10 +43,30 @@ export class CatalogService {
     ]);
 
     return {
-      shows,
-      concerts,
-      sports,
-      festivals,
+      shows: {
+        categories: shows
+          ?.filter((event) => event.status === EventStatus.PUBLISHED)
+          .map((event) => event.category),
+        events: shows,
+      },
+      concerts: {
+        categories: shows
+          ?.filter((event) => event.status === EventStatus.PUBLISHED)
+          .map((event) => event.category),
+        events: concerts,
+      },
+      sports: {
+        categories: shows
+          ?.filter((event) => event.status === EventStatus.PUBLISHED)
+          .map((event) => event.category),
+        events: sports,
+      },
+      festivals: {
+        categories: shows
+          ?.filter((event) => event.status === EventStatus.PUBLISHED)
+          .map((event) => event.category),
+        events: festivals,
+      },
     };
   }
 }

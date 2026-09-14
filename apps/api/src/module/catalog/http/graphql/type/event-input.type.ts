@@ -1,11 +1,12 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
-import { Field, InputType } from '@nestjs/graphql';
+import { Field, Float, InputType } from '@nestjs/graphql';
 import {
-  IsCurrency,
   IsDateString,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
+  IsOptional,
   IsString,
   IsUrl,
 } from 'class-validator';
@@ -13,18 +14,19 @@ import {
 @InputType()
 export class EventInput {
   @IsNotEmpty()
-  @IsEnum(EventType)
-  @Field()
-  type: EventType;
-
-  @IsNotEmpty()
   @IsString()
   @Field()
   name: string;
 
+  @IsOptional()
   @IsString()
-  @Field()
+  @Field({ nullable: true })
   description?: string;
+
+  @IsNotEmpty()
+  @IsEnum(EventType)
+  @Field()
+  type: EventType;
 
   @IsNotEmpty()
   @IsUrl()
@@ -77,7 +79,7 @@ export class EventInput {
   category: string;
 
   @IsNotEmpty()
-  @IsCurrency()
-  @Field()
+  @IsNumber()
+  @Field(() => Float)
   price: number;
 }
