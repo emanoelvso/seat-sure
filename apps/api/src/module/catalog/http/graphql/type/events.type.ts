@@ -1,10 +1,12 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ObjectType } from '@nestjs/graphql';
 import {
   IsDateString,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
+  IsOptional,
   IsString,
   IsUrl,
   IsUUID,
@@ -22,6 +24,11 @@ export class Event {
   @Field()
   name: string;
 
+  @IsOptional()
+  @IsString()
+  @Field({ nullable: true })
+  description?: string;
+
   @IsNotEmpty()
   @IsEnum(EventType)
   @Field()
@@ -36,6 +43,16 @@ export class Event {
   @IsString()
   @Field()
   venue: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Field()
+  city: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Field()
+  country: string;
 
   @IsNotEmpty()
   @IsDateString()
@@ -66,4 +83,9 @@ export class Event {
   @IsString()
   @Field()
   category: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Field(() => Float)
+  price: number;
 }

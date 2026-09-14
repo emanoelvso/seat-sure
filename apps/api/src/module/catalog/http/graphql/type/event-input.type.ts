@@ -2,6 +2,7 @@ import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { Field, InputType } from '@nestjs/graphql';
 import {
+  IsCurrency,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -21,6 +22,10 @@ export class EventInput {
   @Field()
   name: string;
 
+  @IsString()
+  @Field()
+  description?: string;
+
   @IsNotEmpty()
   @IsUrl()
   @Field()
@@ -30,6 +35,16 @@ export class EventInput {
   @IsString()
   @Field()
   venue: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Field()
+  city: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Field()
+  country: string;
 
   @IsNotEmpty()
   @IsDateString()
@@ -60,4 +75,9 @@ export class EventInput {
   @IsString()
   @Field()
   category: string;
+
+  @IsNotEmpty()
+  @IsCurrency()
+  @Field()
+  price: number;
 }

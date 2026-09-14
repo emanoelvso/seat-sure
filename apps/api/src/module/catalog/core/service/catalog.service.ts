@@ -6,14 +6,19 @@ import { Event } from '@catalogModule/persistence/entity/event.entity';
 
 export interface CreateEventDto {
   type: EventType;
+  name: string;
+  description?: string;
   coverImage: string;
   venue: string;
+  city: string;
+  country: string;
   date: Date;
   startAt: Date;
   endsAt: Date;
   doorsOpen: Date;
   status: EventStatus;
   category: string;
+  price: number;
 }
 
 @Injectable()

@@ -11,6 +11,9 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  description?: string;
+
   @Column({ type: 'varchar' })
   coverImage: string;
 
@@ -19,6 +22,12 @@ export class Event extends DefaultEntity<Event> {
 
   @Column({ type: 'varchar' })
   venue: string;
+
+  @Column({ type: 'varchar' })
+  city: string;
+
+  @Column({ type: 'varchar' })
+  country: string;
 
   @Column({ type: 'timestamp' })
   startAt: Date;
@@ -34,4 +43,7 @@ export class Event extends DefaultEntity<Event> {
 
   @Column({ type: 'varchar' })
   category: string;
+
+  @Column({ type: 'float' })
+  price: number;
 }
