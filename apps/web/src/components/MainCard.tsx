@@ -23,7 +23,7 @@ export default function MainCard({
   price,
 }: MainCardProps) {
   return (
-    <div className="relative mt-6 w-2xs">
+    <div className="relative mt-6 w-2xs shrink-0">
       <div className="w-full h-[336px] rounded-2xl overflow-hidden">
         <Image
           className="object-cover w-full h-full"

@@ -17,7 +17,9 @@ export default function EventShowcase({
     <section aria-label={title} className="w-full px-27 mb-25">
       <div className="flex items-center justify-between py-5">
         <h2 className="text-3xl font-semibold">{title}</h2>
-        <Link href="#" className="text-neutral-200 hover:text-white transition">See all</Link>
+        <Link href="#" className="text-neutral-200 hover:text-white transition">
+          See all
+        </Link>
       </div>
 
       <hr className="border-neutral-700 w-full mb-6" />
@@ -33,7 +35,7 @@ export default function EventShowcase({
         ))}
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-6 overflow-x-auto pb-20 [&::-webkit-scrollbar]:hidden">
         {events.map((event, index) => (
           <MainCard
             key={index}

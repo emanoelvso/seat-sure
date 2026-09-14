@@ -18,7 +18,8 @@ function toCardProps(events: GqlEvent[]): MainCardProps[] {
       day: "numeric",
       year: "numeric",
     }),
-    location: event.venue,
+    location: event.city,
+    price: event.price,
   }));
 }
 
