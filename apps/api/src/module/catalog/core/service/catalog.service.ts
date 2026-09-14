@@ -44,27 +44,43 @@ export class CatalogService {
 
     return {
       shows: {
-        categories: shows
-          ?.filter((event) => event.status === EventStatus.PUBLISHED)
-          .map((event) => event.category),
+        categories: [
+          ...new Set(
+            shows
+              ?.filter((event) => event.status === EventStatus.PUBLISHED)
+              .map((event) => event.category),
+          ),
+        ],
         events: shows,
       },
       concerts: {
-        categories: shows
-          ?.filter((event) => event.status === EventStatus.PUBLISHED)
-          .map((event) => event.category),
+        categories: [
+          ...new Set(
+            concerts
+              ?.filter((event) => event.status === EventStatus.PUBLISHED)
+              .map((event) => event.category),
+          ),
+        ],
         events: concerts,
       },
       sports: {
-        categories: shows
-          ?.filter((event) => event.status === EventStatus.PUBLISHED)
-          .map((event) => event.category),
+        categories: [
+          ...new Set(
+            sports
+              ?.filter((event) => event.status === EventStatus.PUBLISHED)
+              .map((event) => event.category),
+          ),
+        ],
         events: sports,
       },
       festivals: {
-        categories: shows
-          ?.filter((event) => event.status === EventStatus.PUBLISHED)
-          .map((event) => event.category),
+        categories: [
+          ...new Set(
+            festivals
+              ?.filter((event) => event.status === EventStatus.PUBLISHED)
+              .map((event) => event.category),
+          ),
+        ],
         events: festivals,
       },
     };
