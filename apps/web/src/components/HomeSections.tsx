@@ -20,6 +20,7 @@ function toCardProps(events: GqlEvent[]): MainCardProps[] {
     }),
     location: event.city,
     price: event.price,
+    category: event.category,
   }));
 }
 

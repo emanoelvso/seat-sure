@@ -15,6 +15,7 @@ export const GET_HOME_SECTIONS = gql`
         startAt
         status
         price
+        category
       }
       shows {
         id
@@ -28,6 +29,7 @@ export const GET_HOME_SECTIONS = gql`
         startAt
         status
         price
+        category
       }
       sports {
         id
@@ -41,6 +43,7 @@ export const GET_HOME_SECTIONS = gql`
         startAt
         status
         price
+        category
       }
       festivals {
         id
@@ -54,6 +57,7 @@ export const GET_HOME_SECTIONS = gql`
         startAt
         status
         price
+        category
       }
     }
   }
@@ -71,6 +75,7 @@ export interface GqlEvent {
   startAt: string;
   status: string;
   price: number;
+  category: string;
 }
 
 export interface GetHomeSectionsData {

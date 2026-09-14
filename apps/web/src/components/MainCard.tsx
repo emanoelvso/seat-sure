@@ -12,6 +12,7 @@ export interface MainCardProps {
   date: string;
   location: string;
   price?: number;
+  category?: string | null;
 }
 
 export default function MainCard({

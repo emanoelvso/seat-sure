@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import MainCard, { MainCardProps } from "./MainCard";
 import SubCategoriePill from "./SubCategoriePill";
+import { useState } from "react";
 
 interface EventShowcaseProps {
   title: string;
@@ -13,6 +16,12 @@ export default function EventShowcase({
   subCategories,
   events,
 }: EventShowcaseProps) {
+  const [activeCategory, setActiveCategory] = useState("All");
+  const filteredEvents =
+    activeCategory === "All"
+      ? events
+      : events.filter((e) => e.category === activeCategory);
+
   return (
     <section aria-label={title} className="w-full px-27 mb-25">
       <div className="flex items-center justify-between py-5">
@@ -25,18 +34,19 @@ export default function EventShowcase({
       <hr className="border-neutral-700 w-full mb-6" />
 
       <div className="flex gap-3">
-        {subCategories.map((subCategorie, index) => (
+        {subCategories.map((subCategory, index) => (
           <SubCategoriePill
             key={index}
-            variant={index === 0 ? "active" : "default"}
+            variant={subCategory === activeCategory ? "active" : "default"}
+            onClick={() => setActiveCategory(subCategory)}
           >
-            {subCategorie}
+            {subCategory}
           </SubCategoriePill>
         ))}
       </div>
 
       <div className="flex gap-6 overflow-x-auto pb-20 [&::-webkit-scrollbar]:hidden">
-        {events.map((event, index) => (
+        {filteredEvents.map((event, index) => (
           <MainCard
             key={index}
             avatarUrl={event.avatarUrl}
