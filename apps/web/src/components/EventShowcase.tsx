@@ -7,7 +7,7 @@ import { useState } from "react";
 
 interface EventShowcaseProps {
   title: string;
-  subCategories: string[];
+  subCategories?: string[] | null;
   events: MainCardProps[];
 }
 
@@ -34,7 +34,7 @@ export default function EventShowcase({
       <hr className="border-neutral-700 w-full mb-6" />
 
       <div className="flex gap-3">
-        {subCategories.map((subCategory, index) => (
+        {["All", ...(subCategories ?? [])].map((subCategory, index) => (
           <SubCategoriePill
             key={index}
             variant={subCategory === activeCategory ? "active" : "default"}

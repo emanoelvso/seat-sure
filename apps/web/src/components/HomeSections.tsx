@@ -25,10 +25,12 @@ function toCardProps(events: GqlEvent[]): MainCardProps[] {
 }
 
 export default function HomeSections() {
-  const { data, loading, error } = useQuery<GetHomeSectionsData>(GET_HOME_SECTIONS);
+  const { data, loading, error } =
+    useQuery<GetHomeSectionsData>(GET_HOME_SECTIONS);
 
   if (loading) return <p className="text-neutral-400 py-20">Loading events…</p>;
-  if (error) return <p className="text-red-400 py-20">Failed to load events.</p>;
+  if (error)
+    return <p className="text-red-400 py-20">Failed to load events.</p>;
 
   const { concerts, shows, sports } = data!.getHomeSections;
 
@@ -36,18 +38,18 @@ export default function HomeSections() {
     <>
       <EventShowcase
         title="Concert"
-        subCategories={["All", "Pop", "Rock", "Jazz & Blues", "Hip-Hop & Rap", "Alternative", "Classical", "Opera", "Country"]}
-        events={toCardProps(concerts ?? [])}
+        subCategories={concerts.categories}
+        events={toCardProps(concerts.events ?? [])}
       />
       <EventShowcase
         title="Show"
-        subCategories={["All", "Teather", "Comedy", "Magic", "Musical", "Circus", "Dance", "Puppetry", "Live Drama"]}
-        events={toCardProps(shows ?? [])}
+        subCategories={shows.categories}
+        events={toCardProps(shows.events ?? [])}
       />
       <EventShowcase
         title="Sport"
-        subCategories={["All", "Running", "Basketball", "Football", "Soccer", "Golf", "Volleyball", "Tennis", "Hockey", "Motor", "Snow Sport", "Rugby", "Yoga"]}
-        events={toCardProps(sports ?? [])}
+        subCategories={sports.categories}
+        events={toCardProps(sports.events ?? [])}
       />
     </>
   );

@@ -4,60 +4,72 @@ export const GET_HOME_SECTIONS = gql`
   query GetHomeSections {
     getHomeSections {
       concerts {
-        id
-        name
-        description
-        coverImage
-        venue
-        city
-        country
-        date
-        startAt
-        status
-        price
-        category
+        categories
+        events {
+          id
+          name
+          description
+          coverImage
+          venue
+          city
+          country
+          date
+          startAt
+          status
+          price
+          category
+        }
       }
       shows {
-        id
-        name
-        description
-        coverImage
-        venue
-        city
-        country
-        date
-        startAt
-        status
-        price
-        category
+        categories
+        events {
+          id
+          name
+          description
+          coverImage
+          venue
+          city
+          country
+          date
+          startAt
+          status
+          price
+          category
+        }
       }
       sports {
-        id
-        name
-        description
-        coverImage
-        venue
-        city
-        country
-        date
-        startAt
-        status
-        price
-        category
+        categories
+        events {
+          id
+          name
+          description
+          coverImage
+          venue
+          city
+          country
+          date
+          startAt
+          status
+          price
+          category
+        }
       }
       festivals {
-        id
-        name
-        description
-        coverImage
-        venue
-        city
-        country
-        date
-        startAt
-        status
-        price
-        category
+        categories
+        events {
+          id
+          name
+          description
+          coverImage
+          venue
+          city
+          country
+          date
+          startAt
+          status
+          price
+          category
+        }
       }
     }
   }
@@ -80,9 +92,21 @@ export interface GqlEvent {
 
 export interface GetHomeSectionsData {
   getHomeSections: {
-    concerts: GqlEvent[] | null;
-    shows: GqlEvent[] | null;
-    sports: GqlEvent[] | null;
-    festivals: GqlEvent[] | null;
+    concerts: {
+      categories?: string[] | null;
+      events?: GqlEvent[] | null;
+    };
+    shows: {
+      categories?: string[] | null;
+      events?: GqlEvent[] | null;
+    };
+    sports: {
+      categories?: string[] | null;
+      events?: GqlEvent[] | null;
+    };
+    festivals: {
+      categories?: string[] | null;
+      events?: GqlEvent[] | null;
+    };
   };
 }
