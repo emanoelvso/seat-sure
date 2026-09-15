@@ -7,8 +7,6 @@ import SmartDealIcon from "@/components/icons/SmartDealIcon";
 import WatchIcon from "@/components/icons/WatchIcon";
 import { QuestionAccordion } from "@/components/QuestionAccordion";
 import SearchBox from "@/components/SearchBox";
-import SingersCarousel from "@/components/SingersCarousel";
-import EventShowcase from "@/components/EventShowcase";
 
 export default function Home() {
   return (
@@ -29,45 +27,6 @@ export default function Home() {
         </section>
 
         <HomeSections />
-
-        <section
-          aria-label="Top Singers"
-          className="flex flex-col items-center w-full"
-        >
-          <h2 className="font-medium text-2xl mb-2">Top Singers</h2>
-          <p className="text-[#999999] mb-8">
-            Find the singers you&apos;re looking for quickly.{" "}
-            <span className="text-tint-400">You can see more</span>.
-          </p>
-          <SingersCarousel
-            row1={[
-              { name: "Adele", date: "5 May", location: "New York" },
-              { name: "Drake", date: "20 June", location: "Toronto" },
-              { name: "Taylor Swift", date: "10 July", location: "Nashville" },
-              {
-                name: "Ed Sheeran",
-                date: "25 August",
-                location: "Los Angeles",
-              },
-              {
-                name: "Billie Eilish",
-                date: "30 September",
-                location: "Chicago",
-              },
-            ]}
-            row2={[
-              { name: "Adele", date: "5 May", location: "New York" },
-              { name: "Drake", date: "30 June", location: "Toronto" },
-              { name: "Taylor Swift", date: "13 July", location: "Nashville" },
-              { name: "Ed Sheeran", date: "25 August", location: "Dublin" },
-              {
-                name: "Billie Eilish",
-                date: "10 September",
-                location: "Los Angeles",
-              },
-            ]}
-          />
-        </section>
 
         <section aria-label="Features" className="flex gap-6 mt-53">
           <div className="flex flex-col gap-6">

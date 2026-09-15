@@ -8,6 +8,7 @@ import {
 } from "@/graphql/queries/home-sections";
 import EventShowcase from "./EventShowcase";
 import { MainCardProps } from "./MainCard";
+import SingersCarousel from "./SingersCarousel";
 
 function toCardProps(events: GqlEvent[]): MainCardProps[] {
   return events.map((event) => ({
@@ -32,7 +33,7 @@ export default function HomeSections() {
   if (error)
     return <p className="text-red-400 py-20">Failed to load events.</p>;
 
-  const { concerts, shows, sports } = data!.getHomeSections;
+  const { concerts, shows, sports, festivals } = data!.getHomeSections;
 
   return (
     <>
@@ -46,10 +47,54 @@ export default function HomeSections() {
         subCategories={shows.categories}
         events={toCardProps(shows.events ?? [])}
       />
+      <section
+        aria-label="Top Singers"
+        className="flex flex-col items-center w-full mb-25"
+      >
+        <h2 className="font-medium text-2xl mb-2">Top Singers</h2>
+        <p className="text-[#999999] mb-8">
+          Find the singers you&apos;re looking for quickly.{" "}
+          <span className="text-tint-400">You can see more</span>.
+        </p>
+        <SingersCarousel
+          row1={[
+            { name: "Adele", date: "5 May", location: "New York" },
+            { name: "Drake", date: "20 June", location: "Toronto" },
+            { name: "Taylor Swift", date: "10 July", location: "Nashville" },
+            {
+              name: "Ed Sheeran",
+              date: "25 August",
+              location: "Los Angeles",
+            },
+            {
+              name: "Billie Eilish",
+              date: "30 September",
+              location: "Chicago",
+            },
+          ]}
+          row2={[
+            { name: "Adele", date: "5 May", location: "New York" },
+            { name: "Drake", date: "30 June", location: "Toronto" },
+            { name: "Taylor Swift", date: "13 July", location: "Nashville" },
+            { name: "Ed Sheeran", date: "25 August", location: "Dublin" },
+            {
+              name: "Billie Eilish",
+              date: "10 September",
+              location: "Los Angeles",
+            },
+          ]}
+        />
+      </section>
+
       <EventShowcase
         title="Sport"
         subCategories={sports.categories}
         events={toCardProps(sports.events ?? [])}
+      />
+      <EventShowcase
+        title="Festivals"
+        subCategories={festivals.categories}
+        events={toCardProps(festivals.events ?? [])}
       />
     </>
   );
