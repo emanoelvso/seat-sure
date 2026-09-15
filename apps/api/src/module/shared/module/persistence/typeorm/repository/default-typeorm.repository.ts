@@ -1,6 +1,7 @@
 import {
   EntityManager,
   EntityTarget,
+  FindManyOptions,
   FindOneOptions,
   FindOptionsRelations,
   FindOptionsWhere,
@@ -31,8 +32,8 @@ export abstract class DefaultTypeOrmRepository<T extends DefaultEntity<T>> {
     });
   }
 
-  async find(options: FindOneOptions<T>): Promise<T | null> {
-    return this.repository.findOne(options);
+  async find(options: FindManyOptions<T>): Promise<T[] | null> {
+    return this.repository.find(options);
   }
 
   async findOne(options: FindOneOptions<T>): Promise<T | null> {

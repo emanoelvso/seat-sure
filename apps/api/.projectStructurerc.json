@@ -35,6 +35,7 @@
     "module_folder": {
       "name": "module",
       "children": [
+        { "name": "catalog", "ruleId": "domain_module_folder" },
         { "name": "billing", "ruleId": "domain_module_folder" },
         { "name": "content", "ruleId": "sub_domain_module_folder" },
         { "name": "identity", "ruleId": "domain_module_folder" },

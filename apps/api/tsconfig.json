@@ -22,9 +22,7 @@
     "noUnusedParameters": true,
     "outDir": "./dist",
     "paths": {
-      "@contentModule/*": ["./src/module/content/*"],
-      "@identityModule/*": ["./src/module/identity/*"],
-      "@billingModule/*": ["./src/module/billing/*"],
+      "@catalogModule/*": ["./src/module/catalog/*"],
       "@sharedModules/*": ["./src/module/shared/module/*"],
       "@sharedLibs/*": ["./src/module/shared/*"],
       "@testInfra/*": ["./test/*"],

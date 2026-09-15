@@ -30,7 +30,7 @@ const meta: Meta<typeof MainCard> = {
     name: "Jennifer Lopez",
     date: "22 November",
     location: "Myanmar",
-    price: "from $140",
+    price: 140,
   },
 } satisfies Meta<typeof MainCard>;
 

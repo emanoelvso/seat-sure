@@ -11,7 +11,8 @@ export interface MainCardProps {
   name: string;
   date: string;
   location: string;
-  price: number;
+  price?: number;
+  category?: string | null;
 }
 
 export default function MainCard({
@@ -23,7 +24,7 @@ export default function MainCard({
   price,
 }: MainCardProps) {
   return (
-    <div className="relative mt-6 w-2xs">
+    <div className="relative mt-6 w-2xs shrink-0">
       <div className="w-full h-[336px] rounded-2xl overflow-hidden">
         <Image
           className="object-cover w-full h-full"
@@ -58,7 +59,9 @@ export default function MainCard({
               <span>{location}</span>
             </div>
           </div>
-          <span className="font-bold font-lg text-tint-400">from ${price}</span>
+          {price !== undefined && (
+            <span className="font-bold font-lg text-tint-400">from ${price}</span>
+          )}
         </div>
       </div>
     </div>

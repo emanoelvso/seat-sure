@@ -18,14 +18,16 @@ interface SubCategoriePillProps extends VariantProps<
   typeof subCategoriePillVariant
 > {
   children: ReactNode;
+  onClick?: () => void;
 }
 
 export default function SubCategoriePill({
   children,
   variant,
+  onClick,
 }: SubCategoriePillProps) {
   return (
-    <button type="button" className={subCategoriePillVariant({ variant })}>
+    <button type="button" className={subCategoriePillVariant({ variant })} onClick={onClick}>
       <span>{children}</span>
     </button>
   );
