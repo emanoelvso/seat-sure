@@ -8,7 +8,7 @@ import {
 } from "@/graphql/queries/home-sections";
 import EventShowcase from "./EventShowcase";
 import { MainCardProps } from "./MainCard";
-import SingersCarousel from "./SingersCarousel";
+import SingersCarousel, { Singer } from "./SingersCarousel";
 
 function toCardProps(events: GqlEvent[]): MainCardProps[] {
   return events.map((event) => ({
@@ -25,6 +25,19 @@ function toCardProps(events: GqlEvent[]): MainCardProps[] {
   }));
 }
 
+function toSingerProps(events: GqlEvent[]): Singer[] {
+  return events.map((c) => {
+    const date = new Date(c.date);
+
+    return {
+      name: c.name,
+      date: `${date.getDay()} ${date.toLocaleString("en-US", { month: "long" })}`,
+      location: c.city,
+      imageUrl: c.coverImage,
+    };
+  });
+}
+
 export default function HomeSections() {
   const { data, loading, error } =
     useQuery<GetHomeSectionsData>(GET_HOME_SECTIONS);
@@ -34,6 +47,9 @@ export default function HomeSections() {
     return <p className="text-red-400 py-20">Failed to load events.</p>;
 
   const { concerts, shows, sports, festivals } = data!.getHomeSections;
+  const mid = concerts.events!.length / 2;
+  const concertsFirstRow = concerts.events?.filter((c, i) => i < mid);
+  const concertsSecondRow = concerts.events?.filter((c, i) => i > mid);
 
   return (
     <>
@@ -57,32 +73,8 @@ export default function HomeSections() {
           <span className="text-tint-400">You can see more</span>.
         </p>
         <SingersCarousel
-          row1={[
-            { name: "Adele", date: "5 May", location: "New York" },
-            { name: "Drake", date: "20 June", location: "Toronto" },
-            { name: "Taylor Swift", date: "10 July", location: "Nashville" },
-            {
-              name: "Ed Sheeran",
-              date: "25 August",
-              location: "Los Angeles",
-            },
-            {
-              name: "Billie Eilish",
-              date: "30 September",
-              location: "Chicago",
-            },
-          ]}
-          row2={[
-            { name: "Adele", date: "5 May", location: "New York" },
-            { name: "Drake", date: "30 June", location: "Toronto" },
-            { name: "Taylor Swift", date: "13 July", location: "Nashville" },
-            { name: "Ed Sheeran", date: "25 August", location: "Dublin" },
-            {
-              name: "Billie Eilish",
-              date: "10 September",
-              location: "Los Angeles",
-            },
-          ]}
+          row1={toSingerProps(concertsFirstRow!)}
+          row2={toSingerProps(concertsSecondRow!)}
         />
       </section>
 

@@ -1,14 +1,14 @@
 import Carousel from "./Carousel";
 import SingerCard from "./SingerCard";
 
-interface Singer {
+export interface Singer {
   name: string;
   date: string;
   location: string;
   imageUrl?: string;
 }
 
-interface SingersCarouselProps {
+export interface SingersCarouselProps {
   row1: Singer[];
   row2: Singer[];
 }
