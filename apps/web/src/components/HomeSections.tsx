@@ -47,9 +47,9 @@ export default function HomeSections() {
     return <p className="text-red-400 py-20">Failed to load events.</p>;
 
   const { concerts, shows, sports, festivals } = data!.getHomeSections;
-  const mid = concerts.events!.length / 2;
-  const concertsFirstRow = concerts.events?.filter((c, i) => i < mid);
-  const concertsSecondRow = concerts.events?.filter((c, i) => i > mid);
+  const mid = Math.ceil(concerts.events!.length / 2);
+  const concertsFirstRow = concerts.events!.slice(0, mid);
+  const concertsSecondRow = concerts.events!.slice(mid);
 
   return (
     <>
