@@ -6,6 +6,7 @@ import {
 import Image from "next/image";
 
 export interface MainCardProps {
+  className?: string;
   avatarUrl: string;
   timeToEnd?: string;
   name: string;
@@ -16,6 +17,7 @@ export interface MainCardProps {
 }
 
 export default function MainCard({
+  className,
   avatarUrl,
   timeToEnd,
   name,
@@ -24,7 +26,7 @@ export default function MainCard({
   price,
 }: MainCardProps) {
   return (
-    <div className="relative mt-6 w-2xs shrink-0">
+    <div className={`relative w-2xs shrink-0 ${className}`}>
       <div className="w-full h-[336px] rounded-2xl overflow-hidden">
         <Image
           className="object-cover w-full h-full"
@@ -60,7 +62,9 @@ export default function MainCard({
             </div>
           </div>
           {price !== undefined && (
-            <span className="font-bold font-lg text-tint-400">from ${price}</span>
+            <span className="font-bold font-lg text-tint-400">
+              from ${price}
+            </span>
           )}
         </div>
       </div>

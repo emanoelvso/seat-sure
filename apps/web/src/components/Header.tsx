@@ -40,7 +40,7 @@ export default function Header({
             <ul className="flex gap-10">
               <li>
                 <Link
-                  href=""
+                  href="/"
                   className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
                 >
                   <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
@@ -50,7 +50,7 @@ export default function Header({
               </li>
               <li>
                 <Link
-                  href=""
+                  href="/events"
                   className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
                 >
                   <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
@@ -60,7 +60,7 @@ export default function Header({
               </li>
               <li>
                 <Link
-                  href=""
+                  href="/events"
                   className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
                 >
                   <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
@@ -70,7 +70,7 @@ export default function Header({
               </li>
               <li>
                 <Link
-                  href=""
+                  href="/events"
                   className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
                 >
                   <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
@@ -80,7 +80,7 @@ export default function Header({
               </li>
               <li>
                 <Link
-                  href=""
+                  href="/events"
                   className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
                 >
                   <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>

@@ -5,14 +5,13 @@ import Header from "@/components/Header";
 import InvestimentIcon from "@/components/icons/InvestimentIcon";
 import SmartDealIcon from "@/components/icons/SmartDealIcon";
 import WatchIcon from "@/components/icons/WatchIcon";
-import { QuestionAccordion } from "@/components/QuestionAccordion";
 import SearchBox from "@/components/SearchBox";
 import Faq from "@/components/Faq";
 
 export default function Home() {
   return (
     <>
-      <Header className="py-4 px-8 mb-35" />
+      <Header className="py-4 px-27 mb-35" />
       <main className="flex flex-col items-center">
         <section aria-label="Hero" className="flex flex-col items-center">
           <h1 className="font-bold text-7xl max-w-3xl text-center mb-8">
