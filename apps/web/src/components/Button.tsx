@@ -45,10 +45,11 @@ export default function Button({
   leftIcon,
   rightIcon,
   iconSize = 18,
+  className,
   ...props
 }: ButtonProps) {
   return (
-    <button className={buttonVariants({ variant, size })} {...props}>
+    <button className={`${buttonVariants({ variant, size })} ${className ?? ""}`} {...props}>
       {leftIcon && createElement(leftIcon, { size: iconSize })}
       {size !== "icon" && children}
       {rightIcon && createElement(rightIcon, { size: iconSize })}

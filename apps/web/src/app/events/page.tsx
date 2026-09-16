@@ -1,4 +1,5 @@
 "use client";
+import Button from "@/components/Button";
 import Faq from "@/components/Faq";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -11,6 +12,7 @@ import {
 } from "@/graphql/queries/home-sections";
 import { useQuery } from "@apollo/client/react";
 import { AltArrowDownOutlineIcon, WidgetOutlineIcon } from "@solar-icons/react";
+import Image from "next/image";
 
 export default function Events() {
   const { data, loading, error } =
@@ -22,10 +24,10 @@ export default function Events() {
 
   const { concerts, shows, sports, festivals } = data!.getHomeSections;
   const events: GqlEvent[] = [
-    ...concerts!.events,
-    ...shows!.events,
-    ...sports!.events,
-    ...festivals!.events,
+    ...concerts!.events!,
+    ...shows!.events!,
+    ...sports!.events!,
+    ...festivals!.events!,
   ];
 
   return (
@@ -71,6 +73,36 @@ export default function Events() {
               price={event.price}
             />
           ))}
+        </div>
+
+        <div className="mt-40 mb-32 mx-auto flex items-center justify-center">
+          <Button variant="primary">View more Events</Button>
+        </div>
+        <div className="relative w-full h-[336px] rounded-2xl overflow-hidden">
+          <Image
+            className="object-cover"
+            src={"/artists.png"}
+            alt="Avatar"
+            fill
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to right, #0F0F0F 10%, rgba(19,15,20,0.97) 26%, rgba(29,14,34,0.91) 48%, rgba(172,0,229,0) 170%)",
+            }}
+          />
+          <div className="absolute inset-0 pl-27 flex flex-col justify-center gap-4">
+            <span className="font-bold text-4xl">
+              Start exploring event today!
+            </span>
+            <span className="font-medium text-neutral-100 text-2xl">
+              Find concerts, shows, and more near you.
+            </span>
+            <Button className="w-fit" size="lg">
+              Start
+            </Button>
+          </div>
         </div>
 
         <Faq />
