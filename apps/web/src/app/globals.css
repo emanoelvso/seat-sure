@@ -70,13 +70,21 @@ body {
 }
 
 @keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
 }
 
 @keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 .animate-accordion-down {
@@ -123,9 +131,15 @@ body {
     ),
     linear-gradient(
       90deg,
-      rgba(27, 27, 27, 0.30) 0%,
+      rgba(27, 27, 27, 0.3) 0%,
       rgba(14, 4, 17, 0.06) 50%,
-      rgba(27, 27, 27, 0.30) 100%
+      rgba(27, 27, 27, 0.3) 100%
     ),
     var(--color-neutral-800);
+}
+
+.rdp-root {
+  --rdp-accent-color: #a800e5;
+  --rdp-background-color: #171717;
+  color: white;
 }
