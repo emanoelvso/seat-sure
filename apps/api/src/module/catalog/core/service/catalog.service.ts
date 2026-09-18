@@ -37,8 +37,8 @@ interface FindEventsProps {
   city?: string | undefined;
   priceRange?: PriceRange | undefined;
   dateRange?: DateRange | undefined;
-  first?: number | undefined;
-  after?: number | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
 }
 
 @Injectable()
@@ -114,13 +114,13 @@ export class CatalogService {
     city,
     priceRange,
     dateRange,
-    first = 20,
-    after,
+    limit = 20,
+    offset,
   }: FindEventsProps) {
-    let options: FindManyOptions<Event> = { take: first };
+    let options: FindManyOptions<Event> = { take: limit };
 
-    if (after) {
-      options.skip = after;
+    if (offset) {
+      options.skip = offset;
     }
 
     if (type) {

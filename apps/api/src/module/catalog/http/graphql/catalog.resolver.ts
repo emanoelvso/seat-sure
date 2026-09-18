@@ -31,8 +31,8 @@ export class CatalogResolver {
       city: findEventsInput?.city,
       priceRange: findEventsInput?.priceRange,
       dateRange: findEventsInput?.dateRange,
-      first: findEventsInput?.first,
-      after: findEventsInput?.after,
+      limit: findEventsInput?.limit,
+      offset: findEventsInput?.offset,
     });
   }
 }

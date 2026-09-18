@@ -58,10 +58,10 @@ export class FindEventsInput {
   @IsOptional()
   @IsNumber()
   @Field({ nullable: true })
-  first?: number;
+  limit?: number;
 
   @IsOptional()
   @IsNumber()
   @Field({ nullable: true })
-  after?: number;
+  offset?: number;
 }
