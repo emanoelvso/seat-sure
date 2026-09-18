@@ -3,7 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { EventType } from '../enum/event-type.enum';
 import { EventStatus } from '../enum/event-status.enum';
 import { Event } from '@catalogModule/persistence/entity/event.entity';
-import { Between, FindManyOptions, LessThanOrEqual } from 'typeorm';
+import {
+  Between,
+  FindManyOptions,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from 'typeorm';
 
 export interface CreateEventDto {
   type: EventType;
@@ -132,12 +137,17 @@ export class CatalogService {
     }
 
     if (priceRange) {
-      options.where = {
-        ...options.where,
-        price: priceRange.max
-          ? Between(priceRange.min, priceRange.max)
-          : LessThanOrEqual(priceRange.min),
-      };
+      const { min, max } = priceRange;
+      const hasMin = min != null;
+      const hasMax = max != null;
+
+      if (hasMax && !hasMin) {
+        options.where = { ...options.where, price: LessThanOrEqual(max) };
+      } else if (hasMin && !hasMax) {
+        options.where = { ...options.where, price: MoreThanOrEqual(min) };
+      } else if (hasMin && hasMax) {
+        options.where = { ...options.where, price: Between(min, max) };
+      }
     }
 
     if (dateRange) {

@@ -11,8 +11,9 @@ import {
 
 @InputType()
 class PriceRange {
+  @IsOptional()
   @IsNumber()
-  @Field()
+  @Field({ nullable: true })
   min: number;
 
   @IsOptional()

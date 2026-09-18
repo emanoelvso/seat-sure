@@ -6,8 +6,8 @@ import { CheckCircleIcon } from "@solar-icons/react/outline";
 
 interface ComboBoxProps {
   options: string[];
-  value: string;
-  onChange: (value: string) => void;
+  value?: string | undefined;
+  onChange: (value: string | undefined) => void;
   label?: string;
   placeholder?: string;
   leftIcon?: Icon;
@@ -51,7 +51,7 @@ export default function ComboBox({
                 })}
               <input
                 type="text"
-                value={value}
+                value={value ?? ""}
                 placeholder={placeholder}
                 onChange={(e) => {
                   onChange(e.target.value);
@@ -88,7 +88,7 @@ export default function ComboBox({
                   className="flex items-center justify-between w-full px-3 py-2 text-sm text-neutral-200 rounded-md cursor-pointer outline-none hover:bg-neutral-800 hover:text-white"
                 >
                   {city}
-                  {value.toLowerCase() === city.toLowerCase() && (
+                  {value?.toLowerCase() === city.toLowerCase() && (
                     <CheckCircleIcon size={16} />
                   )}
                 </button>

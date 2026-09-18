@@ -19,7 +19,7 @@ interface SelectBoxProps {
   counter?: string;
   freeText?: boolean;
   value?: string;
-  onChange?: (value: string) => void;
+  onChange?: (value?: string | undefined) => void;
 }
 
 export default function SelectBox({
@@ -57,7 +57,11 @@ export default function SelectBox({
             />
           </div>
         ) : (
-          <Select.Root value={value} onValueChange={onChange} defaultValue={defaultValue}>
+          <Select.Root
+            value={value ?? ""}
+            onValueChange={onChange}
+            defaultValue={defaultValue}
+          >
             <Select.Trigger
               className={`flex items-center justify-between gap-3 w-full bg-transparent outline-none text-white placeholder:text-neutral-300 text-sm ${leftIcon ? "pl-12" : "pl-4"} pr-4 py-2 cursor-pointer data-[state=open]:border-primary`}
             >

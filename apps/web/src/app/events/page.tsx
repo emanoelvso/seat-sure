@@ -8,11 +8,6 @@ import Header from "@/components/Header";
 import MainCard from "@/components/MainCard";
 import SelectBox from "@/components/SelectBox";
 import SubCategoriePill from "@/components/SubCategoriePill";
-import {
-  GET_HOME_SECTIONS,
-  GetHomeSectionsData,
-  GqlEvent,
-} from "@/graphql/queries/home-sections";
 import { useQuery } from "@apollo/client/react";
 import { WidgetOutlineIcon } from "@solar-icons/react";
 import {
@@ -24,35 +19,60 @@ import Image from "next/image";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import formatLabel from "@/lib/utils/formatDateLabel";
+import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
+
+function formatPrice(price: string | undefined) {
+  switch (price) {
+    case "-100":
+      return { min: 100 };
+    case "100-300":
+      return { min: 100, max: 300 };
+    case "300-500":
+      return { min: 300, max: 500 };
+    case "+500":
+      return { min: 500 };
+  }
+}
+
+const EVENT_TYPE_LABELS = {
+  CONCERT: "Concerts",
+  SHOW: "Shows",
+  SPORT: "Sports",
+  FESTIVAL: "Festivals",
+};
+
+const PRICE_LABELS = {
+  "-100": "Under $100",
+  "100-300": "$100-300$",
+  "300-500": "$300-$500",
+  "+500": "Over $500",
+};
 
 export default function Events() {
-  const [eventType, setEventType] = useState("");
-  const [price, setPrice] = useState("");
+  const [type, setEventType] = useState(undefined);
+  const [price, setPrice] = useState(undefined);
   const [when, setWhen] = useState<DateRange | undefined>(undefined);
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState(undefined);
 
-  console.info(when);
+  const { data, previousData, loading, error } = useQuery<FindEventsData>(
+    FIND_EVENTS,
+    {
+      variables: {
+        input: {
+          type,
+          city,
+          dateRange: when,
+          priceRange: formatPrice(price),
+        },
+      },
+    },
+  );
 
-  const { data, loading, error } =
-    useQuery<GetHomeSectionsData>(GET_HOME_SECTIONS);
+  const { cities = [], events = [] } =
+    data?.findEvents ?? previousData?.findEvents ?? {};
 
-  if (loading) return <p className="text-neutral-400 py-20">Loading events…</p>;
   if (error)
     return <p className="text-red-400 py-20">Failed to load events.</p>;
-
-  const { concerts, shows, sports, festivals } = data!.getHomeSections;
-  const allEvents: GqlEvent[] = [
-    ...concerts!.events!,
-    ...shows!.events!,
-    ...sports!.events!,
-    ...festivals!.events!,
-  ];
-
-  const cities = [...new Set(allEvents.map((e) => e.city))].sort();
-
-  const events = city
-    ? allEvents.filter((e) => e.city.toLowerCase().includes(city.toLowerCase()))
-    : allEvents;
 
   return (
     <>
@@ -62,14 +82,14 @@ export default function Events() {
         <div className="px-27 flex flex-col gap-8">
           <div className="flex gap-4 w-full">
             <SelectBox
-              value={eventType}
+              value={type}
               onChange={setEventType}
               label="What"
               options={[
-                { value: "concerts", label: "Concerts" },
-                { value: "shows", label: "Shows" },
-                { value: "sports", label: "Sports" },
-                { value: "festivals", label: "Festivals" },
+                { value: "CONCERT", label: "Concert" },
+                { value: "SHOW", label: "Show" },
+                { value: "SPORT", label: "Sport" },
+                { value: "FESTIVAL", label: "Festival" },
               ]}
               leftIcon={WidgetOutlineIcon}
             />
@@ -82,7 +102,7 @@ export default function Events() {
             <ComboBox
               label="Where"
               placeholder="Search city..."
-              options={cities}
+              options={cities || []}
               value={city}
               onChange={setCity}
               leftIcon={MapPointIcon}
@@ -92,27 +112,41 @@ export default function Events() {
               onChange={setPrice}
               label="Price"
               options={[
-                { value: "under-100", label: "Under $100" },
+                { value: "-100", label: "Under $100" },
                 { value: "100-300", label: "$100-300$" },
                 { value: "300-500", label: "$300-$500" },
-                { value: "over-500", label: "Over $500" },
+                { value: "+500", label: "Over $500" },
               ]}
               leftIcon={DollarMinimalisticIcon}
             />
           </div>
           <div className="flex items-center gap-4">
             <p className="font-xl text-white">your search:</p>
-            {eventType && <SubCategoriePill>{eventType}</SubCategoriePill>}
-            {when?.from && (
-              <SubCategoriePill>{formatLabel(when)}</SubCategoriePill>
+            {type && (
+              <SubCategoriePill onClick={() => setEventType(undefined)}>
+                {EVENT_TYPE_LABELS[type]}
+              </SubCategoriePill>
             )}
-            {city && <SubCategoriePill>{city}</SubCategoriePill>}
-            {price && <SubCategoriePill>{price}</SubCategoriePill>}
+            {when?.from && (
+              <SubCategoriePill onClick={() => setWhen(undefined)}>
+                {formatLabel(when)}
+              </SubCategoriePill>
+            )}
+            {city && (
+              <SubCategoriePill onClick={() => setCity(undefined)}>
+                {city}
+              </SubCategoriePill>
+            )}
+            {price && (
+              <SubCategoriePill onClick={() => setPrice(undefined)}>
+                {PRICE_LABELS[price]}
+              </SubCategoriePill>
+            )}
           </div>
         </div>
 
         <div className="px-27 grid grid-cols-4 gap-24">
-          {events.map((event, index) => (
+          {events?.map((event, index) => (
             <MainCard
               className="mt-28 w-full"
               key={index}
