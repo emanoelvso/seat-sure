@@ -21,6 +21,7 @@ import formatLabel from "@/lib/utils/formatDateLabel";
 import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
 import EventsBanner from "@/components/EventsBanner";
 import { GqlEvent } from "@/graphql/queries/home-sections";
+import { format } from "date-fns";
 
 function formatPrice(price: string | undefined) {
   switch (price) {
@@ -193,7 +194,7 @@ export default function Events() {
               key={index}
               avatarUrl={event.coverImage}
               name={event.name}
-              date={event.date}
+              date={format(event.date, "MMM d, yyyy")}
               location={event.city}
               price={event.price}
             />
