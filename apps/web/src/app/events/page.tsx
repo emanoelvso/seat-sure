@@ -15,11 +15,12 @@ import {
   DollarMinimalisticIcon,
   MapPointIcon,
 } from "@solar-icons/react/outline";
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { DateRange } from "react-day-picker";
 import formatLabel from "@/lib/utils/formatDateLabel";
 import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
+import EventsBanner from "@/components/EventsBanner";
+import { GqlEvent } from "@/graphql/queries/home-sections";
 
 function formatPrice(price: string | undefined) {
   switch (price) {
@@ -53,23 +54,44 @@ export default function Events() {
   const [price, setPrice] = useState(undefined);
   const [when, setWhen] = useState<DateRange | undefined>(undefined);
   const [city, setCity] = useState(undefined);
+  const [offset, setOffset] = useState(0);
+  const [allEvents, setAllEvents] = useState<GqlEvent[]>([]);
 
-  const { data, previousData, loading, error } = useQuery<FindEventsData>(
-    FIND_EVENTS,
-    {
-      variables: {
-        input: {
-          type,
-          city,
-          dateRange: when,
-          priceRange: formatPrice(price),
-        },
+  const { data, previousData, error } = useQuery<FindEventsData>(FIND_EVENTS, {
+    variables: {
+      input: {
+        type,
+        city,
+        dateRange: when,
+        priceRange: formatPrice(price),
+        offset,
       },
     },
-  );
+  });
 
-  const { cities = [], events = [] } =
-    data?.findEvents ?? previousData?.findEvents ?? {};
+  function handleFilterChange<T>(setter: (v: T) => void) {
+    return (value: T) => {
+      setOffset(0);
+      setAllEvents([]);
+      setter(value);
+    };
+  }
+
+  useEffect(() => {
+    if (!data?.findEvents.events) return;
+
+    if (offset === 0) {
+      setAllEvents(data.findEvents.events);
+    } else {
+      setAllEvents((prev) => [...prev, ...data.findEvents.events]);
+    }
+  }, [data]);
+
+  const {
+    cities = [],
+    events = [],
+    hasMore,
+  } = data?.findEvents ?? previousData?.findEvents ?? {};
 
   if (error)
     return <p className="text-red-400 py-20">Failed to load events.</p>;
@@ -78,12 +100,11 @@ export default function Events() {
     <>
       <Header className="py-4 px-27 mb-35" />
       <main>
-        {/* Filters */}
         <div className="px-27 flex flex-col gap-8">
           <div className="flex gap-4 w-full">
             <SelectBox
               value={type}
-              onChange={setEventType}
+              onChange={handleFilterChange(setEventType)}
               label="What"
               options={[
                 { value: "CONCERT", label: "Concert" },
@@ -95,7 +116,7 @@ export default function Events() {
             />
             <DatePickerBox
               value={when}
-              onChange={setWhen}
+              onChange={handleFilterChange(setWhen)}
               label="When"
               leftIcon={CalendarIcon}
             />
@@ -104,12 +125,12 @@ export default function Events() {
               placeholder="Search city..."
               options={cities || []}
               value={city}
-              onChange={setCity}
+              onChange={handleFilterChange(setCity)}
               leftIcon={MapPointIcon}
             />
             <SelectBox
               value={price}
-              onChange={setPrice}
+              onChange={handleFilterChange(setPrice)}
               label="Price"
               options={[
                 { value: "-100", label: "Under $100" },
@@ -123,30 +144,50 @@ export default function Events() {
           <div className="flex items-center gap-4">
             <p className="font-xl text-white">your search:</p>
             {type && (
-              <SubCategoriePill onClick={() => setEventType(undefined)}>
+              <SubCategoriePill
+                onClick={() => {
+                  setAllEvents([]);
+                  setEventType(undefined);
+                }}
+              >
                 {EVENT_TYPE_LABELS[type]}
               </SubCategoriePill>
             )}
             {when?.from && (
-              <SubCategoriePill onClick={() => setWhen(undefined)}>
+              <SubCategoriePill
+                onClick={() => {
+                  setAllEvents([]);
+                  setWhen(undefined);
+                }}
+              >
                 {formatLabel(when)}
               </SubCategoriePill>
             )}
             {city && (
-              <SubCategoriePill onClick={() => setCity(undefined)}>
+              <SubCategoriePill
+                onClick={() => {
+                  setAllEvents([]);
+                  setCity(undefined);
+                }}
+              >
                 {city}
               </SubCategoriePill>
             )}
             {price && (
-              <SubCategoriePill onClick={() => setPrice(undefined)}>
+              <SubCategoriePill
+                onClick={() => {
+                  setAllEvents([]);
+                  setPrice(undefined);
+                }}
+              >
                 {PRICE_LABELS[price]}
               </SubCategoriePill>
             )}
           </div>
         </div>
 
-        <div className="px-27 grid grid-cols-4 gap-24">
-          {events?.map((event, index) => (
+        <div className="px-27 grid grid-cols-4 gap-24 mb-40">
+          {allEvents?.map((event, index) => (
             <MainCard
               className="mt-28 w-full"
               key={index}
@@ -159,35 +200,22 @@ export default function Events() {
           ))}
         </div>
 
-        <div className="mt-40 mb-32 mx-auto flex items-center justify-center">
-          <Button variant="primary">View more Events</Button>
-        </div>
-        <div className="relative w-full h-[336px] rounded-2xl overflow-hidden">
-          <Image
-            className="object-cover"
-            src={"/artists.png"}
-            alt="Avatar"
-            fill
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to right, #0F0F0F 10%, rgba(19,15,20,0.97) 26%, rgba(29,14,34,0.91) 48%, rgba(172,0,229,0) 170%)",
-            }}
-          />
-          <div className="absolute inset-0 pl-27 flex flex-col justify-center gap-4">
-            <span className="font-bold text-4xl">
-              Start exploring event today!
-            </span>
-            <span className="font-medium text-neutral-100 text-2xl">
-              Find concerts, shows, and more near you.
-            </span>
-            <Button className="w-fit" size="lg">
-              Start
-            </Button>
-          </div>
-        </div>
+        {allEvents?.length ? (
+          hasMore && (
+            <div className="mx-auto flex items-center justify-center">
+              <Button
+                variant="primary"
+                onClick={() => setOffset((prev) => prev + 20)}
+              >
+                View more Events
+              </Button>
+            </div>
+          )
+        ) : (
+          <span className="flex items-center justify-center">No Events</span>
+        )}
+
+        <EventsBanner />
 
         <Faq />
       </main>

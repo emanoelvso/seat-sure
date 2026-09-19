@@ -7,4 +7,7 @@ export class FindEvents {
   cities: string[];
   @Field(() => [Event], { nullable: true })
   events?: Event[] | null;
+
+  @Field()
+  hasMore: boolean;
 }

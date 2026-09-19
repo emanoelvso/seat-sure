@@ -122,7 +122,7 @@ export class CatalogService {
     limit = 20,
     offset,
   }: FindEventsProps) {
-    let options: FindManyOptions<Event> = { take: limit };
+    let options: FindManyOptions<Event> = { take: limit + 1 };
 
     if (offset) {
       options.skip = offset;
@@ -165,11 +165,15 @@ export class CatalogService {
     console.info(options);
 
     const events = await this.catalogRepository.find(options);
+
+    const hasMore = (events?.length || 0) > limit;
+
     const cities = [...new Set(events?.map((e) => e.city))].sort();
 
     return {
       cities,
-      events,
+      events: hasMore ? events?.slice(0, limit) : events,
+      hasMore,
     };
   }
 }
