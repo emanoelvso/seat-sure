@@ -51,6 +51,7 @@ interface InputProps
   rightIcon?: Icon;
   supportingText?: string;
   counter?: string;
+  placeholder?: string;
 }
 
 export default function Input({
@@ -61,6 +62,7 @@ export default function Input({
   rightIcon,
   supportingText,
   counter,
+  placeholder,
 }: InputProps) {
   return (
     <div className="w-full max-w-xl flex flex-col gap-1">
@@ -78,7 +80,7 @@ export default function Input({
           })}
         <input
           type="text"
-          placeholder="Search events, artists..."
+          placeholder={placeholder}
           className={`${inputVariants({ size })} ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon ? "pr-12" : "pr-4"} py-2`}
         />
         {rightIcon && (

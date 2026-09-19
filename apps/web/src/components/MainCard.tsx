@@ -1,11 +1,9 @@
-import {
-  CalendarIcon,
-  ClockCircleIcon,
-  MapPointIcon,
-} from "@solar-icons/react/outline";
+import { CalendarIcon, MapPointIcon } from "@solar-icons/react/outline";
 import Image from "next/image";
+import CountdownBadge from "@/components/CountdownBadge";
 
 export interface MainCardProps {
+  className?: string;
   avatarUrl: string;
   timeToEnd?: string;
   name: string;
@@ -16,15 +14,15 @@ export interface MainCardProps {
 }
 
 export default function MainCard({
+  className,
   avatarUrl,
-  timeToEnd,
   name,
   date,
   location,
   price,
 }: MainCardProps) {
   return (
-    <div className="relative mt-6 w-2xs shrink-0">
+    <div className={`relative w-2xs shrink-0 ${className}`}>
       <div className="w-full h-[336px] rounded-2xl overflow-hidden">
         <Image
           className="object-cover w-full h-full"
@@ -34,20 +32,10 @@ export default function MainCard({
           height={336}
         />
       </div>
-      <div className="absolute left-1/2 -translate-x-1/2 -bottom-16 w-[90%] border border-neutral-500 rounded-2xl">
-        {timeToEnd && (
-          <div className="flex justify-between items-center bg-error-500 text-xs px-4 py-2 rounded-t-2xl">
-            <div className="flex items-center gap-2">
-              <ClockCircleIcon size={16} />
-              <span>Time to end</span>
-            </div>
-            <span>{timeToEnd}</span>
-          </div>
-        )}
+      <div className="absolute left-1/2 -translate-x-1/2 -bottom-16 w-[90%] border border-neutral-500 rounded-2xl overflow-hidden">
+        <CountdownBadge eventDate={date} />
 
-        <div
-          className={`bg-neutral-800 p-4 ${timeToEnd ? "rounded-b-2xl" : "rounded-2xl"}`}
-        >
+        <div className="bg-neutral-800 p-4">
           <span className="font-xl font-bold">{name}</span>
           <div className="flex justify-between mt-4 mb-4 text-neutral-200 text-sm">
             <div className="flex items-center gap-1">
@@ -60,7 +48,9 @@ export default function MainCard({
             </div>
           </div>
           {price !== undefined && (
-            <span className="font-bold font-lg text-tint-400">from ${price}</span>
+            <span className="font-bold font-lg text-tint-400">
+              from ${price}
+            </span>
           )}
         </div>
       </div>
