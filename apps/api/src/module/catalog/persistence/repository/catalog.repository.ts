@@ -4,9 +4,10 @@ import { Event } from '@catalogModule/persistence/entity/event.entity';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, FindManyOptions } from 'typeorm';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
+import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 
 @Injectable()
-export class CatalogRepository extends DefaultTypeOrmRepository<Event> {
+export class EventRepository extends DefaultTypeOrmRepository<Event> {
   constructor(
     @InjectDataSource('catalog')
     readonly datasource: DataSource,
@@ -23,5 +24,16 @@ export class CatalogRepository extends DefaultTypeOrmRepository<Event> {
     options?: Partial<FindManyOptions<Event>>,
   ) {
     return super.find({ where: { type }, ...options });
+  }
+
+  async findEventByArtist({ artistId }: { artistId: string }) {
+    return this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .innerJoin('event.eventArtists', 'ea')
+      .where('ea.artistId = :artistId', { artistId })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .orderBy('event.startAt', 'ASC')
+      .limit(10)
+      .getMany();
   }
 }
