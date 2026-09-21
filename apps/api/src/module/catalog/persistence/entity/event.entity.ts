@@ -1,9 +1,10 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
+import { EventArtist } from './event-artist.entity';
 
-@Entity({ name: 'Event' })
+@Entity('Event')
 export class Event extends DefaultEntity<Event> {
   @Column({ type: 'enum', enum: EventType })
   type: EventType;
@@ -46,4 +47,7 @@ export class Event extends DefaultEntity<Event> {
 
   @Column({ type: 'float' })
   price: number;
+
+  @OneToMany(() => EventArtist, (ea) => ea.event)
+  eventArtists: EventArtist[];
 }
