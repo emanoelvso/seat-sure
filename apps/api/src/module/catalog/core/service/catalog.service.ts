@@ -1,4 +1,4 @@
-import { CatalogRepository } from '@catalogModule/persistence/repository/catalog.repository';
+import { EventRepository } from '@catalogModule/persistence/repository/catalog.repository';
 import { Injectable } from '@nestjs/common';
 import { EventType } from '../enum/event-type.enum';
 import { EventStatus } from '../enum/event-status.enum';
@@ -9,6 +9,7 @@ import {
   LessThanOrEqual,
   MoreThanOrEqual,
 } from 'typeorm';
+import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
 
 export interface CreateEventDto {
   type: EventType;
@@ -48,23 +49,23 @@ interface FindEventsProps {
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly catalogRepository: CatalogRepository) {}
+  constructor(
+    private readonly eventRepository: EventRepository,
+    private readonly artistRepository: ArtistRepository,
+  ) {}
 
   async createEvent(event: CreateEventDto): Promise<Event> {
     const newEvent = new Event(event);
-    await this.catalogRepository.save(newEvent);
+    await this.eventRepository.save(newEvent);
     return newEvent;
   }
 
   async getHomeSections() {
     const [concerts, shows, sports, festivals] = await Promise.all([
-      this.catalogRepository.findByType(
-        { type: EventType.CONCERT },
-        { take: 8 },
-      ),
-      this.catalogRepository.findByType({ type: EventType.SHOW }, { take: 8 }),
-      this.catalogRepository.findByType({ type: EventType.SPORT }, { take: 8 }),
-      this.catalogRepository.findByType(
+      this.eventRepository.findByType({ type: EventType.CONCERT }, { take: 8 }),
+      this.eventRepository.findByType({ type: EventType.SHOW }, { take: 8 }),
+      this.eventRepository.findByType({ type: EventType.SPORT }, { take: 8 }),
+      this.eventRepository.findByType(
         { type: EventType.FESTIVAL },
         { take: 8 },
       ),
@@ -164,7 +165,7 @@ export class CatalogService {
 
     console.info(options);
 
-    const events = await this.catalogRepository.find(options);
+    const events = await this.eventRepository.find(options);
 
     const hasMore = (events?.length || 0) > limit;
 
@@ -174,6 +175,31 @@ export class CatalogService {
       cities,
       events: hasMore ? events?.slice(0, limit) : events,
       hasMore,
+    };
+  }
+
+  async findArtistBySlug({ slug }: { slug: string; city?: string }) {
+    const artist = await this.artistRepository.findOne({ where: { slug } });
+
+    if (!artist) {
+      return null;
+    }
+
+    const [events, nearbyEvents] = await Promise.all([
+      this.eventRepository.findEventByArtist({
+        artistId: artist.id,
+      }),
+      this.eventRepository.findByType({ type: EventType.CONCERT }, { take: 4 }),
+    ]);
+
+    return {
+      artist: {
+        name: artist?.stage_name,
+        bio: artist?.bio,
+        cover: artist?.cover_image_url,
+      },
+      events,
+      nearbyEvents,
     };
   }
 }
