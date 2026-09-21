@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Venue } from './venue.entity';
+import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
 
 export type SeatMapSection = {
   key: string;
@@ -16,8 +17,8 @@ export type SeatMapLayout = {
   sections: SeatMapSection;
 };
 
-@Entity({ name: 'SeatMap' })
-export class SeatMap {
+@Entity('SeatMap')
+export class SeatMap extends DefaultEntity<SeatMap> {
   @ManyToOne(() => Venue, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'venueId' })
   venue: Venue;

@@ -1,7 +1,8 @@
+import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
 import { Column, Entity } from 'typeorm';
 
-@Entity({ name: 'Venue' })
-export class Venue {
+@Entity('Venue')
+export class Venue extends DefaultEntity<Venue> {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
