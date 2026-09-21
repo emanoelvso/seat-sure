@@ -15,7 +15,7 @@ import {
   DollarMinimalisticIcon,
   MapPointIcon,
 } from "@solar-icons/react/outline";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 import formatLabel from "@/lib/utils/formatDateLabel";
 import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
