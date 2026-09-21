@@ -1,0 +1,139 @@
+---
+config:
+  theme: dark
+---
+erDiagram
+    USER ||--o{ ORDER : places
+    USER ||--o{ PAYMENT_METHOD : owns
+    USER ||--o{ TICKET : holds
+
+    VENUE ||--o{ SEAT_MAP : "has configurations"
+    SEAT_MAP ||--o{ SEAT : contains
+    SEAT_MAP ||--o{ EVENT : "used by"
+
+    EVENT }o--|| VENUE : "held at"
+    EVENT ||--o{ EVENT_ARTIST : features
+    ARTIST ||--o{ EVENT_ARTIST : "performs in"
+
+    EVENT ||--o{ TICKET_TYPE : "sells as"
+    TICKET_TYPE }o--o{ SEAT : "priced for (by category)"
+
+    EVENT ||--o{ ORDER : "purchased for"
+    ORDER ||--|{ ORDER_ITEM : contains
+    TICKET_TYPE ||--o{ ORDER_ITEM : "picked as"
+    SEAT ||--o{ ORDER_ITEM : "reserves (nullable for GA)"
+
+    EVENT ||--o{ SEAT_HOLD : "locks during checkout"
+    SEAT ||--o{ SEAT_HOLD : "temporarily held"
+    USER ||--o{ SEAT_HOLD : "held by"
+
+    ORDER_ITEM ||--o| TICKET : "issued as"
+    PAYMENT_METHOD ||--o{ PAYMENT : "used for"
+    ORDER ||--o| PAYMENT : "paid by"
+    PAYMENT ||--o{ REFUND : "refunded via"
+
+    VENUE {
+        uuid id PK
+        string name
+        string address
+        string city
+        string country
+        decimal latitude
+        decimal longitude
+        int capacity
+    }
+    SEAT_MAP {
+        uuid id PK
+        uuid venueId FK
+        string name
+        jsonb layout "viewBox · sections polygons · stage"
+    }
+    SEAT {
+        uuid id PK
+        uuid seatMapId FK
+        string section
+        string row
+        string number
+        string category "VIP · Ouro · Prata · Bronze"
+        float x
+        float y
+    }
+    ARTIST {
+        uuid id PK
+        string stageName
+        string slug
+        text bio
+    }
+    EVENT {
+        uuid id PK
+        string slug UK
+        string name
+        text description
+        uuid venueId FK
+        uuid seatMapId FK
+        timestamp startAt
+        timestamp endsAt
+        enum status
+    }
+    EVENT_ARTIST {
+        uuid eventId FK
+        uuid artistId FK
+        bool headliner
+    }
+    TICKET_TYPE {
+        uuid id PK
+        uuid eventId FK
+        string name "VIP · Pista · ..."
+        string seatCategory "nullable for GA"
+        int priceCents
+        string currency
+        int quantityTotal
+        int maxPerOrder
+    }
+    ORDER {
+        uuid id PK
+        uuid userId FK
+        uuid eventId FK
+        enum status
+        int totalCents
+    }
+    ORDER_ITEM {
+        uuid id PK
+        uuid orderId FK
+        uuid ticketTypeId FK
+        uuid seatId FK "nullable"
+        int unitPriceCents
+    }
+    SEAT_HOLD {
+        uuid id PK
+        uuid eventId FK
+        uuid seatId FK
+        uuid userId FK
+        timestamp expiresAt
+    }
+    TICKET {
+        uuid id PK
+        uuid orderItemId FK
+        uuid eventId FK
+        uuid userId FK
+        uuid seatId FK "nullable"
+        string code UK
+        enum status
+    }
+    PAYMENT_METHOD {
+        uuid id PK
+        uuid userId FK
+        string provider
+    }
+    PAYMENT {
+        uuid id PK
+        uuid orderId FK
+        uuid paymentMethodId FK
+        int amountCents
+        enum status
+    }
+    REFUND {
+        uuid id PK
+        uuid paymentId FK
+        int amountCents
+    }
