@@ -163,8 +163,6 @@ export class CatalogService {
       };
     }
 
-    console.info(options);
-
     const events = await this.eventRepository.find(options);
 
     const hasMore = (events?.length || 0) > limit;
