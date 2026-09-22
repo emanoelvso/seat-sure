@@ -21,6 +21,8 @@
   - [x] Criar Artist Entity
   - [x] Criar Event Artist Entity
   - [ ] Implementar Near You com base em (estilo musical, latitude e longitude)
+  - [x] Implementar testes
+  - [ ] Fazer funcionar o migrate de acordo com o NODE environment (Para criar o banco de testes, adicionar na DOC do projeto)
 
   - [ ] Criar SeatMap Entity (OneToMany with Venue)
   - [ ] Criar TicketType Entity
