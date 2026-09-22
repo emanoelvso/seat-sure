@@ -14,7 +14,13 @@ export class CatalogResolver {
 
   @Mutation(() => Event)
   async createEvent(@Args('EventInput') eventInput: EventInput) {
-    const event = await this.catalogService.createEvent(eventInput);
+    const event = await this.catalogService.createEvent({
+      ...eventInput,
+      date: new Date(eventInput.date),
+      startAt: new Date(eventInput.startAt),
+      endsAt: new Date(eventInput.endsAt),
+      doorsOpen: new Date(eventInput.doorsOpen),
+    });
     return event;
   }
 

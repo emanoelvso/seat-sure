@@ -51,22 +51,22 @@ export class EventInput {
   @IsNotEmpty()
   @IsDateString()
   @Field()
-  date: Date;
+  date: string;
 
   @IsNotEmpty()
   @IsDateString()
   @Field()
-  startAt: Date;
+  startAt: string;
 
   @IsNotEmpty()
   @IsDateString()
   @Field()
-  endsAt: Date;
+  endsAt: string;
 
   @IsNotEmpty()
   @IsDateString()
   @Field()
-  doorsOpen: Date;
+  doorsOpen: string;
 
   @IsNotEmpty()
   @IsEnum(EventStatus)
