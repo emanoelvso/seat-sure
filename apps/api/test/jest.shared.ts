@@ -2,10 +2,11 @@ export default {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '..',
   testEnvironment: 'node',
+  // collectCoverageFrom: ['**/*.(t|j)s'],
+  coveragePathIgnorePatterns: ['-migration\\.ts$'],
   moduleNameMapper: {
     '^@catalogModule/(.*)$': '<rootDir>/src/module/catalog/$1',
     '^@identityModule/(.*)$': '<rootDir>/src/module/identity/$1',
-    '^@billingModule/(.*)$': '<rootDir>/src/module/billing/$1',
     '^@sharedModules/(.*)$': '<rootDir>/src/module/shared/module/$1',
     '^@sharedLibs/(.*)$': '<rootDir>/src/module/shared/$1',
     '^@src/(.*)$': '<rootDir>/src/$1',
