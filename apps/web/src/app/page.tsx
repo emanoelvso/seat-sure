@@ -11,7 +11,7 @@ import Faq from "@/components/Faq";
 export default function Home() {
   return (
     <>
-      <Header className="py-4 px-27 mb-35" />
+      <Header />
       <main className="flex flex-col items-center">
         <section aria-label="Hero" className="flex flex-col items-center">
           <h1 className="font-bold text-7xl max-w-3xl text-center mb-8">

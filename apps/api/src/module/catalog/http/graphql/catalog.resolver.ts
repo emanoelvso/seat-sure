@@ -45,7 +45,7 @@ export class CatalogResolver {
   }
 
   @Query(() => FindArtist)
-  async findArtist(@Args('FindArtistInput') { slug }: FindArtistInput) {
+  async findArtistBySlug(@Args('FindArtistInput') { slug }: FindArtistInput) {
     return this.catalogService.findArtistBySlug({ slug });
   }
 }

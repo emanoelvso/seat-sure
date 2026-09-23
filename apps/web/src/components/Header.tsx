@@ -23,7 +23,7 @@ export default function Header({
 }: HeaderProps) {
   return (
     <header
-      className={`flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"} ${className}`}
+      className={`py-4 px-27 mb-35 flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"} ${className}`}
     >
       {searchMode ? (
         <Input />

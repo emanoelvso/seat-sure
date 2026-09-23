@@ -424,7 +424,7 @@ describe('CatalogResolver (e2e)', () => {
     });
   });
 
-  describe('Catalog - Query findArtist ', () => {
+  describe('Catalog - Query findArtistBySlug ', () => {
     it('should return artist', async () => {
       const artist = artistFactory.build({
         slug: 'the-weeknd',
@@ -448,8 +448,8 @@ describe('CatalogResolver (e2e)', () => {
         .post('/graphql')
         .send({
           query: `
-            query FindArtist($FindArtistInput: FindArtistInput!) {
-              findArtist(FindArtistInput: $FindArtistInput) {
+            query FindArtistBySlug($FindArtistInput: FindArtistInput!) {
+              findArtistBySlug(FindArtistInput: $FindArtistInput) {
                 artist {
                   name
                   cover
@@ -474,7 +474,7 @@ describe('CatalogResolver (e2e)', () => {
         artist: foundArtist,
         events,
         nearbyEvents,
-      } = response.body.data.findArtist;
+      } = response.body.data.findArtistBySlug;
 
       expect(foundArtist.name).toBe(artist.stage_name);
       expect(foundArtist.bio).toBe(artist.bio);
@@ -494,7 +494,7 @@ describe('CatalogResolver (e2e)', () => {
         .send({
           query: `
             query {
-              findArtist(FindArtistInput: {}) {
+              findArtistBySlug(FindArtistInput: {}) {
                 artist {
                   name
                 }
