@@ -190,13 +190,30 @@ export class CatalogService {
       this.eventRepository.findByType({ type: EventType.CONCERT }, { take: 4 }),
     ]);
 
+    const eventsByCity = Array.from(
+      events
+        .reduce((groups, event) => {
+          const key = `${event.city}|${event.country}`;
+          const group = groups.get(key) ?? {
+            city: event.city,
+            country: event.country,
+            events: [],
+          };
+
+          group.events.push(event);
+          groups.set(key, group);
+          return groups;
+        }, new Map<string, { city: string; country: string; events: typeof events }>())
+        .values(),
+    );
+
     return {
       artist: {
         name: artist?.stage_name,
         bio: artist?.bio,
         cover: artist?.cover_image_url,
       },
-      events,
+      eventsByCity,
       nearbyEvents,
     };
   }
