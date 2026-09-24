@@ -9,20 +9,25 @@ export const FIND_ARTIST_BY_SLUG = gql`
         cover
         bio
       }
-      events {
-        id
-        type
-        name
-        description
-        coverImage
-        venue
+      eventsByCity {
         city
         country
-        date
-        startAt
-        status
-        price
-        category
+        events {
+          id
+          type
+          name
+          description
+          coverImage
+          venue
+          city
+          country
+          date
+          startAt
+          status
+          price
+          category
+          tags
+        }
       }
       nearbyEvents {
         id
@@ -53,8 +58,14 @@ interface Artist {
   bio: string;
 }
 
+interface EventsByCity {
+  city: string;
+  country: string;
+  events?: GqlEvent[] | null;
+}
+
 interface FindArtistBySlug {
   artist?: Artist | null;
-  events?: GqlEvent[] | null;
+  eventsByCity?: EventsByCity[] | null;
   nearbyEvents?: GqlEvent[] | null;
 }

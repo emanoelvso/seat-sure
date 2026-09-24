@@ -36,17 +36,19 @@ export default function EventShowcase({
 
       <hr className="border-neutral-700 w-full mb-6" />
 
-      <div className="flex gap-3">
-        {["All", ...(subCategories ?? [])].map((subCategory, index) => (
-          <SubCategoriePill
-            key={index}
-            variant={subCategory === activeCategory ? "active" : "default"}
-            onClick={() => setActiveCategory(subCategory)}
-          >
-            {subCategory}
-          </SubCategoriePill>
-        ))}
-      </div>
+      {subCategories && (
+        <div className="flex gap-3">
+          {["All", ...(subCategories ?? [])].map((subCategory, index) => (
+            <SubCategoriePill
+              key={index}
+              variant={subCategory === activeCategory ? "active" : "default"}
+              onClick={() => setActiveCategory(subCategory)}
+            >
+              {subCategory}
+            </SubCategoriePill>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-6 overflow-x-auto pb-20 [&::-webkit-scrollbar]:hidden">
         {filteredEvents.map((event, index) => (
