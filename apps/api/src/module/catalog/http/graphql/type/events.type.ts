@@ -48,4 +48,7 @@ export class Event {
 
   @Field(() => Float)
   price: number;
+
+  @Field(() => [String], { nullable: true })
+  tags?: string[];
 }

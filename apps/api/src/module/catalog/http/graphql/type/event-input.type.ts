@@ -2,6 +2,7 @@ import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { Field, Float, InputType } from '@nestjs/graphql';
 import {
+  IsArray,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -82,4 +83,9 @@ export class EventInput {
   @IsNumber()
   @Field(() => Float)
   price: number;
+
+  @IsOptional()
+  @IsArray()
+  @Field(() => [String])
+  tags?: string[];
 }

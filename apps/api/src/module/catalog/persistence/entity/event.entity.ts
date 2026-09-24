@@ -50,4 +50,7 @@ export class Event extends DefaultEntity<Event> {
 
   @OneToMany(() => EventArtist, (ea) => ea.event)
   eventArtists: EventArtist[];
+
+  @Column({ type: 'simple-array', nullable: true })
+  tags?: string[];
 }
