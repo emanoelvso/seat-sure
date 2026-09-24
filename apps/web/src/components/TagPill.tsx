@@ -1,7 +1,7 @@
 import { cva, VariantProps } from "class-variance-authority";
 import { ReactNode } from "react";
 
-const statusPillVariant = cva("inline-flex items-center  rounded-xl", {
+const tagPillVariant = cva("inline-flex items-center  rounded-xl", {
   variants: {
     variant: {
       pending: "bg-[#FFBE5D]/8 text-warning-200",
@@ -17,17 +17,13 @@ const statusPillVariant = cva("inline-flex items-center  rounded-xl", {
   defaultVariants: { variant: "pending", size: "sm" },
 });
 
-interface StatusPillProps extends VariantProps<typeof statusPillVariant> {
+interface TagPillProps extends VariantProps<typeof tagPillVariant> {
   children: ReactNode;
 }
 
-export default function StatusPill({
-  children,
-  variant,
-  size,
-}: StatusPillProps) {
+export default function TagPill({ children, variant, size }: TagPillProps) {
   return (
-    <button type="button" className={statusPillVariant({ variant, size })}>
+    <button type="button" className={tagPillVariant({ variant, size })}>
       <span>{children}</span>
     </button>
   );
