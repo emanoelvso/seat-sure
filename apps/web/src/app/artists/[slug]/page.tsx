@@ -1,5 +1,4 @@
 import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 import Artist from "./Artist";
 
 export default async function ArtistPage({
@@ -11,7 +10,6 @@ export default async function ArtistPage({
 
   return (
     <>
-      <Header />
       <main>
         <Artist slug={slug} />
       </main>
