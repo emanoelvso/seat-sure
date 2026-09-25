@@ -20,7 +20,7 @@ export default function Footer() {
         className="flex gap-2 text-primary items-center mb-[2.625rem]"
       >
         <MicrophoneIcon />
-        <span className={`${lobster.className} text-[2.5rem]`}>Evenjo</span>
+        <span className={`${lobster.className} text-[2.5rem]`}>SeatSure</span>
       </Link>
 
       <nav>
@@ -74,7 +74,7 @@ export default function Footer() {
 
       <hr className="border-white/20 self-stretch mx-[111px] mb-[2rem]" />
 
-      <p className="text-sm">Copyright Evenjo</p>
+      <p className="text-sm">Copyright SeatSure</p>
     </footer>
   );
 }

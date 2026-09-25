@@ -33,7 +33,7 @@ export default function Header({
             href=""
             className={`${lobster.className} text-[2.5rem] text-primary`}
           >
-            Evenjo
+            SeatSure
           </Link>
 
           <nav>

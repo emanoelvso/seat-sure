@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Evenjo — Tickets for Concerts, Shows & Sports",
+  title: "SeatSure — Tickets for Concerts, Shows & Sports",
   description:
     "Discover and book tickets for concerts, shows, sports events and festivals worldwide. Refundable tickets and smart deals available.",
 };
@@ -21,8 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-          <ApolloClientProvider>{children}</ApolloClientProvider>
-        </body>
+        <ApolloClientProvider>{children}</ApolloClientProvider>
+      </body>
     </html>
   );
 }
