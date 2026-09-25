@@ -14,16 +14,18 @@ interface HeaderProps {
   avatarUrl?: string;
   searchMode?: boolean;
   className?: string;
+  transparent?: boolean;
 }
 
 export default function Header({
   avatarUrl,
   searchMode = false,
   className,
+  transparent = false,
 }: HeaderProps) {
   return (
     <header
-      className={`py-4 px-27 mb-35 flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"} ${className}`}
+      className={`py-4 px-27 ${transparent ? "relative z-20" : "mb-35"}  flex items-center justify-between ${searchMode && "bg-neutral-1000 py-5 px-6 rounded-xl"} ${className}`}
     >
       {searchMode ? (
         <Input />
