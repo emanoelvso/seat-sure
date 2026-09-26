@@ -186,7 +186,7 @@ export class CatalogService {
     const artist = await this.artistRepository.findOne({ where: { slug } });
 
     if (!artist) {
-      return null;
+      return { artist: null, eventsByCity: [], nearbyEvents: [] };
     }
 
     const [events, nearbyEvents] = await Promise.all([

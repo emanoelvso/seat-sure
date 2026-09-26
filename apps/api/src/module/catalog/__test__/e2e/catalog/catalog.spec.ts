@@ -576,6 +576,17 @@ describe('CatalogResolver (e2e)', () => {
       expect(ids).not.toContain(events[100].id);
     });
 
+    it('returns an empty payload without errors for an unknown slug', async () => {
+      const response = await findArtistBySlug('unknown-artist').expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findArtistBySlug).toEqual({
+        artist: null,
+        eventsByCity: [],
+        nearbyEvents: [],
+      });
+    });
+
     it('should return artist', async () => {
       const artist = artistFactory.build({
         slug: 'the-weeknd',
