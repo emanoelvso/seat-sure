@@ -173,14 +173,14 @@ const COLOSSEUM = "The Colosseum at Caesars Palace";
 const tour = [
   group("Las Vegas", "USA", [
     dateEvent("lv1", "Las Vegas", "USA", COLOSSEUM, daysFromNow(10)),
-    dateEvent("lv2", "Las Vegas", "USA", COLOSSEUM, daysFromNow(17)),
+    dateEvent("lv2", "Las Vegas", "USA", "Dolby Live", daysFromNow(17)),
   ]),
   group("New York", "USA", [
     dateEvent("ny1", "New York", "USA", "Madison Square Garden", daysFromNow(40)),
   ]),
   group("London", "United Kingdom", [
     dateEvent("lon1", "London", "United Kingdom", "The O2 Arena", daysFromNow(60)),
-    dateEvent("lon2", "London", "United Kingdom", "The O2 Arena", daysFromNow(250)),
+    dateEvent("lon2", "London", "United Kingdom", "Wembley Stadium", daysFromNow(250)),
   ]),
 ];
 
@@ -207,7 +207,7 @@ export const DefaultCity: Story = {
     ).toHaveTextContent("Las Vegas, USA");
     await expect(cardLabels(region("All days and times"))).toEqual([
       `${COLOSSEUM} - Las Vegas, USA`,
-      `${COLOSSEUM} - Las Vegas, USA`,
+      "Dolby Live - Las Vegas, USA",
     ]);
 
     const map = canvas.getByRole("link", {
@@ -231,7 +231,7 @@ export const SwitchCity: Story = {
 
     await expect(cardLabels(region("All days and times"))).toEqual([
       "The O2 Arena - London, United Kingdom",
-      "The O2 Arena - London, United Kingdom",
+      "Wembley Stadium - London, United Kingdom",
     ]);
     await expect(
       canvas.getByRole("link", { name: "The O2 Arena, London, United Kingdom" }),
@@ -241,7 +241,7 @@ export const SwitchCity: Story = {
     ).toBeNull();
     await expect(cardLabels(region("Until 6 months"))).toEqual([
       `${COLOSSEUM} - Las Vegas, USA`,
-      `${COLOSSEUM} - Las Vegas, USA`,
+      "Dolby Live - Las Vegas, USA",
       "Madison Square Garden - New York, USA",
     ]);
   },
