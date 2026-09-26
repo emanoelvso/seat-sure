@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { MockedProvider } from "@apollo/client/testing/react";
 import type { MockLink } from "@apollo/client/testing";
-import { expect, screen, within } from "storybook/test";
+import { expect, fn, screen, within } from "storybook/test";
 import {
   FIND_ARTIST_BY_SLUG,
   FindArtistBySlug,
@@ -27,8 +27,8 @@ const baseEvent = (id: string, city: string, country: string, venue: string, sta
   __typename: "Event",
   id,
   type: "concert",
-  name: "Adele",
-  description: "Weekends with Adele",
+  name: "Weekends with Adele",
+  description: "Las Vegas residency",
   coverImage: "/artists.png",
   venue,
   city,
@@ -327,5 +327,44 @@ export const WithoutFestivalOrRecommendations: Story = {
     await expect(
       canvasElement.querySelector('a[href="/events/f1/tickets"]'),
     ).toBeNull();
+  },
+};
+
+let share: ReturnType<typeof fn>;
+
+export const ShareFromCard: Story = {
+  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  beforeEach: () => {
+    share = fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", {
+      value: share,
+      configurable: true,
+    });
+    return () => {
+      delete (navigator as { share?: unknown }).share;
+    };
+  },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole("combobox", { name: "City" });
+
+    const [datesCard] = within(region("All days and times")).getAllByRole(
+      "article",
+    );
+    const [elsewhereCard] = within(region("Until 6 months")).getAllByRole(
+      "article",
+    );
+    await userEvent.click(within(datesCard).getByRole("button", { name: "Share" }));
+    await userEvent.click(
+      within(elsewhereCard).getByRole("button", { name: "Share" }),
+    );
+
+    await expect(share).toHaveBeenNthCalledWith(1, {
+      title: `Adele - ${COLOSSEUM}`,
+      url: window.location.href,
+    });
+    await expect(share).toHaveBeenNthCalledWith(2, {
+      title: "Adele - Madison Square Garden",
+      url: window.location.href,
+    });
   },
 };
