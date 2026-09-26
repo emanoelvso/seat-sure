@@ -8,6 +8,13 @@ import {
 } from "@/graphql/queries/find-artist-by-slug";
 import Artist from "./Artist";
 
+const ARTIST_COVER = "/artists.png";
+
+const imageSource = (img: Element | null) => {
+  const url = new URL(img?.getAttribute("src") ?? "", window.location.origin);
+  return url.searchParams.get("url") ?? url.pathname;
+};
+
 const BIO =
   "British singer-songwriter known for her powerhouse vocals and record-breaking albums.";
 
@@ -29,7 +36,7 @@ const baseEvent = (id: string, city: string, country: string, venue: string, sta
   type: "concert",
   name: "Weekends with Adele",
   description: "Las Vegas residency",
-  coverImage: "/artists.png",
+  coverImage: "/artist/map.png",
   venue,
   city,
   country,
@@ -64,7 +71,7 @@ const payload = (overrides: Partial<Record<keyof FindArtistBySlug, unknown>> = {
         artist: {
           __typename: "Artist",
           name: "Adele",
-          cover: "/artists.png",
+          cover: ARTIST_COVER,
           bio: BIO,
         },
         eventsByCity: [
@@ -159,12 +166,17 @@ export const NoUpcomingDates: Story = {
 
 export const Loaded: Story = {
   parameters: { mocks: [payload()] },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const heading = await canvas.findByRole("heading", { level: 1 });
 
     await expect(heading).toHaveTextContent("Adele");
     await expect(canvas.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     await expect(canvas.getByText(BIO)).toBeVisible();
+    await expect(
+      imageSource(
+        canvasElement.querySelector('section[aria-label="Adele hero"] img'),
+      ),
+    ).toBe(ARTIST_COVER);
   },
 };
 
@@ -217,7 +229,9 @@ export const DefaultCity: Story = {
       "href",
       "https://www.google.com/maps/search/?api=1&query=The%20Colosseum%20at%20Caesars%20Palace%2C%20Las%20Vegas%2C%20USA",
     );
-    await expect(canvas.getByRole("img", { name: "Adele" })).toBeVisible();
+    const portrait = canvas.getByRole("img", { name: "Adele" });
+    await expect(portrait).toBeVisible();
+    await expect(imageSource(portrait)).toBe(ARTIST_COVER);
   },
 };
 
