@@ -23,7 +23,7 @@ export default function VenueMapCard({ address }: VenueMapCardProps) {
       <span className="absolute left-1/2 top-[27px] size-[98px] -translate-x-1/2">
         <Image src="/artist/map-pin.svg" alt="" fill unoptimized />
       </span>
-      <span className="absolute inset-x-4 top-[125px] truncate text-center text-sm">
+      <span className="absolute inset-x-4 top-[125px] line-clamp-2 text-center text-sm">
         {address}
       </span>
     </a>
