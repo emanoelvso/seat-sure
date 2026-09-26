@@ -45,4 +45,38 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
       .limit(limit)
       .getMany();
   }
+
+  async findSimilarConcerts({
+    artistId,
+    genres,
+    now,
+    limit = 4,
+  }: {
+    artistId: string;
+    genres: string[];
+    now: Date;
+    limit?: number;
+  }) {
+    const query = this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .where('event.type = :type', { type: EventType.CONCERT })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
+      .andWhere(
+        'NOT EXISTS (SELECT 1 FROM "EventArtist" ea WHERE ea."eventId" = "event"."id" AND ea."artistId" = :artistId)',
+        { artistId },
+      );
+
+    if (genres.length) {
+      query
+        .addSelect(
+          'CASE WHEN LOWER("event"."category") IN (:...genres) THEN 0 ELSE 1 END',
+          'genre_rank',
+        )
+        .orderBy('genre_rank', 'ASC')
+        .setParameter('genres', genres);
+    }
+
+    return query.addOrderBy('event.startAt', 'ASC').limit(limit).getMany();
+  }
 }

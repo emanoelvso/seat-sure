@@ -194,7 +194,13 @@ export class CatalogService {
         artistId: artist.id,
         now,
       }),
-      this.eventRepository.findByType({ type: EventType.CONCERT }, { take: 4 }),
+      this.eventRepository.findSimilarConcerts({
+        artistId: artist.id,
+        genres: artist.genres
+          .map((genre) => genre.trim().toLowerCase())
+          .filter(Boolean),
+        now,
+      }),
     ]);
 
     const eventsByCity = Array.from(

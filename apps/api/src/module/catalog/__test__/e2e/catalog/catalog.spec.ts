@@ -576,6 +576,112 @@ describe('CatalogResolver (e2e)', () => {
       expect(ids).not.toContain(events[100].id);
     });
 
+    describe('nearbyEvents', () => {
+      const upcomingConcert = (category: string, hours: number) =>
+        eventFactory.build({
+          type: EventType.CONCERT,
+          status: EventStatus.PUBLISHED,
+          category,
+          startAt: hoursFromNow(hours),
+        });
+
+      const nearbyIds = async (slug: string) => {
+        const response = await findArtistBySlug(slug);
+        return response.body.data.findArtistBySlug.nearbyEvents.map(
+          (event: { id: string }) => event.id,
+        );
+      };
+
+      it('returns at most 4 upcoming published concerts not linked to the artist', async () => {
+        const artist = artistFactory.build({
+          slug: 'adele',
+          stage_name: 'Adele',
+          genres: 'pop,soul',
+        });
+        const ownConcert = upcomingConcert('Pop', 1);
+        const pastConcert = upcomingConcert('Pop', -1);
+        const draftConcert = eventFactory.build({
+          type: EventType.CONCERT,
+          status: EventStatus.DRAFT,
+          category: 'Pop',
+          startAt: hoursFromNow(1),
+        });
+        const upcomingShow = eventFactory.build({
+          type: EventType.SHOW,
+          status: EventStatus.PUBLISHED,
+          category: 'Pop',
+          startAt: hoursFromNow(1),
+        });
+        const qualifying = [2, 3, 4, 5, 6].map((hours) =>
+          upcomingConcert('Rock', hours),
+        );
+
+        await testDbClient.batchInsert(Tables.Artist, [artist]);
+        await testDbClient.batchInsert(Tables.Event, [
+          ownConcert,
+          pastConcert,
+          draftConcert,
+          upcomingShow,
+          ...qualifying,
+        ]);
+        await linkEvents(artist.id, [ownConcert]);
+
+        const ids = await nearbyIds('adele');
+
+        expect(ids).toEqual(qualifying.slice(0, 4).map((event) => event.id));
+      });
+
+      it('ranks concerts matching an artist genre case-insensitively first, each group by startAt', async () => {
+        const artist = artistFactory.build({
+          slug: 'adele',
+          stage_name: 'Adele',
+          genres: 'pop,soul',
+        });
+        const rockEarliest = upcomingConcert('Rock', 1);
+        const popLater = upcomingConcert('Pop', 48);
+        const soulLatest = upcomingConcert('SOUL', 72);
+        const jazzLater = upcomingConcert('Jazz', 24);
+
+        await testDbClient.batchInsert(Tables.Artist, [artist]);
+        await testDbClient.batchInsert(Tables.Event, [
+          rockEarliest,
+          popLater,
+          soulLatest,
+          jazzLater,
+        ]);
+
+        expect(await nearbyIds('adele')).toEqual([
+          popLater.id,
+          soulLatest.id,
+          rockEarliest.id,
+          jazzLater.id,
+        ]);
+      });
+
+      it('fills remaining slots with other concerts without duplicates', async () => {
+        const artist = artistFactory.build({
+          slug: 'adele',
+          stage_name: 'Adele',
+          genres: 'pop,soul',
+        });
+        const popMatch = upcomingConcert('Pop', 96);
+        const others = [1, 2, 3, 4, 5].map((hours) =>
+          upcomingConcert('Metal', hours),
+        );
+
+        await testDbClient.batchInsert(Tables.Artist, [artist]);
+        await testDbClient.batchInsert(Tables.Event, [...others, popMatch]);
+
+        const ids = await nearbyIds('adele');
+
+        expect(ids).toEqual([
+          popMatch.id,
+          ...others.slice(0, 3).map((event) => event.id),
+        ]);
+        expect(new Set(ids).size).toBe(ids.length);
+      });
+    });
+
     it('returns an empty payload without errors for an unknown slug', async () => {
       const response = await findArtistBySlug('unknown-artist').expect(200);
 
