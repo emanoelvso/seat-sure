@@ -647,7 +647,7 @@ describe('CatalogResolver (e2e)', () => {
         const artist = artistFactory.build({
           slug: 'adele',
           stage_name: 'Adele',
-          genres: 'pop,soul',
+          genres: 'Pop,Soul',
         });
         const rockEarliest = upcomingConcert('Rock', 1);
         const popLater = upcomingConcert('Pop', 48);
