@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { MockedProvider } from "@apollo/client/testing/react";
 import type { MockLink } from "@apollo/client/testing";
-import { expect } from "storybook/test";
+import { expect, screen, within } from "storybook/test";
 import {
   FIND_ARTIST_BY_SLUG,
   FindArtistBySlug,
@@ -165,5 +165,167 @@ export const Loaded: Story = {
     await expect(heading).toHaveTextContent("Adele");
     await expect(canvas.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     await expect(canvas.getByText(BIO)).toBeVisible();
+  },
+};
+
+const COLOSSEUM = "The Colosseum at Caesars Palace";
+
+const tour = [
+  group("Las Vegas", "USA", [
+    dateEvent("lv1", "Las Vegas", "USA", COLOSSEUM, daysFromNow(10)),
+    dateEvent("lv2", "Las Vegas", "USA", COLOSSEUM, daysFromNow(17)),
+  ]),
+  group("New York", "USA", [
+    dateEvent("ny1", "New York", "USA", "Madison Square Garden", daysFromNow(40)),
+  ]),
+  group("London", "United Kingdom", [
+    dateEvent("lon1", "London", "United Kingdom", "The O2 Arena", daysFromNow(60)),
+    dateEvent("lon2", "London", "United Kingdom", "The O2 Arena", daysFromNow(250)),
+  ]),
+];
+
+const festival = {
+  ...baseEvent("f1", "Las Vegas", "USA", "Las Vegas Festival Grounds", daysFromNow(30)),
+  type: "festival",
+  name: "Music Festival",
+  description: "Mehdi Lorestani with DJ Hamed",
+};
+
+const cardLabels = (region: HTMLElement) =>
+  within(region)
+    .getAllByRole("heading", { level: 3 })
+    .map((heading) => heading.textContent);
+
+const region = (name: string) =>
+  screen.getByRole("region", { name });
+
+export const DefaultCity: Story = {
+  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("combobox", { name: "City" }),
+    ).toHaveTextContent("Las Vegas, USA");
+    await expect(cardLabels(region("All days and times"))).toEqual([
+      `${COLOSSEUM} - Las Vegas, USA`,
+      `${COLOSSEUM} - Las Vegas, USA`,
+    ]);
+
+    const map = canvas.getByRole("link", {
+      name: `${COLOSSEUM}, Las Vegas, USA`,
+    });
+    await expect(map).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/search/?api=1&query=The%20Colosseum%20at%20Caesars%20Palace%2C%20Las%20Vegas%2C%20USA",
+    );
+    await expect(canvas.getByRole("img", { name: "Adele" })).toBeVisible();
+  },
+};
+
+export const SwitchCity: Story = {
+  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole("combobox", { name: "City" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "London, United Kingdom" }),
+    );
+
+    await expect(cardLabels(region("All days and times"))).toEqual([
+      "The O2 Arena - London, United Kingdom",
+      "The O2 Arena - London, United Kingdom",
+    ]);
+    await expect(
+      canvas.getByRole("link", { name: "The O2 Arena, London, United Kingdom" }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("link", { name: `${COLOSSEUM}, Las Vegas, USA` }),
+    ).toBeNull();
+    await expect(cardLabels(region("Until 6 months"))).toEqual([
+      `${COLOSSEUM} - Las Vegas, USA`,
+      `${COLOSSEUM} - Las Vegas, USA`,
+      "Madison Square Garden - New York, USA",
+    ]);
+  },
+};
+
+export const UntilSixMonths: Story = {
+  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  play: async ({ canvas }) => {
+    await canvas.findByRole("combobox", { name: "City" });
+
+    const elsewhere = region("Until 6 months");
+    await expect(cardLabels(elsewhere)).toEqual([
+      "Madison Square Garden - New York, USA",
+      "The O2 Arena - London, United Kingdom",
+    ]);
+    await expect(
+      within(elsewhere)
+        .getAllByRole("link", { name: "Get Tickets" })
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/events/ny1/tickets", "/events/lon1/tickets"]);
+  },
+};
+
+export const SingleCity: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas }) => {
+    await canvas.findByRole("combobox", { name: "City" });
+
+    await expect(
+      canvas.queryByRole("heading", { name: "Until 6 months" }),
+    ).toBeNull();
+  },
+};
+
+export const WithFestivalAndRecommendations: Story = {
+  parameters: {
+    mocks: [
+      payload({
+        eventsByCity: tour,
+        nearbyEvents: [
+          baseEvent("n1", "Miami", "USA", "Kaseya Center", daysFromNow(20)),
+          baseEvent("n2", "Chicago", "USA", "United Center", daysFromNow(25)),
+        ],
+        featuredFestival: festival,
+      }),
+    ],
+  },
+  play: async ({ canvas }) => {
+    const banner = await canvas.findByRole("heading", {
+      level: 2,
+      name: "Music Festival",
+    });
+    const bannerLink = banner.closest("a");
+    await expect(bannerLink).toHaveAttribute("href", "/events/f1/tickets");
+
+    const following = Node.DOCUMENT_POSITION_FOLLOWING;
+    await expect(
+      region("All days and times").compareDocumentPosition(bannerLink!) &
+        following,
+    ).toBe(following);
+    await expect(
+      bannerLink!.compareDocumentPosition(region("Until 6 months")) & following,
+    ).toBe(following);
+
+    await expect(
+      canvas.getByRole("heading", { name: "Concert near you" }),
+    ).toBeVisible();
+  },
+};
+
+export const WithoutFestivalOrRecommendations: Story = {
+  parameters: {
+    mocks: [
+      payload({ eventsByCity: tour, nearbyEvents: [], featuredFestival: null }),
+    ],
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole("combobox", { name: "City" });
+
+    await expect(
+      canvas.queryByRole("heading", { name: "Concert near you" }),
+    ).toBeNull();
+    await expect(
+      canvasElement.querySelector('a[href="/events/f1/tickets"]'),
+    ).toBeNull();
   },
 };
