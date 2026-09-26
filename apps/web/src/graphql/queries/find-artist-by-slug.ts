@@ -44,6 +44,21 @@ export const FIND_ARTIST_BY_SLUG = gql`
         price
         category
       }
+      featuredFestival {
+        id
+        type
+        name
+        description
+        coverImage
+        venue
+        city
+        country
+        date
+        startAt
+        status
+        price
+        category
+      }
     }
   }
 `;
@@ -58,14 +73,15 @@ interface Artist {
   bio: string;
 }
 
-interface EventsByCity {
+export interface EventsByCity {
   city: string;
   country: string;
   events?: GqlEvent[] | null;
 }
 
-interface FindArtistBySlug {
+export interface FindArtistBySlug {
   artist?: Artist | null;
   eventsByCity?: EventsByCity[] | null;
   nearbyEvents?: GqlEvent[] | null;
+  featuredFestival?: GqlEvent | null;
 }

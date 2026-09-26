@@ -21,65 +21,105 @@ import { Accordion } from "radix-ui";
 import { format } from "date-fns";
 import Header from "@/components/Header";
 import Image from "next/image";
+import Link from "next/link";
+import { ReactNode } from "react";
+
+function PageMessage({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <Header />
+      <div className="flex flex-col items-start gap-6 px-27 pb-25">
+        {children}
+      </div>
+    </>
+  );
+}
 
 export default function Artist({ slug }: { slug: string }) {
-  const { data } = useQuery<FindArtistBySlugData>(FIND_ARTIST_BY_SLUG, {
-    variables: {
-      input: {
-        slug,
+  const { data, loading, error, refetch } = useQuery<FindArtistBySlugData>(
+    FIND_ARTIST_BY_SLUG,
+    {
+      variables: {
+        input: {
+          slug,
+        },
       },
     },
-  });
+  );
+
+  if (loading && !data) {
+    return (
+      <PageMessage>
+        <p role="status" className="text-lg text-neutral-200">
+          Loading artist…
+        </p>
+      </PageMessage>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageMessage>
+        <div role="alert" className="flex flex-col items-start gap-6">
+          <p className="text-2xl font-semibold">
+            We couldn&apos;t load this artist.
+          </p>
+          <Button onClick={() => refetch()}>Try again</Button>
+        </div>
+      </PageMessage>
+    );
+  }
 
   const artist = data?.findArtistBySlug.artist;
-  const eventsByCity = data?.findArtistBySlug.eventsByCity;
-  const nearbyEvents = data?.findArtistBySlug.nearbyEvents;
+
+  if (!artist) {
+    return (
+      <PageMessage>
+        <h1 className="text-4xl font-bold">Artist not found</h1>
+        <Link href="/events" className="text-primary hover:text-tint-400">
+          Browse events
+        </Link>
+      </PageMessage>
+    );
+  }
+
+  const eventsByCity = data.findArtistBySlug.eventsByCity ?? [];
+  const nearbyEvents = data.findArtistBySlug.nearbyEvents;
 
   return (
     <>
-      <div className="relative">
-        <section
-          aria-label="Artist = hero"
-          className="relative min-h-[720px] overflow-hidden flex flex-col"
-        >
-          {artist?.cover && (
-            <div className="absolute inset-0 z-0">
-              <Image
-                src={artist.cover}
-                alt={artist.name}
-                fill
-                priority
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/20 to-background" />
-            </div>
-          )}
+      <section
+        aria-label={`${artist.name} hero`}
+        className="relative flex h-[460px] flex-col overflow-hidden"
+      >
+        <Image
+          src={artist.cover}
+          alt=""
+          fill
+          fetchPriority="high"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/20 to-background" />
 
-          <Header transparent />
+        <Header transparent />
 
-          <div className="relative z-10 px-27 mt-auto flex flex-col gap-4 max-w-3xl">
-            <h1 className="text-6xl font-bold">{artist?.name}</h1>
-            <p className="text-lg font-medium">{artist?.bio}</p>
-          </div>
-        </section>
+        <div className="relative z-10 mt-auto flex max-w-[642px] flex-col gap-4 px-27 pb-[69px]">
+          <h1 className="text-6xl font-bold">{artist.name}</h1>
+          <p className="text-lg font-medium">{artist.bio}</p>
+        </div>
+      </section>
 
-        {artist?.cover && (
-          <div className="rounded-2xl pointer-events-none absolute right-10 top-96 z-20 hidden lg:block w-72 h-[520px] rounded-l2exl overflow-hidden shadow-2xl">
-            <Image
-              src={artist.cover}
-              alt={artist.name}
-              fill
-              className="object-cover"
-            />
-          </div>
-        )}
-
+      {eventsByCity.length === 0 ? (
+        <p className="px-27 py-10 text-xl text-neutral-200">
+          No upcoming dates
+        </p>
+      ) : (
         <Accordion.Root
           type="single"
           collapsible
           className="flex flex-col gap-4 px-27 lg:pr-96 mt-27 mb-12"
         >
-          {eventsByCity?.map((cityEvents) => (
+          {eventsByCity.map((cityEvents) => (
             <Accordion.Item key={cityEvents.city} value="venue">
               <Accordion.Header>
                 <Accordion.Trigger className="w-full">
@@ -144,7 +184,7 @@ export default function Artist({ slug }: { slug: string }) {
             </Accordion.Item>
           ))}
         </Accordion.Root>
-      </div>
+      )}
       <EventShowcase
         title="Concert near you"
         events={toCardProps(nearbyEvents ?? [])}
