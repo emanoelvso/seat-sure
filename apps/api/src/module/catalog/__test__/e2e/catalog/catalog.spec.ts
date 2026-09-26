@@ -455,8 +455,12 @@ describe('CatalogResolver (e2e)', () => {
                   cover
                   bio
                 }
-                events {
-                  id
+                eventsByCity {
+                  city
+                  country
+                  events {
+                    id
+                  }
                 }
                 nearbyEvents {
                   id
@@ -472,14 +476,14 @@ describe('CatalogResolver (e2e)', () => {
 
       const {
         artist: foundArtist,
-        events,
+        eventsByCity,
         nearbyEvents,
       } = response.body.data.findArtistBySlug;
 
       expect(foundArtist.name).toBe(artist.stage_name);
       expect(foundArtist.bio).toBe(artist.bio);
       expect(foundArtist.cover).toBe(artist.cover_image_url);
-      expect(events).toEqual([]);
+      expect(eventsByCity).toEqual([]);
       expect(nearbyEvents).toHaveLength(2);
       expect(
         nearbyEvents.every(
