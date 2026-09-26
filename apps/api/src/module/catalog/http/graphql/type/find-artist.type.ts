@@ -31,4 +31,7 @@ export class FindArtist {
 
   @Field(() => [Event], { nullable: true })
   nearbyEvents?: Event[] | null;
+
+  @Field(() => Event, { nullable: true })
+  featuredFestival?: Event | null;
 }

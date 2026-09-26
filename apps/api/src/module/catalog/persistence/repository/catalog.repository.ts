@@ -79,4 +79,14 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
 
     return query.addOrderBy('event.startAt', 'ASC').limit(limit).getMany();
   }
+
+  async findNextFestival({ now }: { now: Date }) {
+    return this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .where('event.type = :type', { type: EventType.FESTIVAL })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
+      .orderBy('event.startAt', 'ASC')
+      .getOne();
+  }
 }

@@ -446,6 +446,9 @@ describe('CatalogResolver (e2e)', () => {
                 nearbyEvents {
                   id
                 }
+                featuredFestival {
+                  id
+                }
               }
             }
           `,
@@ -467,7 +470,10 @@ describe('CatalogResolver (e2e)', () => {
       groups.flatMap((group) => group.events.map((event) => event.id));
 
     it('returns only upcoming published events of the artist', async () => {
-      const artist = artistFactory.build({ slug: 'adele', stage_name: 'Adele' });
+      const artist = artistFactory.build({
+        slug: 'adele',
+        stage_name: 'Adele',
+      });
       const otherArtist = artistFactory.build({
         slug: 'coldplay',
         stage_name: 'Coldplay',
@@ -507,7 +513,10 @@ describe('CatalogResolver (e2e)', () => {
     });
 
     it('orders events by startAt within a city and cities by their earliest event', async () => {
-      const artist = artistFactory.build({ slug: 'adele', stage_name: 'Adele' });
+      const artist = artistFactory.build({
+        slug: 'adele',
+        stage_name: 'Adele',
+      });
       const upcomingIn = (city: string, country: string, hours: number) =>
         eventFactory.build({
           status: EventStatus.PUBLISHED,
@@ -553,7 +562,10 @@ describe('CatalogResolver (e2e)', () => {
     });
 
     it('returns at most the 100 earliest upcoming events', async () => {
-      const artist = artistFactory.build({ slug: 'adele', stage_name: 'Adele' });
+      const artist = artistFactory.build({
+        slug: 'adele',
+        stage_name: 'Adele',
+      });
       const events = Array.from({ length: 101 }, (_, index) =>
         eventFactory.build({
           status: EventStatus.PUBLISHED,
@@ -682,6 +694,64 @@ describe('CatalogResolver (e2e)', () => {
       });
     });
 
+    describe('featuredFestival', () => {
+      const festival = (status: EventStatus, hours: number) =>
+        eventFactory.build({
+          type: EventType.FESTIVAL,
+          status,
+          startAt: hoursFromNow(hours),
+        });
+
+      const featuredFestival = async (slug: string) => {
+        const response = await findArtistBySlug(slug);
+        return response.body.data.findArtistBySlug.featuredFestival;
+      };
+
+      it('returns the earliest upcoming published festival', async () => {
+        const artist = artistFactory.build({
+          slug: 'adele',
+          stage_name: 'Adele',
+        });
+        const pastFestival = festival(EventStatus.PUBLISHED, -1);
+        const draftFestival = festival(EventStatus.DRAFT, 1);
+        const upcomingConcert = eventFactory.build({
+          type: EventType.CONCERT,
+          status: EventStatus.PUBLISHED,
+          startAt: hoursFromNow(2),
+        });
+        const laterFestival = festival(EventStatus.PUBLISHED, 72);
+        const nextFestival = festival(EventStatus.PUBLISHED, 24);
+
+        await testDbClient.batchInsert(Tables.Artist, [artist]);
+        await testDbClient.batchInsert(Tables.Event, [
+          pastFestival,
+          draftFestival,
+          upcomingConcert,
+          laterFestival,
+          nextFestival,
+        ]);
+
+        expect(await featuredFestival('adele')).toEqual({
+          id: nextFestival.id,
+        });
+      });
+
+      it('returns null when no upcoming published festival exists', async () => {
+        const artist = artistFactory.build({
+          slug: 'adele',
+          stage_name: 'Adele',
+        });
+
+        await testDbClient.batchInsert(Tables.Artist, [artist]);
+        await testDbClient.batchInsert(Tables.Event, [
+          festival(EventStatus.PUBLISHED, -1),
+          festival(EventStatus.DRAFT, 24),
+        ]);
+
+        expect(await featuredFestival('adele')).toBeNull();
+      });
+    });
+
     it('returns an empty payload without errors for an unknown slug', async () => {
       const response = await findArtistBySlug('unknown-artist').expect(200);
 
@@ -690,6 +760,7 @@ describe('CatalogResolver (e2e)', () => {
         artist: null,
         eventsByCity: [],
         nearbyEvents: [],
+        featuredFestival: null,
       });
     });
 

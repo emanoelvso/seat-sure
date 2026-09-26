@@ -186,10 +186,15 @@ export class CatalogService {
     const artist = await this.artistRepository.findOne({ where: { slug } });
 
     if (!artist) {
-      return { artist: null, eventsByCity: [], nearbyEvents: [] };
+      return {
+        artist: null,
+        eventsByCity: [],
+        nearbyEvents: [],
+        featuredFestival: null,
+      };
     }
 
-    const [events, nearbyEvents] = await Promise.all([
+    const [events, nearbyEvents, featuredFestival] = await Promise.all([
       this.eventRepository.findUpcomingByArtist({
         artistId: artist.id,
         now,
@@ -201,6 +206,7 @@ export class CatalogService {
           .filter(Boolean),
         now,
       }),
+      this.eventRepository.findNextFestival({ now }),
     ]);
 
     const eventsByCity = Array.from(
@@ -228,6 +234,7 @@ export class CatalogService {
       },
       eventsByCity,
       nearbyEvents,
+      featuredFestival,
     };
   }
 }
