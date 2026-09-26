@@ -23,8 +23,8 @@ interface TagPillProps extends VariantProps<typeof tagPillVariant> {
 
 export default function TagPill({ children, variant, size }: TagPillProps) {
   return (
-    <button type="button" className={tagPillVariant({ variant, size })}>
+    <span className={tagPillVariant({ variant, size })}>
       <span>{children}</span>
-    </button>
+    </span>
   );
 }

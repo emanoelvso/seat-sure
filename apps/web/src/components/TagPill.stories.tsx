@@ -1,4 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect } from "storybook/test";
 import TagPill from "./TagPill";
 
 const meta: Meta<typeof TagPill> = {
@@ -30,4 +31,8 @@ type Story = StoryObj<typeof TagPill>;
 
 export const Default: Story = {
   render: (args) => <TagPill {...args}>Pending</TagPill>,
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Pending")).toBeVisible();
+    await expect(canvas.queryByRole("button")).toBeNull();
+  },
 } satisfies Story;
