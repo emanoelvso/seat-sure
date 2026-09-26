@@ -86,6 +86,6 @@ export class EventInput {
 
   @IsOptional()
   @IsArray()
-  @Field(() => [String])
+  @Field(() => [String], { nullable: true })
   tags?: string[];
 }
