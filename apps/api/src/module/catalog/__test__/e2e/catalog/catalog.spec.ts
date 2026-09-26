@@ -1,4 +1,5 @@
 import { artistFactory } from '@catalogModule/__test__/factory/artist.factory';
+import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist.factory';
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
@@ -425,6 +426,156 @@ describe('CatalogResolver (e2e)', () => {
   });
 
   describe('Catalog - Query findArtistBySlug ', () => {
+    const findArtistBySlug = (slug: string) =>
+      request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query FindArtistBySlug($FindArtistInput: FindArtistInput!) {
+              findArtistBySlug(FindArtistInput: $FindArtistInput) {
+                artist {
+                  name
+                }
+                eventsByCity {
+                  city
+                  country
+                  events {
+                    id
+                  }
+                }
+                nearbyEvents {
+                  id
+                }
+              }
+            }
+          `,
+          variables: { FindArtistInput: { slug } },
+        });
+
+    const hoursFromNow = (hours: number) =>
+      new Date(Date.now() + hours * 3_600_000);
+
+    const linkEvents = (artistId: string, events: { id?: string }[]) =>
+      testDbClient.batchInsert(
+        Tables.EventArtist,
+        events.map((event) =>
+          eventArtistFactory.build({ eventId: event.id, artistId }),
+        ),
+      );
+
+    const eventIdsByCity = (groups: { events: { id: string }[] }[]) =>
+      groups.flatMap((group) => group.events.map((event) => event.id));
+
+    it('returns only upcoming published events of the artist', async () => {
+      const artist = artistFactory.build({ slug: 'adele', stage_name: 'Adele' });
+      const otherArtist = artistFactory.build({
+        slug: 'coldplay',
+        stage_name: 'Coldplay',
+      });
+      const upcoming = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(1),
+      });
+      const past = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(-1),
+      });
+      const draft = eventFactory.build({
+        status: EventStatus.DRAFT,
+        startAt: hoursFromNow(48),
+      });
+      const otherArtistEvent = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(48),
+      });
+
+      await testDbClient.batchInsert(Tables.Artist, [artist, otherArtist]);
+      await testDbClient.batchInsert(Tables.Event, [
+        upcoming,
+        past,
+        draft,
+        otherArtistEvent,
+      ]);
+      await linkEvents(artist.id, [upcoming, past, draft]);
+      await linkEvents(otherArtist.id, [otherArtistEvent]);
+
+      const response = await findArtistBySlug('adele');
+
+      expect(
+        eventIdsByCity(response.body.data.findArtistBySlug.eventsByCity),
+      ).toEqual([upcoming.id]);
+    });
+
+    it('orders events by startAt within a city and cities by their earliest event', async () => {
+      const artist = artistFactory.build({ slug: 'adele', stage_name: 'Adele' });
+      const upcomingIn = (city: string, country: string, hours: number) =>
+        eventFactory.build({
+          status: EventStatus.PUBLISHED,
+          city,
+          country,
+          startAt: hoursFromNow(hours),
+        });
+      const saoPauloLater = upcomingIn('São Paulo', 'Brazil', 240);
+      const rioFirst = upcomingIn('Rio de Janeiro', 'Brazil', 120);
+      const saoPauloFirst = upcomingIn('São Paulo', 'Brazil', 48);
+      const londonCanada = upcomingIn('London', 'Canada', 72);
+      const londonUk = upcomingIn('London', 'United Kingdom', 24);
+      const rioLater = upcomingIn('Rio de Janeiro', 'Brazil', 480);
+      const events = [
+        saoPauloLater,
+        rioFirst,
+        saoPauloFirst,
+        londonCanada,
+        londonUk,
+        rioLater,
+      ];
+
+      await testDbClient.batchInsert(Tables.Artist, [artist]);
+      await testDbClient.batchInsert(Tables.Event, events);
+      await linkEvents(artist.id, events);
+
+      const response = await findArtistBySlug('adele');
+
+      expect(
+        response.body.data.findArtistBySlug.eventsByCity.map(
+          (group: {
+            city: string;
+            country: string;
+            events: { id: string }[];
+          }) => [group.city, group.country, group.events.map((e) => e.id)],
+        ),
+      ).toEqual([
+        ['London', 'United Kingdom', [londonUk.id]],
+        ['São Paulo', 'Brazil', [saoPauloFirst.id, saoPauloLater.id]],
+        ['London', 'Canada', [londonCanada.id]],
+        ['Rio de Janeiro', 'Brazil', [rioFirst.id, rioLater.id]],
+      ]);
+    });
+
+    it('returns at most the 100 earliest upcoming events', async () => {
+      const artist = artistFactory.build({ slug: 'adele', stage_name: 'Adele' });
+      const events = Array.from({ length: 101 }, (_, index) =>
+        eventFactory.build({
+          status: EventStatus.PUBLISHED,
+          city: 'Las Vegas',
+          country: 'USA',
+          startAt: hoursFromNow(24 * (index + 1)),
+        }),
+      );
+
+      await testDbClient.batchInsert(Tables.Artist, [artist]);
+      await testDbClient.batchInsert(Tables.Event, events);
+      await linkEvents(artist.id, events);
+
+      const response = await findArtistBySlug('adele');
+      const ids = eventIdsByCity(
+        response.body.data.findArtistBySlug.eventsByCity,
+      );
+
+      expect(ids).toEqual(events.slice(0, 100).map((event) => event.id));
+      expect(ids).not.toContain(events[100].id);
+    });
+
     it('should return artist', async () => {
       const artist = artistFactory.build({
         slug: 'the-weeknd',

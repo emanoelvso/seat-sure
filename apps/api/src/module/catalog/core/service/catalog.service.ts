@@ -176,7 +176,13 @@ export class CatalogService {
     };
   }
 
-  async findArtistBySlug({ slug }: { slug: string; city?: string }) {
+  async findArtistBySlug({
+    slug,
+    now = new Date(),
+  }: {
+    slug: string;
+    now?: Date;
+  }) {
     const artist = await this.artistRepository.findOne({ where: { slug } });
 
     if (!artist) {
@@ -184,8 +190,9 @@ export class CatalogService {
     }
 
     const [events, nearbyEvents] = await Promise.all([
-      this.eventRepository.findEventByArtist({
+      this.eventRepository.findUpcomingByArtist({
         artistId: artist.id,
+        now,
       }),
       this.eventRepository.findByType({ type: EventType.CONCERT }, { take: 4 }),
     ]);

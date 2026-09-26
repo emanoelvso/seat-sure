@@ -26,14 +26,23 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
     return super.find({ where: { type }, ...options });
   }
 
-  async findEventByArtist({ artistId }: { artistId: string }) {
+  async findUpcomingByArtist({
+    artistId,
+    now,
+    limit = 100,
+  }: {
+    artistId: string;
+    now: Date;
+    limit?: number;
+  }) {
     return this.entityManager
       .createQueryBuilder(Event, 'event')
       .innerJoin('event.eventArtists', 'ea')
       .where('ea.artistId = :artistId', { artistId })
       .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
       .orderBy('event.startAt', 'ASC')
-      .limit(10)
+      .limit(limit)
       .getMany();
   }
 }
