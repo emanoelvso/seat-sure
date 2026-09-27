@@ -211,7 +211,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
   describe('seatMap', () => {
     it('returns the view box, stage and sections in stored order (SECT-02)', async () => {
       const layout: SeatMapLayout = {
-        viewBox: { width: 704, height: 704 },
+        viewBox: { width: 800, height: 600 },
         stage: {
           label: 'STAGE',
           path: 'M10 10L690 10L690 60L10 60Z',
@@ -311,8 +311,9 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
         sectionKey: 'vip',
         name: 'VIP',
         priceCents: 45000,
+        currency: 'EUR',
         seatsAvailable: 40,
-        maxPerOrder: 8,
+        maxPerOrder: 6,
         tags: 'discounted,vip',
       });
       const ticketTypeA2 = ticketTypeFactory.build({
@@ -320,8 +321,9 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
         sectionKey: 'a',
         name: 'A',
         priceCents: 40000,
+        currency: 'USD',
         seatsAvailable: 120,
-        maxPerOrder: 8,
+        maxPerOrder: 10,
         tags: 'discounted,best seller',
       });
       const ticketTypeB = ticketTypeFactory.build({
