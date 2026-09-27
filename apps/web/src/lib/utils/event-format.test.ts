@@ -3,6 +3,7 @@ import {
   formatEventDate,
   formatEventLocation,
   formatEventTime,
+  formatEventTimeRange,
   formatVenueAddress,
   googleMapsSearchUrl,
 } from "./event-format";
@@ -21,6 +22,20 @@ describe("event-format", () => {
 
   it("formats times after midnight as AM", () => {
     expect(formatEventTime(halfPastMidnight)).toBe("12:30 AM");
+  });
+
+  it("formats an evening time range", () => {
+    const startAt = new Date(2026, 10, 6, 20, 0).toISOString();
+    const endsAt = new Date(2026, 10, 6, 22, 30).toISOString();
+
+    expect(formatEventTimeRange(startAt, endsAt)).toBe("8:00 PM - 10:30 PM");
+  });
+
+  it("formats a range crossing from AM to PM", () => {
+    const startAt = new Date(2026, 10, 6, 9, 5).toISOString();
+    const endsAt = new Date(2026, 10, 6, 12, 0).toISOString();
+
+    expect(formatEventTimeRange(startAt, endsAt)).toBe("9:05 AM - 12:00 PM");
   });
 
   it("formats the card location as venue - city, country", () => {
