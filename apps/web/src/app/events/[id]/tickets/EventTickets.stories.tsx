@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { MockedProvider } from "@apollo/client/testing/react";
 import type { MockLink } from "@apollo/client/testing";
-import { expect, within } from "storybook/test";
+import { expect, screen, within } from "storybook/test";
 import { concentricSeatMap } from "@/components/SeatMap.fixture";
 import {
   FIND_EVENT_TICKETS,
@@ -301,5 +301,227 @@ export const SingleListing: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByText("1 Listing")).toBeVisible();
     await expect(cardTitles(canvas)).toEqual(["Section B"]);
+  },
+};
+
+type PlayContext = Parameters<NonNullable<Story["play"]>>[0];
+
+const pickQuantity = async (
+  { canvas, userEvent }: PlayContext,
+  label: string,
+) => {
+  await userEvent.click(canvas.getByRole("combobox", { name: "Tickets" }));
+  await userEvent.click(await screen.findByRole("option", { name: label }));
+};
+
+const applyPrice = async (
+  { canvas, userEvent }: PlayContext,
+  pill: string,
+  min: string,
+  max: string,
+) => {
+  await userEvent.click(canvas.getByRole("button", { name: pill }));
+  const minInput = await screen.findByRole("spinbutton", { name: "Min" });
+  const maxInput = screen.getByRole("spinbutton", { name: "Max" });
+  await userEvent.clear(minInput);
+  await userEvent.type(minInput, min);
+  await userEvent.clear(maxInput);
+  await userEvent.type(maxInput, max);
+  await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+};
+
+const loaded = (canvas: Canvas) =>
+  canvas.findByRole("heading", { level: 1, name: "Adele" });
+
+export const QuantityOptions: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    const trigger = canvas.getByRole("combobox", { name: "Tickets" });
+    await expect(trigger).toHaveTextContent(/^2 tickets$/);
+
+    await userEvent.click(trigger);
+    const options = await screen.findAllByRole("option");
+    await expect(options.map((option) => option.textContent)).toEqual([
+      "1 ticket",
+      "2 tickets",
+      "3 tickets",
+      "4 tickets",
+      "5 tickets",
+      "6 tickets",
+    ]);
+  },
+};
+
+export const QuantityFilter: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas } = context;
+    await loaded(canvas);
+
+    await pickQuantity(context, "4 tickets");
+
+    await expect(cardTitles(canvas)).toEqual([
+      "Section VIP",
+      "Section A",
+      "Section B",
+    ]);
+    await expect(canvas.getByText("3 Listings")).toBeVisible();
+    await expect(
+      seatMapGroup(canvas).getByRole("button", { name: "Section C" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      listings(canvas).getAllByText("4 tickets, seated together"),
+    ).toHaveLength(3);
+
+    await pickQuantity(context, "1 ticket");
+
+    await expect(listings(canvas).getAllByText("1 ticket")).toHaveLength(4);
+    await expect(listings(canvas).queryByText(/seated together/)).toBeNull();
+  },
+};
+
+export const PriceFilter: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas } = context;
+    await loaded(canvas);
+
+    await expect(
+      canvas.getByRole("button", { name: "$200 - $450" }),
+    ).toBeVisible();
+
+    await applyPrice(context, "$200 - $450", "250", "420");
+
+    await expect(cardTitles(canvas)).toEqual(["Section A", "Section B"]);
+    await expect(
+      canvas.getByRole("button", { name: "$250 - $420" }),
+    ).toBeVisible();
+  },
+};
+
+export const PriceInvalid: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas } = context;
+    await loaded(canvas);
+
+    await applyPrice(context, "$200 - $450", "500", "420");
+
+    await expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Min can't exceed max",
+    );
+    await expect(canvas.getByText("4 Listings")).toBeVisible();
+    await expect(cardTitles(canvas)).toEqual([
+      "Section VIP",
+      "Section A",
+      "Section B",
+      "Section C",
+    ]);
+    await expect(
+      canvas.getByRole("button", { name: "$200 - $450" }),
+    ).toBeInTheDocument();
+  },
+};
+
+export const Sort: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    await expect(cardTitles(canvas)).toEqual([
+      "Section VIP",
+      "Section A",
+      "Section B",
+      "Section C",
+    ]);
+
+    await userEvent.click(canvas.getByRole("combobox", { name: "Sort by" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Price: low to high" }),
+    );
+
+    await expect(cardTitles(canvas)).toEqual([
+      "Section C",
+      "Section B",
+      "Section A",
+      "Section VIP",
+    ]);
+  },
+};
+
+export const NoMatches: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas } = context;
+    await loaded(canvas);
+
+    await applyPrice(context, "$200 - $450", "1", "100");
+
+    await expect(
+      canvas.getByText("No listings match your filters"),
+    ).toBeVisible();
+    await expect(canvas.getByText("0 Listings")).toBeVisible();
+    await expect(canvas.queryByRole("list", { name: "Listings" })).toBeNull();
+  },
+};
+
+export const FilterClearsSelection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await loaded(canvas);
+
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section C" }),
+    );
+    await expect(heroValue(canvas, "hero-sec")).toBe("C");
+
+    await pickQuantity(context, "4 tickets");
+
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+    await expect(heroValue(canvas, "hero-price")).toBe("—");
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+
+    await pickQuantity(context, "2 tickets");
+
+    await expect(
+      listings(canvas).getByRole("button", { name: "Section C" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+  },
+};
+
+export const NoTicketTypes: Story = {
+  parameters: { mocks: [payload({ ticketTypes: [] })] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    await expect(canvas.getByText("0 Listings")).toBeVisible();
+    await expect(
+      canvas.getByText("No listings match your filters"),
+    ).toBeVisible();
+    await expect(
+      seatMapGroup(canvas)
+        .getAllByRole("button")
+        .map((section) => section.getAttribute("aria-disabled")),
+    ).toEqual(["true", "true", "true", "true"]);
+    await expect(
+      canvas.queryByRole("button", { name: /^\$\d+ - \$\d+$/ }),
+    ).toBeNull();
+
+    const trigger = canvas.getByRole("combobox", { name: "Tickets" });
+    await expect(trigger).toHaveTextContent(/^1 ticket$/);
+    await userEvent.click(trigger);
+    const options = await screen.findAllByRole("option");
+    await expect(options.map((option) => option.textContent)).toEqual([
+      "1 ticket",
+    ]);
   },
 };
