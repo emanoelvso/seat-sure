@@ -1,7 +1,10 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn } from "storybook/test";
-import { GqlTicketType } from "@/lib/utils/ticket-listings";
-import TicketsHero, { GqlTicketsEvent } from "./TicketsHero";
+import {
+  GqlTicketsEvent,
+  GqlTicketType,
+} from "@/graphql/queries/find-event-tickets";
+import TicketsHero from "./TicketsHero";
 
 const COVER = "/artist/map.png";
 const VENUE = "The Colosseum at Caesars Palace";

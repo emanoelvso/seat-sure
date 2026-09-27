@@ -1,13 +1,4 @@
-export interface GqlTicketType {
-  id: string;
-  sectionKey: string;
-  name: string;
-  priceCents: number;
-  currency: string;
-  seatsAvailable: number;
-  maxPerOrder: number;
-  tags: string[];
-}
+import { GqlTicketType } from "@/graphql/queries/find-event-tickets";
 
 export interface PriceRange {
   min: number;

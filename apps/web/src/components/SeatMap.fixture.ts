@@ -1,4 +1,4 @@
-import type { GqlSeatMap } from "./SeatMap";
+import type { GqlSeatMap } from "@/graphql/queries/find-event-tickets";
 
 // The "Concentric Arena" layout seeded by
 // apps/api/src/module/catalog/persistence/migration/1790550000000-migration.ts,

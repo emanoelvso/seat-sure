@@ -14,18 +14,10 @@ import {
   formatEventTimeRange,
 } from "@/lib/utils/event-format";
 import { formatPrice } from "@/lib/utils/price";
-import { GqlTicketType } from "@/lib/utils/ticket-listings";
-
-export interface GqlTicketsEvent {
-  id: string;
-  name: string;
-  coverImage: string;
-  venue: string;
-  city: string;
-  country: string;
-  startAt: string;
-  endsAt: string;
-}
+import {
+  GqlTicketsEvent,
+  GqlTicketType,
+} from "@/graphql/queries/find-event-tickets";
 
 interface TicketsHeroProps {
   event: GqlTicketsEvent;

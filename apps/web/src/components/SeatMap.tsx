@@ -1,25 +1,5 @@
 import { KeyboardEvent } from "react";
-
-export interface GqlSeatMapShape {
-  label: string;
-  path: string;
-  labelX: number;
-  labelY: number;
-}
-
-export interface GqlSeatMapSection extends GqlSeatMapShape {
-  key: string;
-  color: string;
-}
-
-export interface GqlSeatMap {
-  id: string;
-  name: string;
-  viewBoxWidth: number;
-  viewBoxHeight: number;
-  stage: GqlSeatMapShape;
-  sections: GqlSeatMapSection[];
-}
+import { GqlSeatMap } from "@/graphql/queries/find-event-tickets";
 
 interface SeatMapProps {
   layout: GqlSeatMap;
