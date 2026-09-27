@@ -7,23 +7,8 @@ import {
   GqlEvent,
 } from "@/graphql/queries/home-sections";
 import EventShowcase from "./EventShowcase";
-import { MainCardProps } from "./MainCard";
 import SingersCarousel, { Singer } from "./SingersCarousel";
-
-function toCardProps(events: GqlEvent[]): MainCardProps[] {
-  return events.map((event) => ({
-    avatarUrl: event.coverImage,
-    name: event.name,
-    date: new Date(event.date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
-    location: event.city,
-    price: event.price,
-    category: event.category,
-  }));
-}
+import { toCardProps } from "@/lib/utils/card-props";
 
 function toSingerProps(events: GqlEvent[]): Singer[] {
   return events.map((c) => {

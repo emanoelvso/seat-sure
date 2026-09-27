@@ -14,7 +14,7 @@ export const dataSourceOptionsFactory = (
   synchronize: false,
   logging: false,
   migrationsRun: false,
-  migrationsTableName: 'billing_migrations',
+  migrationsTableName: 'catalog_migrations',
   entities: [join(__dirname, 'entity', '*.entity.{ts,js}')],
   migrations: [join(__dirname, 'migration', '*-migration.{ts,js}')],
 });

@@ -2,7 +2,7 @@ import { createElement, ReactNode } from "react";
 import { Icon } from "@solar-icons/react/lib/types";
 import { cva, VariantProps } from "class-variance-authority";
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   "inline-flex items-center cursor-pointer justify-center rounded-lg gap-2 transition-colors focus-visible:outline-none disabled:text-neutral-300 disabled:pointer-events-none text-base leading-[120%]",
   {
     variants: {

@@ -8,5 +8,5 @@ if (!fs.existsSync(testEnvFile)) {
   throw new Error('.env.test file not found');
 }
 
-config({ path: envFile });
-config({ path: testEnvFile, override: true });
+config({ path: envFile, quiet: true });
+config({ path: testEnvFile, override: true, quiet: true });

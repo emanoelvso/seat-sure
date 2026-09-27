@@ -4,9 +4,10 @@ import { Event } from '@catalogModule/persistence/entity/event.entity';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, FindManyOptions } from 'typeorm';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
+import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 
 @Injectable()
-export class CatalogRepository extends DefaultTypeOrmRepository<Event> {
+export class EventRepository extends DefaultTypeOrmRepository<Event> {
   constructor(
     @InjectDataSource('catalog')
     readonly datasource: DataSource,
@@ -23,5 +24,69 @@ export class CatalogRepository extends DefaultTypeOrmRepository<Event> {
     options?: Partial<FindManyOptions<Event>>,
   ) {
     return super.find({ where: { type }, ...options });
+  }
+
+  async findUpcomingByArtist({
+    artistId,
+    now,
+    limit = 100,
+  }: {
+    artistId: string;
+    now: Date;
+    limit?: number;
+  }) {
+    return this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .innerJoin('event.eventArtists', 'ea')
+      .where('ea.artistId = :artistId', { artistId })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
+      .orderBy('event.startAt', 'ASC')
+      .limit(limit)
+      .getMany();
+  }
+
+  async findSimilarConcerts({
+    artistId,
+    genres,
+    now,
+    limit = 4,
+  }: {
+    artistId: string;
+    genres: string[];
+    now: Date;
+    limit?: number;
+  }) {
+    const query = this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .where('event.type = :type', { type: EventType.CONCERT })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
+      .andWhere(
+        'NOT EXISTS (SELECT 1 FROM "EventArtist" ea WHERE ea."eventId" = "event"."id" AND ea."artistId" = :artistId)',
+        { artistId },
+      );
+
+    if (genres.length) {
+      query
+        .addSelect(
+          'CASE WHEN LOWER("event"."category") IN (:...genres) THEN 0 ELSE 1 END',
+          'genre_rank',
+        )
+        .orderBy('genre_rank', 'ASC')
+        .setParameter('genres', genres);
+    }
+
+    return query.addOrderBy('event.startAt', 'ASC').limit(limit).getMany();
+  }
+
+  async findNextFestival({ now }: { now: Date }) {
+    return this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .where('event.type = :type', { type: EventType.FESTIVAL })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
+      .orderBy('event.startAt', 'ASC')
+      .getOne();
   }
 }

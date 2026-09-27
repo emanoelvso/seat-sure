@@ -5,6 +5,8 @@ import { Event } from '@catalogModule/http/graphql/type/events.type';
 import { EventInput } from '@catalogModule/http/graphql/type/event-input.type';
 import { FindEvents } from './type/find-events.type';
 import { FindEventsInput } from './type/find-events-input.type';
+import { FindArtist } from './type/find-artist.type';
+import { FindArtistInput } from './type/find-artist-input.type';
 
 @Resolver()
 export class CatalogResolver {
@@ -12,7 +14,13 @@ export class CatalogResolver {
 
   @Mutation(() => Event)
   async createEvent(@Args('EventInput') eventInput: EventInput) {
-    const event = await this.catalogService.createEvent(eventInput);
+    const event = await this.catalogService.createEvent({
+      ...eventInput,
+      date: new Date(eventInput.date),
+      startAt: new Date(eventInput.startAt),
+      endsAt: new Date(eventInput.endsAt),
+      doorsOpen: new Date(eventInput.doorsOpen),
+    });
     return event;
   }
 
@@ -34,5 +42,10 @@ export class CatalogResolver {
       limit: findEventsInput?.limit,
       offset: findEventsInput?.offset,
     });
+  }
+
+  @Query(() => FindArtist)
+  async findArtistBySlug(@Args('FindArtistInput') { slug }: FindArtistInput) {
+    return this.catalogService.findArtistBySlug({ slug });
   }
 }

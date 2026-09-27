@@ -1,0 +1,32 @@
+---
+config:
+  theme: dark
+  layout: elk
+---
+graph TB
+    subgraph "Seat Sure"
+        IA[Identity & Access<br/>auth · sessions · roles]
+        UP[User Profile<br/>profile · preferences · addresses]
+        CAT[Catalog<br/>events · artists · venues · seat maps]
+        TKT[Ticketing<br/>orders · seat holds · tickets]
+        BIL[Billing<br/>payment methods · payments · refunds]
+        SP[Social Proof<br/>testimonials]
+        NOT[Notifications<br/>in-app · email · templates]
+    end
+
+    IA -.identity.-> UP
+    UP -.buyer.-> TKT
+    CAT -.what's sold.-> TKT
+    TKT -.charges.-> BIL
+    TKT -.emits events.-> NOT
+    BIL -.emits events.-> NOT
+    CAT -.reviews of.-> SP
+    UP -.author.-> SP
+
+    classDef core fill:#fde68a,stroke:#b45309,color:#1f2937
+    classDef supporting fill:#e0e7ff,stroke:#4338ca,color:#1f2937
+    classDef generic fill:#f3f4f6,stroke:#6b7280,color:#1f2937
+
+    class TKT,CAT core
+    class IA,UP,BIL supporting
+    class SP,NOT generic

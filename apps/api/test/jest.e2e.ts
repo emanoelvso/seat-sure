@@ -1,4 +1,4 @@
-import config from './jest.shared';
+import config from './jest.shared.ts';
 
 export default {
   ...config,

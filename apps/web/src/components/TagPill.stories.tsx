@@ -1,9 +1,10 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import StatusPill from "./StatusPill";
+import { expect } from "storybook/test";
+import TagPill from "./TagPill";
 
-const meta: Meta<typeof StatusPill> = {
-  title: "Components/StatusPill",
-  component: StatusPill,
+const meta: Meta<typeof TagPill> = {
+  title: "Components/TagPill",
+  component: TagPill,
   tags: ["autodocs"],
   args: {
     variant: "pending",
@@ -22,12 +23,16 @@ const meta: Meta<typeof StatusPill> = {
       table: { disable: true },
     },
   },
-} satisfies Meta<typeof StatusPill>;
+} satisfies Meta<typeof TagPill>;
 
 export default meta;
 
-type Story = StoryObj<typeof StatusPill>;
+type Story = StoryObj<typeof TagPill>;
 
 export const Default: Story = {
-  render: (args) => <StatusPill {...args}>Pending</StatusPill>,
+  render: (args) => <TagPill {...args}>Pending</TagPill>,
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Pending")).toBeVisible();
+    await expect(canvas.queryByRole("button")).toBeNull();
+  },
 } satisfies Story;

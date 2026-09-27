@@ -88,6 +88,7 @@ export interface GqlEvent {
   status: string;
   price: number;
   category: string;
+  tags?: string[];
 }
 
 export interface GetHomeSectionsData {

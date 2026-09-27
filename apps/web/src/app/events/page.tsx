@@ -15,15 +15,17 @@ import {
   DollarMinimalisticIcon,
   MapPointIcon,
 } from "@solar-icons/react/outline";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import formatLabel from "@/lib/utils/formatDateLabel";
 import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
 import EventsBanner from "@/components/EventsBanner";
-import { GqlEvent } from "@/graphql/queries/home-sections";
 import { format } from "date-fns";
 
-function formatPrice(price: string | undefined) {
+type EventType = "CONCERT" | "SHOW" | "SPORT" | "FESTIVAL";
+type PriceRange = "-100" | "100-300" | "300-500" | "+500";
+
+function formatPrice(price: PriceRange | undefined) {
   switch (price) {
     case "-100":
       return { min: 100 };
@@ -36,14 +38,14 @@ function formatPrice(price: string | undefined) {
   }
 }
 
-const EVENT_TYPE_LABELS = {
+const EVENT_TYPE_LABELS: Record<EventType, string> = {
   CONCERT: "Concerts",
   SHOW: "Shows",
   SPORT: "Sports",
   FESTIVAL: "Festivals",
 };
 
-const PRICE_LABELS = {
+const PRICE_LABELS: Record<PriceRange, string> = {
   "-100": "Under $100",
   "100-300": "$100-300$",
   "300-500": "$300-$500",
@@ -51,61 +53,67 @@ const PRICE_LABELS = {
 };
 
 export default function Events() {
-  const [type, setEventType] = useState(undefined);
-  const [price, setPrice] = useState(undefined);
+  const [type, setEventType] = useState<EventType | undefined>(undefined);
+  const [price, setPrice] = useState<PriceRange | undefined>(undefined);
   const [when, setWhen] = useState<DateRange | undefined>(undefined);
-  const [city, setCity] = useState(undefined);
-  const [offset, setOffset] = useState(0);
-  const [allEvents, setAllEvents] = useState<GqlEvent[]>([]);
+  const [city, setCity] = useState<string | undefined>(undefined);
 
-  const { data, previousData, error } = useQuery<FindEventsData>(FIND_EVENTS, {
-    variables: {
-      input: {
-        type,
-        city,
-        dateRange: when,
-        priceRange: formatPrice(price),
-        offset,
+  const { data, previousData, error, fetchMore } = useQuery<FindEventsData>(
+    FIND_EVENTS,
+    {
+      variables: {
+        input: {
+          type,
+          city,
+          dateRange: when,
+          priceRange: formatPrice(price),
+          offset: 0,
+        },
       },
+      notifyOnNetworkStatusChange: true,
     },
-  });
+  );
 
-  function handleFilterChange<T>(setter: (v: T) => void) {
-    return (value: T) => {
-      setOffset(0);
-      setAllEvents([]);
-      setter(value);
-    };
+  const findEvents = data?.findEvents ?? previousData?.findEvents;
+  const cities = findEvents?.cities ?? [];
+  const events = findEvents?.events ?? [];
+  const hasMore = findEvents?.hasMore ?? false;
+
+  function loadMore() {
+    fetchMore({
+      variables: {
+        input: {
+          type,
+          city,
+          dateRange: when,
+          priceRange: formatPrice(price),
+          offset: events.length,
+        },
+      },
+      updateQuery: (prev, { fetchMoreResult }) => ({
+        findEvents: {
+          ...fetchMoreResult.findEvents,
+          events: [
+            ...(prev.findEvents.events ?? []),
+            ...(fetchMoreResult.findEvents.events ?? []),
+          ],
+        },
+      }),
+    });
   }
-
-  useEffect(() => {
-    if (!data?.findEvents.events) return;
-
-    if (offset === 0) {
-      setAllEvents(data.findEvents.events);
-    } else {
-      setAllEvents((prev) => [...prev, ...data.findEvents.events]);
-    }
-  }, [data]);
-
-  const {
-    cities = [],
-    events = [],
-    hasMore,
-  } = data?.findEvents ?? previousData?.findEvents ?? {};
 
   if (error)
     return <p className="text-red-400 py-20">Failed to load events.</p>;
 
   return (
     <>
-      <Header className="py-4 px-27 mb-35" />
+      <Header />
       <main>
         <div className="px-27 flex flex-col gap-8">
           <div className="flex gap-4 w-full">
             <SelectBox
               value={type}
-              onChange={handleFilterChange(setEventType)}
+              onChange={(v) => setEventType(v as EventType | undefined)}
               label="What"
               options={[
                 { value: "CONCERT", label: "Concert" },
@@ -117,7 +125,7 @@ export default function Events() {
             />
             <DatePickerBox
               value={when}
-              onChange={handleFilterChange(setWhen)}
+              onChange={setWhen}
               label="When"
               leftIcon={CalendarIcon}
             />
@@ -126,12 +134,12 @@ export default function Events() {
               placeholder="Search city..."
               options={cities || []}
               value={city}
-              onChange={handleFilterChange(setCity)}
+              onChange={setCity}
               leftIcon={MapPointIcon}
             />
             <SelectBox
               value={price}
-              onChange={handleFilterChange(setPrice)}
+              onChange={(v) => setPrice(v as PriceRange | undefined)}
               label="Price"
               options={[
                 { value: "-100", label: "Under $100" },
@@ -145,42 +153,22 @@ export default function Events() {
           <div className="flex items-center gap-4">
             <p className="font-xl text-white">your search:</p>
             {type && (
-              <SubCategoriePill
-                onClick={() => {
-                  setAllEvents([]);
-                  setEventType(undefined);
-                }}
-              >
+              <SubCategoriePill onClick={() => setEventType(undefined)}>
                 {EVENT_TYPE_LABELS[type]}
               </SubCategoriePill>
             )}
             {when?.from && (
-              <SubCategoriePill
-                onClick={() => {
-                  setAllEvents([]);
-                  setWhen(undefined);
-                }}
-              >
+              <SubCategoriePill onClick={() => setWhen(undefined)}>
                 {formatLabel(when)}
               </SubCategoriePill>
             )}
             {city && (
-              <SubCategoriePill
-                onClick={() => {
-                  setAllEvents([]);
-                  setCity(undefined);
-                }}
-              >
+              <SubCategoriePill onClick={() => setCity(undefined)}>
                 {city}
               </SubCategoriePill>
             )}
             {price && (
-              <SubCategoriePill
-                onClick={() => {
-                  setAllEvents([]);
-                  setPrice(undefined);
-                }}
-              >
+              <SubCategoriePill onClick={() => setPrice(undefined)}>
                 {PRICE_LABELS[price]}
               </SubCategoriePill>
             )}
@@ -188,10 +176,10 @@ export default function Events() {
         </div>
 
         <div className="px-27 grid grid-cols-4 gap-24 mb-40">
-          {allEvents?.map((event, index) => (
+          {events.map((event) => (
             <MainCard
               className="mt-28 w-full"
-              key={index}
+              key={event.id}
               avatarUrl={event.coverImage}
               name={event.name}
               date={format(event.date, "MMM d, yyyy")}
@@ -201,13 +189,10 @@ export default function Events() {
           ))}
         </div>
 
-        {allEvents?.length ? (
+        {events.length ? (
           hasMore && (
             <div className="mx-auto flex items-center justify-center">
-              <Button
-                variant="primary"
-                onClick={() => setOffset((prev) => prev + 20)}
-              >
+              <Button variant="primary" onClick={loadMore}>
                 View more Events
               </Button>
             </div>
