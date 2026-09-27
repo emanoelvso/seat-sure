@@ -2,19 +2,18 @@ import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Venue } from './venue.entity';
 import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
 
-export type SeatMapSection = {
-  key: string;
+export type SeatMapShape = {
   label: string;
-  category: string;
-  color: string;
-  polygon: [number, number][];
-  labelAt: [number, number][];
+  path: string;
+  labelAt: [number, number];
 };
+
+export type SeatMapSection = SeatMapShape & { key: string; color: string };
 
 export type SeatMapLayout = {
   viewBox: { width: number; height: number };
-  stage: { polygon: [number, number][]; label: string };
-  sections: SeatMapSection;
+  stage: SeatMapShape;
+  sections: SeatMapSection[];
 };
 
 @Entity('SeatMap')
