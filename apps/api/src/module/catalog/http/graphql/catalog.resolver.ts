@@ -7,6 +7,8 @@ import { FindEvents } from './type/find-events.type';
 import { FindEventsInput } from './type/find-events-input.type';
 import { FindArtist } from './type/find-artist.type';
 import { FindArtistInput } from './type/find-artist-input.type';
+import { EventTickets } from './type/event-tickets.type';
+import { FindEventTicketsInput } from './type/find-event-tickets-input.type';
 
 @Resolver()
 export class CatalogResolver {
@@ -47,5 +49,12 @@ export class CatalogResolver {
   @Query(() => FindArtist)
   async findArtistBySlug(@Args('FindArtistInput') { slug }: FindArtistInput) {
     return this.catalogService.findArtistBySlug({ slug });
+  }
+
+  @Query(() => EventTickets)
+  async findEventTickets(
+    @Args('FindEventTicketsInput') { eventId }: FindEventTicketsInput,
+  ): Promise<EventTickets> {
+    return this.catalogService.findEventTickets({ eventId });
   }
 }

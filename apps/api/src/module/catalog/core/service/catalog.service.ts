@@ -10,6 +10,7 @@ import {
   MoreThanOrEqual,
 } from 'typeorm';
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
+import { isUUID } from 'class-validator';
 
 export interface CreateEventDto {
   type: EventType;
@@ -236,5 +237,28 @@ export class CatalogService {
       nearbyEvents,
       featuredFestival,
     };
+  }
+
+  async findEventTickets({
+    eventId,
+    now = new Date(),
+  }: {
+    eventId: string;
+    now?: Date;
+  }) {
+    if (!isUUID(eventId)) {
+      return { event: null };
+    }
+
+    const event = await this.eventRepository.findUpcomingPublishedById({
+      id: eventId,
+      now,
+    });
+
+    if (!event) {
+      return { event: null };
+    }
+
+    return { event };
   }
 }
