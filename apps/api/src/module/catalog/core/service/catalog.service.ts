@@ -10,8 +10,13 @@ import {
   MoreThanOrEqual,
 } from 'typeorm';
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
+import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
 import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
-import { SeatMap } from '@catalogModule/http/graphql/type/event-tickets.type';
+import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
+import {
+  SeatMap,
+  TicketType,
+} from '@catalogModule/http/graphql/type/event-tickets.type';
 import { isUUID } from 'class-validator';
 
 export interface CreateEventDto {
@@ -55,6 +60,7 @@ export class CatalogService {
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly artistRepository: ArtistRepository,
+    private readonly ticketTypeRepository: TicketTypeRepository,
   ) {}
 
   async createEvent(event: CreateEventDto): Promise<Event> {
@@ -249,7 +255,7 @@ export class CatalogService {
     now?: Date;
   }) {
     if (!isUUID(eventId)) {
-      return { event: null, seatMap: null };
+      return { event: null, seatMap: null, ticketTypes: [] };
     }
 
     const event = await this.eventRepository.findUpcomingPublishedById({
@@ -258,12 +264,17 @@ export class CatalogService {
     });
 
     if (!event) {
-      return { event: null, seatMap: null };
+      return { event: null, seatMap: null, ticketTypes: [] };
     }
+
+    const ticketTypes = await this.ticketTypeRepository.findByEvent(event.id);
 
     return {
       event,
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
+      ticketTypes: ticketTypes.map((ticketType) =>
+        this.mapTicketType(ticketType),
+      ),
     };
   }
 
@@ -289,6 +300,19 @@ export class CatalogService {
         labelX: section.labelAt[0],
         labelY: section.labelAt[1],
       })),
+    };
+  }
+
+  private mapTicketType(ticketType: TicketTypeEntity): TicketType {
+    return {
+      id: ticketType.id,
+      sectionKey: ticketType.sectionKey,
+      name: ticketType.name,
+      priceCents: ticketType.priceCents,
+      currency: ticketType.currency,
+      seatsAvailable: ticketType.seatsAvailable,
+      maxPerOrder: ticketType.maxPerOrder,
+      tags: ticketType.tags ?? [],
     };
   }
 }

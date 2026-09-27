@@ -1,5 +1,5 @@
 import { Event } from '@catalogModule/http/graphql/type/events.type';
-import { Field, Float, ObjectType } from '@nestjs/graphql';
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class SeatMapShape {
@@ -47,10 +47,40 @@ export class SeatMap {
 }
 
 @ObjectType()
+export class TicketType {
+  @Field()
+  id: string;
+
+  @Field()
+  sectionKey: string;
+
+  @Field()
+  name: string;
+
+  @Field(() => Int)
+  priceCents: number;
+
+  @Field()
+  currency: string;
+
+  @Field(() => Int)
+  seatsAvailable: number;
+
+  @Field(() => Int)
+  maxPerOrder: number;
+
+  @Field(() => [String])
+  tags: string[];
+}
+
+@ObjectType()
 export class EventTickets {
   @Field(() => Event, { nullable: true })
   event: Event | null;
 
   @Field(() => SeatMap, { nullable: true })
   seatMap: SeatMap | null;
+
+  @Field(() => [TicketType])
+  ticketTypes: TicketType[];
 }

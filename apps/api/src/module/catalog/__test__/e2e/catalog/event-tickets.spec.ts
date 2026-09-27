@@ -1,5 +1,6 @@
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
+import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
@@ -86,6 +87,16 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
                   labelY
                 }
               }
+              ticketTypes {
+                id
+                sectionKey
+                name
+                priceCents
+                currency
+                seatsAvailable
+                maxPerOrder
+                tags
+              }
             }
           }
         `,
@@ -139,6 +150,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event).toBeNull();
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+      expect(response.body.data.findEventTickets.ticketTypes).toEqual([]);
     });
 
     it('returns event: null and seatMap: null for a draft event', async () => {
@@ -153,6 +165,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event).toBeNull();
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+      expect(response.body.data.findEventTickets.ticketTypes).toEqual([]);
     });
 
     it('returns event: null and seatMap: null for a canceled event', async () => {
@@ -167,6 +180,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event).toBeNull();
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+      expect(response.body.data.findEventTickets.ticketTypes).toEqual([]);
     });
 
     it('returns event: null and seatMap: null for a past published event', async () => {
@@ -181,6 +195,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event).toBeNull();
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+      expect(response.body.data.findEventTickets.ticketTypes).toEqual([]);
     });
   });
 
@@ -190,6 +205,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     expect(response.body.errors).toBeUndefined();
     expect(response.body.data.findEventTickets.event).toBeNull();
     expect(response.body.data.findEventTickets.seatMap).toBeNull();
+    expect(response.body.data.findEventTickets.ticketTypes).toEqual([]);
   });
 
   describe('seatMap', () => {
@@ -275,6 +291,132 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event.id).toBe(event.id);
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+    });
+  });
+
+  describe('ticketTypes', () => {
+    it('returns exactly the non-deleted ticket types of the queried event, never another event’s (SECT-03)', async () => {
+      const eventA = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      const eventB = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(48),
+      });
+      await testDbClient.batchInsert(Tables.Event, [eventA, eventB]);
+
+      const ticketTypeA1 = ticketTypeFactory.build({
+        eventId: eventA.id!,
+        sectionKey: 'vip',
+        name: 'VIP',
+        priceCents: 45000,
+        seatsAvailable: 40,
+        maxPerOrder: 8,
+        tags: 'discounted,vip',
+      });
+      const ticketTypeA2 = ticketTypeFactory.build({
+        eventId: eventA.id!,
+        sectionKey: 'a',
+        name: 'A',
+        priceCents: 40000,
+        seatsAvailable: 120,
+        maxPerOrder: 8,
+        tags: 'discounted,best seller',
+      });
+      const ticketTypeB = ticketTypeFactory.build({
+        eventId: eventB.id!,
+        sectionKey: 'vip',
+        name: 'VIP',
+        priceCents: 50000,
+        seatsAvailable: 10,
+        maxPerOrder: 4,
+        tags: null,
+      });
+      await testDbClient.batchInsert(Tables.TicketType, [
+        ticketTypeA1,
+        ticketTypeA2,
+        ticketTypeB,
+      ]);
+
+      const response = await findEventTickets(eventA.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.ticketTypes).toHaveLength(2);
+      expect(response.body.data.findEventTickets.ticketTypes).toEqual(
+        expect.arrayContaining([
+          {
+            id: ticketTypeA1.id,
+            sectionKey: ticketTypeA1.sectionKey,
+            name: ticketTypeA1.name,
+            priceCents: ticketTypeA1.priceCents,
+            currency: ticketTypeA1.currency,
+            seatsAvailable: ticketTypeA1.seatsAvailable,
+            maxPerOrder: ticketTypeA1.maxPerOrder,
+            tags: ticketTypeA1.tags!.split(','),
+          },
+          {
+            id: ticketTypeA2.id,
+            sectionKey: ticketTypeA2.sectionKey,
+            name: ticketTypeA2.name,
+            priceCents: ticketTypeA2.priceCents,
+            currency: ticketTypeA2.currency,
+            seatsAvailable: ticketTypeA2.seatsAvailable,
+            maxPerOrder: ticketTypeA2.maxPerOrder,
+            tags: ticketTypeA2.tags!.split(','),
+          },
+        ]),
+      );
+      expect(
+        response.body.data.findEventTickets.ticketTypes.map(
+          (t: { id: string }) => t.id,
+        ),
+      ).not.toContain(ticketTypeB.id);
+    });
+
+    it('excludes a soft-deleted ticket type (SECT-03)', async () => {
+      const event = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      await testDbClient.batchInsert(Tables.Event, [event]);
+
+      const active = ticketTypeFactory.build({ eventId: event.id! });
+      const deleted = {
+        ...ticketTypeFactory.build({ eventId: event.id! }),
+        deletedAt: new Date(),
+      };
+      await testDbClient.batchInsert(Tables.TicketType, [active, deleted]);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      const ids = response.body.data.findEventTickets.ticketTypes.map(
+        (t: { id: string }) => t.id,
+      );
+      expect(ids).toEqual([active.id]);
+      expect(ids).not.toContain(deleted.id);
+    });
+
+    it('returns tags: [] for a ticket type with NULL tags', async () => {
+      const event = eventFactory.build({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      await testDbClient.batchInsert(Tables.Event, [event]);
+
+      const ticketType = ticketTypeFactory.build({
+        eventId: event.id!,
+        tags: null,
+      });
+      await testDbClient.batchInsert(Tables.TicketType, [ticketType]);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.ticketTypes[0].tags).toEqual(
+        [],
+      );
     });
   });
 });

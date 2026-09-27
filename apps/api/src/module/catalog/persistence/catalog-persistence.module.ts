@@ -5,6 +5,7 @@ import { TypeOrmPersistenceModule } from '@sharedModules/persistence/typeorm/typ
 import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { EventRepository } from '@catalogModule/persistence/repository/catalog.repository';
 import { ArtistRepository } from './repository/artist.repository';
+import { TicketTypeRepository } from './repository/ticket-type.repository';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { ArtistRepository } from './repository/artist.repository';
       },
     }),
   ],
-  providers: [EventRepository, ArtistRepository],
-  exports: [EventRepository, ArtistRepository],
+  providers: [EventRepository, ArtistRepository, TicketTypeRepository],
+  exports: [EventRepository, ArtistRepository, TicketTypeRepository],
 })
 export class CatalogPersistenceModule {}
