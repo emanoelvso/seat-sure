@@ -498,6 +498,37 @@ export const FilterClearsSelection: Story = {
   },
 };
 
+export const PriceFilterClearsSelection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await loaded(canvas);
+
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section VIP" }),
+    );
+    await expect(heroValue(canvas, "hero-sec")).toBe("VIP");
+
+    await applyPrice(context, "$200 - $450", "200", "420");
+
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+    await expect(heroValue(canvas, "hero-price")).toBe("—");
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+
+    await applyPrice(context, "$200 - $420", "200", "450");
+
+    await expect(
+      listings(canvas).getByRole("button", { name: "Section VIP" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+  },
+};
+
 export const NoTicketTypes: Story = {
   parameters: { mocks: [payload({ ticketTypes: [] })] },
   play: async ({ canvas, userEvent }) => {
