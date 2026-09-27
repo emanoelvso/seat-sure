@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultQuantity,
   filterListings,
   type GqlTicketType,
+  listingsLabel,
+  priceBounds,
+  quantityLabel,
+  quantityOptions,
   sortListings,
 } from "./ticket-listings";
 
@@ -128,5 +133,78 @@ describe("sortListings", () => {
     sortListings(types, "desc");
 
     expect(types).toEqual(original);
+  });
+});
+
+describe("quantityOptions", () => {
+  it("uses the max maxPerOrder across the given types (SECT-21)", () => {
+    const types = [
+      ticketType({ sectionKey: "a", maxPerOrder: 4 }),
+      ticketType({ sectionKey: "b", maxPerOrder: 6 }),
+    ];
+
+    expect(quantityOptions(types)).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("returns [1] when there are no types (SECT-21)", () => {
+    expect(quantityOptions([])).toEqual([1]);
+  });
+});
+
+describe("defaultQuantity", () => {
+  it("is 2 when the options go up to 6 (SECT-21)", () => {
+    expect(defaultQuantity([1, 2, 3, 4, 5, 6])).toBe(2);
+  });
+
+  it("is 1 when the only option is 1 (SECT-21)", () => {
+    expect(defaultQuantity([1])).toBe(1);
+  });
+});
+
+describe("priceBounds", () => {
+  it("returns the min and max in whole dollars (SECT-24)", () => {
+    const types = [
+      ticketType({ sectionKey: "c", priceCents: 20000 }),
+      ticketType({ sectionKey: "vip", priceCents: 45000 }),
+    ];
+
+    expect(priceBounds(types)).toEqual({ min: 200, max: 450 });
+  });
+
+  it("floors the min and ceils the max (SECT-24)", () => {
+    const types = [
+      ticketType({ sectionKey: "c", priceCents: 19999 }),
+      ticketType({ sectionKey: "vip", priceCents: 45001 }),
+    ];
+
+    expect(priceBounds(types)).toEqual({ min: 199, max: 451 });
+  });
+
+  it("returns null when there are no types (SECT-24)", () => {
+    expect(priceBounds([])).toBeNull();
+  });
+});
+
+describe("listingsLabel", () => {
+  it("returns '0 Listings' for zero (SECT-11)", () => {
+    expect(listingsLabel(0)).toBe("0 Listings");
+  });
+
+  it("returns '1 Listing' for one (SECT-11)", () => {
+    expect(listingsLabel(1)).toBe("1 Listing");
+  });
+
+  it("returns '4 Listings' for four (SECT-11)", () => {
+    expect(listingsLabel(4)).toBe("4 Listings");
+  });
+});
+
+describe("quantityLabel", () => {
+  it("returns '1 ticket' for one (SECT-23)", () => {
+    expect(quantityLabel(1)).toBe("1 ticket");
+  });
+
+  it("returns '2 tickets, seated together' for two (SECT-23)", () => {
+    expect(quantityLabel(2)).toBe("2 tickets, seated together");
   });
 });
