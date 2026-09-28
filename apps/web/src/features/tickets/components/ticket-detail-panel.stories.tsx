@@ -86,6 +86,23 @@ export const Details: Story = {
   },
 };
 
+// STAD-24 dates the panel by startAt. An event crossing midnight has a
+// different end day, so reading endsAt would show "Mar 07 - 2026".
+export const DateFromStartAcrossMidnight: Story = {
+  args: {
+    event: {
+      ...event,
+      startAt: new Date(2026, 2, 6, 23, 0).toISOString(),
+      endsAt: new Date(2026, 2, 7, 1, 30).toISOString(),
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Mar 06 - 2026")).toBeVisible();
+    await expect(canvas.queryByText("Mar 07 - 2026")).toBeNull();
+    await expect(canvas.getByText("11:00 PM - 1:30 AM")).toBeVisible();
+  },
+};
+
 export const OneTicket: Story = {
   args: { quantity: 1 },
   play: async ({ canvas }) => {
