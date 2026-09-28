@@ -123,6 +123,12 @@ const cardTitles = (canvas: Canvas) =>
 const heroValue = (canvas: Canvas, testId: string) =>
   canvas.getByTestId(testId).textContent;
 
+// aria-pressed of every map section, in map order: VIP, A, B, C.
+const mapPressed = (canvas: Canvas) =>
+  seatMapGroup(canvas)
+    .getAllByRole("button")
+    .map((section) => section.getAttribute("aria-pressed"));
+
 const meta: Meta<typeof EventTickets> = {
   title: "Pages/EventTickets",
   component: EventTickets,
@@ -225,6 +231,8 @@ export const Default: Story = {
   },
 };
 
+// Rewritten for STAD-15: a card click no longer presses its map section
+// (replaces the map half of SECT-12).
 export const SelectFromCard: Story = {
   parameters: { mocks: [payload()] },
   play: async ({ canvas, userEvent }) => {
@@ -236,44 +244,55 @@ export const SelectFromCard: Story = {
     await expect(
       listings(canvas).getAllByRole("button", { pressed: true }),
     ).toEqual([card]);
-    await expect(
-      seatMapGroup(canvas).getAllByRole("button", { pressed: true }),
-    ).toEqual([
-      seatMapGroup(canvas).getByRole("button", { name: "Section B" }),
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "false",
+      "false",
     ]);
     await expect(heroValue(canvas, "hero-sec")).toBe("B");
     await expect(heroValue(canvas, "hero-price")).toBe("$300");
   },
 };
 
+// Rewritten for STAD-10, STAD-11, STAD-12 and STAD-16: a map press narrows the
+// listings and leaves the hero alone (replaces SECT-13, where it selected the
+// ticket type). Pointer and keyboard paths, as before.
 export const SelectFromMap: Story = {
   parameters: { mocks: [payload()] },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole("heading", { level: 1, name: "Adele" });
     const map = seatMapGroup(canvas);
 
-    map.getByRole("button", { name: "Section A" }).focus();
+    await userEvent.click(map.getByRole("button", { name: "Section B" }));
+
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "true",
+      "false",
+    ]);
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+    await expect(canvas.getByText("1 Listing")).toBeVisible();
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+    await expect(heroValue(canvas, "hero-price")).toBe("—");
+
+    map.getByRole("button", { name: "Section C" }).focus();
     await userEvent.keyboard("{Enter}");
 
-    await expect(
-      listings(canvas).getAllByRole("button", { pressed: true }),
-    ).toEqual([listings(canvas).getByRole("button", { name: "Section A" })]);
-    await expect(map.getAllByRole("button", { pressed: true })).toEqual([
-      map.getByRole("button", { name: "Section A" }),
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "false",
+      "true",
     ]);
-    await expect(heroValue(canvas, "hero-sec")).toBe("A");
-    await expect(heroValue(canvas, "hero-price")).toBe("$400");
-
-    await userEvent.click(map.getByRole("button", { name: "Section C" }));
-
-    await expect(
-      listings(canvas).getAllByRole("button", { pressed: true }),
-    ).toEqual([listings(canvas).getByRole("button", { name: "Section C" })]);
-    await expect(map.getAllByRole("button", { pressed: true })).toEqual([
-      map.getByRole("button", { name: "Section C" }),
-    ]);
-    await expect(heroValue(canvas, "hero-sec")).toBe("C");
-    await expect(heroValue(canvas, "hero-price")).toBe("$200");
+    await expect(cardTitles(canvas)).toEqual(["Section C"]);
+    await expect(canvas.getByText("1 Listing")).toBeVisible();
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+    await expect(heroValue(canvas, "hero-price")).toBe("—");
   },
 };
 
@@ -566,5 +585,271 @@ export const NoTicketTypes: Story = {
     await expect(options.map((option) => option.textContent)).toEqual([
       "1 ticket",
     ]);
+  },
+};
+
+const ALL_CARDS = ["Section VIP", "Section A", "Section B", "Section C"];
+const NONE_PRESSED = ["false", "false", "false", "false"];
+
+const mapSection = (canvas: Canvas, name: string) =>
+  seatMapGroup(canvas).getByRole("button", { name });
+
+export const UnpressSection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+    const sectionB = mapSection(canvas, "Section B");
+
+    await userEvent.click(sectionB);
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+
+    await userEvent.click(sectionB);
+
+    await expect(mapPressed(canvas)).toEqual(NONE_PRESSED);
+    await expect(cardTitles(canvas)).toEqual(ALL_CARDS);
+    await expect(canvas.getByText("4 Listings")).toBeVisible();
+  },
+};
+
+export const NarrowingKeepsSectionsEnabled: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    await userEvent.click(mapSection(canvas, "Section B"));
+
+    await expect(
+      seatMapGroup(canvas)
+        .getAllByRole("button")
+        .map((section) => section.getAttribute("aria-disabled")),
+    ).toEqual(["false", "false", "false", "false"]);
+
+    await userEvent.click(mapSection(canvas, "Section A"));
+
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "true",
+      "false",
+      "false",
+    ]);
+    await expect(cardTitles(canvas)).toEqual(["Section A"]);
+  },
+};
+
+export const CardKeepsPressedSection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    await userEvent.click(mapSection(canvas, "Section A"));
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section A" }),
+    );
+
+    await expect(heroValue(canvas, "hero-sec")).toBe("A");
+    await expect(heroValue(canvas, "hero-price")).toBe("$400");
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "true",
+      "false",
+      "false",
+    ]);
+  },
+};
+
+export const MapPressKeepsOrClearsSelection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+    const sectionA = mapSection(canvas, "Section A");
+    const sectionB = mapSection(canvas, "Section B");
+
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section A" }),
+    );
+    await expect(heroValue(canvas, "hero-sec")).toBe("A");
+
+    // Pressing, then releasing, the selected type's own section keeps it.
+    await userEvent.click(sectionA);
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "true",
+      "false",
+      "false",
+    ]);
+    await expect(heroValue(canvas, "hero-sec")).toBe("A");
+    await expect(heroValue(canvas, "hero-price")).toBe("$400");
+
+    await userEvent.click(sectionA);
+    await expect(mapPressed(canvas)).toEqual(NONE_PRESSED);
+    await expect(heroValue(canvas, "hero-sec")).toBe("A");
+    await expect(heroValue(canvas, "hero-price")).toBe("$400");
+
+    // Pressing another section hides card A, so the selection clears.
+    await userEvent.click(sectionB);
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+    await expect(heroValue(canvas, "hero-price")).toBe("—");
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+
+    // Releasing B doesn't bring the selection back.
+    await userEvent.click(sectionB);
+    await expect(cardTitles(canvas)).toEqual(ALL_CARDS);
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+  },
+};
+
+export const QuantityClearsPressedSection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await loaded(canvas);
+
+    await userEvent.click(mapSection(canvas, "Section C"));
+
+    // C has 3 seats: it still qualifies at 3 tickets, so it stays pressed.
+    await pickQuantity(context, "3 tickets");
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "false",
+      "true",
+    ]);
+    await expect(cardTitles(canvas)).toEqual(["Section C"]);
+
+    await pickQuantity(context, "4 tickets");
+    await expect(mapPressed(canvas)).toEqual(NONE_PRESSED);
+    await expect(cardTitles(canvas)).toEqual([
+      "Section VIP",
+      "Section A",
+      "Section B",
+    ]);
+    await expect(canvas.getByText("3 Listings")).toBeVisible();
+
+    await pickQuantity(context, "2 tickets");
+    await expect(mapPressed(canvas)).toEqual(NONE_PRESSED);
+    await expect(cardTitles(canvas)).toEqual(ALL_CARDS);
+  },
+};
+
+export const PriceClearsPressedSection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await loaded(canvas);
+
+    await userEvent.click(mapSection(canvas, "Section VIP"));
+
+    // VIP ($450) is still in range, so it stays pressed.
+    await applyPrice(context, "$200 - $450", "250", "450");
+    await expect(mapPressed(canvas)).toEqual([
+      "true",
+      "false",
+      "false",
+      "false",
+    ]);
+    await expect(cardTitles(canvas)).toEqual(["Section VIP"]);
+
+    await applyPrice(context, "$250 - $450", "200", "420");
+    await expect(mapPressed(canvas)).toEqual(NONE_PRESSED);
+    await expect(cardTitles(canvas)).toEqual([
+      "Section A",
+      "Section B",
+      "Section C",
+    ]);
+    await expect(canvas.getByText("3 Listings")).toBeVisible();
+
+    await applyPrice(context, "$200 - $420", "200", "450");
+    await expect(mapPressed(canvas)).toEqual(NONE_PRESSED);
+    await expect(cardTitles(canvas)).toEqual(ALL_CARDS);
+  },
+};
+
+// Lawn has no map shape, and C has no ticket type (disabled).
+export const NarrowingEdgeCases: Story = {
+  parameters: { mocks: [payload({ ticketTypes: [VIP, A, B, LAWN] })] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+    const withLawn = ["Section VIP", "Section A", "Section B", "Section Lawn"];
+
+    await expect(cardTitles(canvas)).toEqual(withLawn);
+
+    await userEvent.click(mapSection(canvas, "Section B"));
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+
+    // Activating disabled C leaves B pressed and the list unchanged.
+    await userEvent.click(mapSection(canvas, "Section C"));
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "true",
+      "false",
+    ]);
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+
+    await userEvent.click(mapSection(canvas, "Section B"));
+    await expect(cardTitles(canvas)).toEqual(withLawn);
+  },
+};
+
+export const SortKeepsPressedSection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+    const sectionB = mapSection(canvas, "Section B");
+
+    await userEvent.click(sectionB);
+    await userEvent.click(canvas.getByRole("combobox", { name: "Sort by" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Price: low to high" }),
+    );
+
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "true",
+      "false",
+    ]);
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+
+    await userEvent.click(sectionB);
+    await expect(cardTitles(canvas)).toEqual([
+      "Section C",
+      "Section B",
+      "Section A",
+      "Section VIP",
+    ]);
+  },
+};
+
+export const MapHoverShowsPrice: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+    const shape = (name: string) =>
+      mapSection(canvas, name).querySelector("path")!;
+
+    await userEvent.hover(shape("Section B"));
+
+    const tooltip = await canvas.findByRole("tooltip");
+    await expect(within(tooltip).getByText("B seat")).toBeVisible();
+    await expect(within(tooltip).getByText("$300")).toBeVisible();
+
+    await userEvent.unhover(shape("Section B"));
+
+    // While B is pressed, A stays enabled and shows its own price (STAD-14).
+    await userEvent.click(mapSection(canvas, "Section B"));
+    await userEvent.hover(shape("Section A"));
+
+    await expect(await canvas.findByText("A seat")).toBeVisible();
+    await expect(canvas.getAllByRole("tooltip")).toHaveLength(1);
+    await expect(
+      within(canvas.getByRole("tooltip")).getByText("$400"),
+    ).toBeVisible();
   },
 };

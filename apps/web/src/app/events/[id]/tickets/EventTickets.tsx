@@ -11,11 +11,13 @@ import TicketsHero from "@/components/TicketsHero";
 import {
   FIND_EVENT_TICKETS,
   FindEventTicketsData,
+  GqlTicketType,
 } from "@/graphql/queries/find-event-tickets";
 import {
   defaultQuantity,
   filterListings,
   listingsLabel,
+  narrowListings,
   PriceRange,
   priceBounds,
   quantityOptions,
@@ -49,6 +51,7 @@ export default function EventTickets({ eventId }: { eventId: string }) {
   const [quantityChoice, setQuantityChoice] = useState<number>();
   const [priceChoice, setPriceChoice] = useState<PriceRange>();
   const [sort, setSort] = useState<SortOrder>("desc");
+  const [pressedKey, setPressedKey] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
 
   const { data, loading, error, refetch } = useQuery<FindEventTicketsData>(
@@ -115,35 +118,53 @@ export default function EventTickets({ eventId }: { eventId: string }) {
   const quantity = quantityChoice ?? defaultQuantity(options);
   const price = priceChoice ?? priceBounds(ticketTypes);
 
-  const listFor = (filters: Filters) =>
+  const qualifyingFor = (filters: Filters) =>
     filters.price
       ? filterListings(ticketTypes, { ...filters, price: filters.price })
       : [];
 
-  const listed = sortListings(listFor({ quantity, price }), sort);
+  const qualifying = sortListings(qualifyingFor({ quantity, price }), sort);
+  const listed = narrowListings(qualifying, pressedKey);
   const selected = listed.find((ticketType) => ticketType.id === selectedId);
+  const offers = Object.fromEntries(
+    qualifying.map((ticketType) => [ticketType.sectionKey, ticketType]),
+  );
 
-  // Clears the selection in the same handler that hides it (SECT-30).
-  function clearSelectionIfHidden(next: Filters) {
-    if (!listFor(next).some((ticketType) => ticketType.id === selectedId)) {
+  // The pressed section and the selection are cleared in the same handler
+  // that hides them, so relaxing a filter never brings them back (SECT-30).
+  function clearSelectionIfHidden(nextListed: GqlTicketType[]) {
+    if (!nextListed.some((ticketType) => ticketType.id === selectedId)) {
       setSelectedId(undefined);
     }
+  }
+
+  function applyFilters(next: Filters) {
+    const nextQualifying = qualifyingFor(next);
+    const nextPressedKey = nextQualifying.some(
+      (ticketType) => ticketType.sectionKey === pressedKey,
+    )
+      ? pressedKey
+      : undefined;
+
+    setPressedKey(nextPressedKey);
+    clearSelectionIfHidden(narrowListings(nextQualifying, nextPressedKey));
   }
 
   function changeQuantity(value: string) {
     const nextQuantity = Number(value);
     setQuantityChoice(nextQuantity);
-    clearSelectionIfHidden({ quantity: nextQuantity, price });
+    applyFilters({ quantity: nextQuantity, price });
   }
 
   function changePrice(range: PriceRange) {
     setPriceChoice(range);
-    clearSelectionIfHidden({ quantity, price: range });
+    applyFilters({ quantity, price: range });
   }
 
-  function selectSection(key: string) {
-    const ticketType = listed.find((listing) => listing.sectionKey === key);
-    if (ticketType) setSelectedId(ticketType.id);
+  function pressSection(key: string) {
+    const nextPressedKey = key === pressedKey ? undefined : key;
+    setPressedKey(nextPressedKey);
+    clearSelectionIfHidden(narrowListings(qualifying, nextPressedKey));
   }
 
   return (
@@ -168,9 +189,10 @@ export default function EventTickets({ eventId }: { eventId: string }) {
           </div>
           <SeatMap
             layout={seatMap}
-            enabledKeys={listed.map((ticketType) => ticketType.sectionKey)}
-            selectedKey={selected?.sectionKey}
-            onSelect={selectSection}
+            enabledKeys={qualifying.map((ticketType) => ticketType.sectionKey)}
+            selectedKey={pressedKey}
+            onSelect={pressSection}
+            offers={offers}
           />
         </div>
 
