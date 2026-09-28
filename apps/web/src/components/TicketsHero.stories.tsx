@@ -106,3 +106,23 @@ export const ShareAndHeart: Story = {
     await expect(heart.closest("button, a")).toBeNull();
   },
 };
+
+export const ConcertTitleUppercase: Story = {
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(getComputedStyle(title).textTransform).toBe("uppercase");
+  },
+};
+
+export const SportTitleKeepsStoredCasing: Story = {
+  args: {
+    event: { ...event, name: "São Paulo vs Corinthians", type: "sport" },
+  },
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(getComputedStyle(title).textTransform).toBe("none");
+    await expect(title).toHaveTextContent(/^São Paulo vs Corinthians$/);
+  },
+};

@@ -64,7 +64,9 @@ export default function TicketsHero({ event, selected }: TicketsHeroProps) {
 
       <div className="absolute right-27 top-[181px] z-10 flex w-[600px] flex-col gap-6">
         <div className="flex items-center justify-between gap-6">
-          <h1 className="text-5xl font-bold uppercase tracking-[0.34em]">
+          <h1
+            className={`text-5xl font-bold ${event.type === "concert" ? "uppercase tracking-[0.34em]" : ""}`}
+          >
             {event.name}
           </h1>
           <div className="flex shrink-0 items-center gap-4">
