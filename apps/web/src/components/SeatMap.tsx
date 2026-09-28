@@ -1,14 +1,26 @@
-import { KeyboardEvent } from "react";
+"use client";
+
+import { CupIcon } from "@solar-icons/react/outline";
+import { KeyboardEvent, useId, useState } from "react";
 import {
   GqlSeatMap,
   GqlSeatMapSection,
+  GqlTicketType,
 } from "@/graphql/queries/find-event-tickets";
+import { formatPrice } from "@/lib/utils/price";
 
 interface SeatMapProps {
   layout: GqlSeatMap;
   enabledKeys: string[];
   selectedKey?: string;
   onSelect: (key: string) => void;
+  /** Ticket type shown in each section's tooltip, by section key. */
+  offers?: Record<string, GqlTicketType>;
+}
+
+interface ShapeRef {
+  key: string;
+  shapeIndex: number;
 }
 
 function Stage({ layout }: { layout: GqlSeatMap }) {
@@ -41,14 +53,16 @@ function SectionShapes({
   section,
   fill,
   pathClassName,
+  onShapeEnter,
 }: {
   layout: GqlSeatMap;
   section: GqlSeatMapSection;
   fill: string;
   pathClassName?: string;
+  onShapeEnter?: (shapeIndex: number) => void;
 }) {
-  return section.shapes.map((shape) => (
-    <g key={shape.path}>
+  return section.shapes.map((shape, index) => (
+    <g key={shape.path} onPointerEnter={() => onShapeEnter?.(index)}>
       <path d={shape.path} fill={fill} className={pathClassName} />
       <text
         aria-hidden="true"
@@ -72,48 +86,111 @@ export default function SeatMap({
   enabledKeys,
   selectedKey,
   onSelect,
+  offers,
 }: SeatMapProps) {
-  return (
-    <svg
-      role="group"
-      aria-label="Seat map"
-      viewBox={`0 0 ${layout.viewBoxWidth} ${layout.viewBoxHeight}`}
-      className="h-auto w-full max-w-[704px]"
-    >
-      <Stage layout={layout} />
+  const tooltipId = useId();
+  const [hover, setHover] = useState<ShapeRef>();
+  const [focusKey, setFocusKey] = useState<string>();
 
-      {layout.sections.map((section) => {
-        const enabled = enabledKeys.includes(section.key);
-        const selected = section.key === selectedKey;
-
-        function handleKeyDown(event: KeyboardEvent) {
-          if (event.key !== "Enter" && event.key !== " ") return;
-
-          event.preventDefault();
-          if (enabled) onSelect(section.key);
+  // The tooltip follows the pointer first, then keyboard focus.
+  const anchor =
+    hover ??
+    (focusKey === undefined ? undefined : { key: focusKey, shapeIndex: 0 });
+  const anchorSection = layout.sections.find(
+    (section) => section.key === anchor?.key,
+  );
+  const offer =
+    anchor && enabledKeys.includes(anchor.key)
+      ? offers?.[anchor.key]
+      : undefined;
+  const tooltip =
+    anchor && anchorSection && offer
+      ? {
+          key: anchor.key,
+          shape: anchorSection.shapes[anchor.shapeIndex],
+          offer,
         }
+      : undefined;
 
-        return (
-          <g
-            key={section.key}
-            role="button"
-            tabIndex={0}
-            aria-label={`Section ${section.label}`}
-            aria-pressed={selected}
-            aria-disabled={!enabled}
-            onClick={() => enabled && onSelect(section.key)}
-            onKeyDown={handleKeyDown}
-            className={`group outline-none ${enabled ? "cursor-pointer" : "cursor-not-allowed opacity-40"}`}
-          >
-            <SectionShapes
-              layout={layout}
-              section={section}
-              fill={selected ? "var(--color-primary)" : section.color}
-              pathClassName="transition-colors group-focus-visible:stroke-tint-400 group-focus-visible:stroke-[3]"
-            />
-          </g>
-        );
-      })}
-    </svg>
+  return (
+    <div className="relative w-full max-w-[704px]">
+      <svg
+        role="group"
+        aria-label="Seat map"
+        viewBox={`0 0 ${layout.viewBoxWidth} ${layout.viewBoxHeight}`}
+        className="h-auto w-full"
+      >
+        <Stage layout={layout} />
+
+        {layout.sections.map((section) => {
+          const enabled = enabledKeys.includes(section.key);
+          const selected = section.key === selectedKey;
+          const hovered = enabled && section.key === hover?.key;
+
+          function handleKeyDown(event: KeyboardEvent) {
+            if (event.key !== "Enter" && event.key !== " ") return;
+
+            event.preventDefault();
+            if (enabled) onSelect(section.key);
+          }
+
+          return (
+            <g
+              key={section.key}
+              role="button"
+              tabIndex={0}
+              aria-label={`Section ${section.label}`}
+              aria-pressed={selected}
+              aria-disabled={!enabled}
+              aria-describedby={
+                tooltip?.key === section.key ? tooltipId : undefined
+              }
+              onClick={() => enabled && onSelect(section.key)}
+              onKeyDown={handleKeyDown}
+              onPointerLeave={() => setHover(undefined)}
+              onFocus={() => setFocusKey(section.key)}
+              onBlur={() => setFocusKey(undefined)}
+              className={`group outline-none ${enabled ? "cursor-pointer" : "cursor-not-allowed opacity-40"}`}
+            >
+              <SectionShapes
+                layout={layout}
+                section={section}
+                fill={
+                  selected
+                    ? "var(--color-shade-100)"
+                    : hovered
+                      ? "var(--color-shade-200)"
+                      : section.color
+                }
+                pathClassName="transition-colors group-focus-visible:stroke-tint-400 group-focus-visible:stroke-[3]"
+                onShapeEnter={(shapeIndex) =>
+                  setHover({ key: section.key, shapeIndex })
+                }
+              />
+            </g>
+          );
+        })}
+      </svg>
+
+      {tooltip && (
+        <div
+          id={tooltipId}
+          role="tooltip"
+          style={{
+            left: `${(tooltip.shape.labelX / layout.viewBoxWidth) * 100}%`,
+            top: `${(tooltip.shape.labelY / layout.viewBoxHeight) * 100}%`,
+          }}
+          className="pointer-events-none absolute z-10 flex -translate-x-1/2 translate-y-4 items-center gap-3 whitespace-nowrap rounded-lg bg-white px-4 py-2 text-neutral-1000 shadow-lg"
+        >
+          <CupIcon size={24} aria-hidden="true" className="text-primary" />
+          <span className="flex flex-col">
+            <span className="text-sm">{`${tooltip.offer.name} seat`}</span>
+            <span className="text-lg font-bold">
+              {formatPrice(tooltip.offer.priceCents, tooltip.offer.currency)}
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
