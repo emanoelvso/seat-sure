@@ -3,6 +3,7 @@ import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
+import { Migration1790600000000 } from '@catalogModule/persistence/migration/1790600000000-migration';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { INestApplication } from '@nestjs/common';
@@ -470,6 +471,184 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event.id).toBe(event.id);
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+    });
+  });
+
+  describe('layout v1 to v2 migration (Migration1790600000000)', () => {
+    const v1Layout = {
+      viewBox: { width: 704, height: 704 },
+      stage: {
+        label: 'STAGE',
+        path: 'M116.5 90C171 35.5 586 90 586 90L116.5 90Z',
+        labelAt: [352, 89],
+      },
+      sections: [
+        {
+          key: 'vip',
+          label: 'VIP',
+          path: 'M183 352A168 168 0 1 0 520 352A168 168 0 1 0 183 352Z',
+          color: '#454545',
+          labelAt: [351, 353],
+        },
+        {
+          key: 'a',
+          label: 'A',
+          path: 'M516 189C548 221 570 262 579 307L483 221Z',
+          color: '#303030',
+          labelAt: [350, 562],
+        },
+        {
+          key: 'c',
+          label: 'C',
+          path: 'M600 103C650 152 683 215 697 283L566 137Z',
+          color: '#191919',
+          labelAt: [349, 684],
+        },
+      ],
+    };
+
+    const runMigrationUp = async () => {
+      const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
+      const queryRunner = dataSource.createQueryRunner();
+      try {
+        await new Migration1790600000000().up(queryRunner);
+      } finally {
+        await queryRunner.release();
+      }
+    };
+
+    const readLayout = async (seatMapId: string) =>
+      (await testDbClient(Tables.SeatMap).where({ id: seatMapId }).first())
+        .layout;
+
+    it('serves a migrated v1 layout with label style 24/700, one #999999 stage shape and one unrotated shape per section in stored order (STAD-02)', async () => {
+      const seatMap = seatMapFactory.build({
+        layout: JSON.stringify(v1Layout),
+      });
+      await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
+
+      await runMigrationUp();
+
+      const event = {
+        ...eventFactory.build({
+          status: EventStatus.PUBLISHED,
+          startAt: hoursFromNow(24),
+        }),
+        seatMapId: seatMap.id,
+      };
+      await testDbClient.batchInsert(Tables.Event, [event]);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.seatMap).toEqual({
+        id: seatMap.id,
+        name: seatMap.name,
+        viewBoxWidth: 704,
+        viewBoxHeight: 704,
+        labelSize: 24,
+        labelWeight: 700,
+        stage: {
+          label: 'STAGE',
+          labelX: 352,
+          labelY: 89,
+          shapes: [
+            {
+              path: 'M116.5 90C171 35.5 586 90 586 90L116.5 90Z',
+              color: '#999999',
+            },
+          ],
+        },
+        sections: [
+          {
+            key: 'vip',
+            label: 'VIP',
+            color: '#454545',
+            shapes: [
+              {
+                path: 'M183 352A168 168 0 1 0 520 352A168 168 0 1 0 183 352Z',
+                labelX: 351,
+                labelY: 353,
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'a',
+            label: 'A',
+            color: '#303030',
+            shapes: [
+              {
+                path: 'M516 189C548 221 570 262 579 307L483 221Z',
+                labelX: 350,
+                labelY: 562,
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'c',
+            label: 'C',
+            color: '#191919',
+            shapes: [
+              {
+                path: 'M600 103C650 152 683 215 697 283L566 137Z',
+                labelX: 349,
+                labelY: 684,
+                labelRotation: 0,
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('leaves layouts that are already v2 unchanged when up runs again (guard)', async () => {
+      const v2Layout: SeatMapLayout = {
+        viewBox: { width: 704, height: 860 },
+        labelStyle: { size: 16, weight: 400 },
+        stage: {
+          label: null,
+          labelAt: null,
+          shapes: [
+            { path: 'M200 300L500 300L500 560L200 560Z', color: '#454545' },
+          ],
+        },
+        sections: [
+          {
+            key: 't.standard',
+            label: 'T.STANDARD',
+            color: '#1B1B1B',
+            shapes: [
+              {
+                path: 'M20 200L90 110L120 130L50 220Z',
+                labelAt: [96.8, 172.3],
+                labelRotation: -57,
+              },
+              {
+                path: 'M600 110L680 200L650 220L580 130Z',
+                labelAt: [625.4, 185.7],
+                labelRotation: 55,
+              },
+            ],
+          },
+        ],
+      };
+      const v1SeatMap = seatMapFactory.build({
+        layout: JSON.stringify(v1Layout),
+      });
+      const v2SeatMap = seatMapFactory.build({
+        layout: JSON.stringify(v2Layout),
+      });
+      await testDbClient.batchInsert(Tables.SeatMap, [v1SeatMap, v2SeatMap]);
+
+      await runMigrationUp();
+      const migratedOnce = await readLayout(v1SeatMap.id);
+
+      await runMigrationUp();
+
+      expect(await readLayout(v1SeatMap.id)).toEqual(migratedOnce);
+      expect(await readLayout(v2SeatMap.id)).toEqual(v2Layout);
     });
   });
 
