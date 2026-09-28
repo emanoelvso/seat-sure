@@ -2,10 +2,31 @@ import { Event } from '@catalogModule/http/graphql/type/events.type';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
-export class SeatMapShape {
+export class SeatMapStageShape {
   @Field()
-  label: string;
+  path: string;
 
+  @Field()
+  color: string;
+}
+
+@ObjectType()
+export class SeatMapStage {
+  @Field(() => String, { nullable: true })
+  label: string | null;
+
+  @Field(() => Float, { nullable: true })
+  labelX: number | null;
+
+  @Field(() => Float, { nullable: true })
+  labelY: number | null;
+
+  @Field(() => [SeatMapStageShape])
+  shapes: SeatMapStageShape[];
+}
+
+@ObjectType()
+export class SeatMapSectionShape {
   @Field()
   path: string;
 
@@ -14,15 +35,24 @@ export class SeatMapShape {
 
   @Field(() => Float)
   labelY: number;
+
+  @Field(() => Float)
+  labelRotation: number;
 }
 
 @ObjectType()
-export class SeatMapSection extends SeatMapShape {
+export class SeatMapSection {
   @Field()
   key: string;
 
   @Field()
+  label: string;
+
+  @Field()
   color: string;
+
+  @Field(() => [SeatMapSectionShape])
+  shapes: SeatMapSectionShape[];
 }
 
 @ObjectType()
@@ -39,8 +69,14 @@ export class SeatMap {
   @Field(() => Float)
   viewBoxHeight: number;
 
-  @Field(() => SeatMapShape)
-  stage: SeatMapShape;
+  @Field(() => Float)
+  labelSize: number;
+
+  @Field(() => Int)
+  labelWeight: number;
+
+  @Field(() => SeatMapStage)
+  stage: SeatMapStage;
 
   @Field(() => [SeatMapSection])
   sections: SeatMapSection[];

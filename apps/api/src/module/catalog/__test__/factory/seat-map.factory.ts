@@ -11,25 +11,36 @@ interface SeatMapRow {
 
 const defaultLayout: SeatMapLayout = {
   viewBox: { width: 704, height: 704 },
+  labelStyle: { size: 24, weight: 700 },
   stage: {
     label: 'STAGE',
-    path: 'M100 0L604 0L604 100L100 100Z',
     labelAt: [352, 50],
+    shapes: [{ path: 'M100 0L604 0L604 100L100 100Z', color: '#999999' }],
   },
   sections: [
     {
       key: 'vip',
       label: 'VIP',
-      path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
       color: '#454545',
-      labelAt: [352, 300],
+      shapes: [
+        {
+          path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
+          labelAt: [352, 300],
+          labelRotation: 0,
+        },
+      ],
     },
     {
       key: 'a',
       label: 'A',
-      path: 'M152 300A200 200 0 1 0 552 300A200 200 0 1 0 152 300Z',
       color: '#303030',
-      labelAt: [352, 500],
+      shapes: [
+        {
+          path: 'M152 300A200 200 0 1 0 552 300A200 200 0 1 0 152 300Z',
+          labelAt: [352, 500],
+          labelRotation: 0,
+        },
+      ],
     },
   ],
 };

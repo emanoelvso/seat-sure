@@ -286,19 +286,27 @@ export class CatalogService {
       name: seatMap.name,
       viewBoxWidth: layout.viewBox.width,
       viewBoxHeight: layout.viewBox.height,
+      labelSize: layout.labelStyle.size,
+      labelWeight: layout.labelStyle.weight,
       stage: {
         label: layout.stage.label,
-        path: layout.stage.path,
-        labelX: layout.stage.labelAt[0],
-        labelY: layout.stage.labelAt[1],
+        labelX: layout.stage.labelAt?.[0] ?? null,
+        labelY: layout.stage.labelAt?.[1] ?? null,
+        shapes: layout.stage.shapes.map((shape) => ({
+          path: shape.path,
+          color: shape.color,
+        })),
       },
       sections: layout.sections.map((section) => ({
         key: section.key,
         label: section.label,
-        path: section.path,
         color: section.color,
-        labelX: section.labelAt[0],
-        labelY: section.labelAt[1],
+        shapes: section.shapes.map((shape) => ({
+          path: shape.path,
+          labelX: shape.labelAt[0],
+          labelY: shape.labelAt[1],
+          labelRotation: shape.labelRotation,
+        })),
       })),
     };
   }

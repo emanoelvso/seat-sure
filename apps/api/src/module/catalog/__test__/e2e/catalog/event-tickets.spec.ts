@@ -72,19 +72,27 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
                 name
                 viewBoxWidth
                 viewBoxHeight
+                labelSize
+                labelWeight
                 stage {
                   label
-                  path
                   labelX
                   labelY
+                  shapes {
+                    path
+                    color
+                  }
                 }
                 sections {
                   key
                   label
-                  path
                   color
-                  labelX
-                  labelY
+                  shapes {
+                    path
+                    labelX
+                    labelY
+                    labelRotation
+                  }
                 }
               }
               ticketTypes {
@@ -209,38 +217,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
   });
 
   describe('seatMap', () => {
-    it('returns the view box, stage and sections in stored order (SECT-02)', async () => {
-      const layout: SeatMapLayout = {
-        viewBox: { width: 800, height: 600 },
-        stage: {
-          label: 'STAGE',
-          path: 'M10 10L690 10L690 60L10 60Z',
-          labelAt: [350, 35],
-        },
-        sections: [
-          {
-            key: 'vip',
-            label: 'VIP',
-            path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
-            color: '#454545',
-            labelAt: [352, 300],
-          },
-          {
-            key: 'a',
-            label: 'A',
-            path: 'M152 300A200 200 0 1 0 552 300A200 200 0 1 0 152 300Z',
-            color: '#303030',
-            labelAt: [352, 500],
-          },
-          {
-            key: 'b',
-            label: 'B',
-            path: 'M100 350A250 250 0 1 0 600 350A250 250 0 1 0 100 350Z',
-            color: '#1F1F1F',
-            labelAt: [352, 600],
-          },
-        ],
-      };
+    const insertEventWithLayout = async (layout: SeatMapLayout) => {
       const seatMap = seatMapFactory.build({ layout: JSON.stringify(layout) });
       await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
 
@@ -253,6 +230,59 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       };
       await testDbClient.batchInsert(Tables.Event, [event]);
 
+      return { seatMap, event };
+    };
+
+    it('returns the view box, label style, stage and sections in stored order (SECT-02)', async () => {
+      const layout: SeatMapLayout = {
+        viewBox: { width: 800, height: 600 },
+        labelStyle: { size: 24, weight: 700 },
+        stage: {
+          label: 'STAGE',
+          labelAt: [350, 35],
+          shapes: [{ path: 'M10 10L690 10L690 60L10 60Z', color: '#999999' }],
+        },
+        sections: [
+          {
+            key: 'vip',
+            label: 'VIP',
+            color: '#454545',
+            shapes: [
+              {
+                path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
+                labelAt: [352, 300],
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'a',
+            label: 'A',
+            color: '#303030',
+            shapes: [
+              {
+                path: 'M152 300A200 200 0 1 0 552 300A200 200 0 1 0 152 300Z',
+                labelAt: [352, 500],
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'b',
+            label: 'B',
+            color: '#1F1F1F',
+            shapes: [
+              {
+                path: 'M100 350A250 250 0 1 0 600 350A250 250 0 1 0 100 350Z',
+                labelAt: [352, 600],
+                labelRotation: 0,
+              },
+            ],
+          },
+        ],
+      };
+      const { seatMap, event } = await insertEventWithLayout(layout);
+
       const response = await findEventTickets(event.id!).expect(200);
 
       expect(response.body.errors).toBeUndefined();
@@ -260,22 +290,171 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.data.findEventTickets.seatMap).toEqual({
         id: seatMap.id,
         name: seatMap.name,
-        viewBoxWidth: layout.viewBox.width,
-        viewBoxHeight: layout.viewBox.height,
+        viewBoxWidth: 800,
+        viewBoxHeight: 600,
+        labelSize: 24,
+        labelWeight: 700,
         stage: {
-          label: layout.stage.label,
-          path: layout.stage.path,
-          labelX: layout.stage.labelAt[0],
-          labelY: layout.stage.labelAt[1],
+          label: 'STAGE',
+          labelX: 350,
+          labelY: 35,
+          shapes: [{ path: 'M10 10L690 10L690 60L10 60Z', color: '#999999' }],
         },
         sections: layout.sections.map((section) => ({
           key: section.key,
           label: section.label,
-          path: section.path,
           color: section.color,
-          labelX: section.labelAt[0],
-          labelY: section.labelAt[1],
+          shapes: section.shapes.map((shape) => ({
+            path: shape.path,
+            labelX: shape.labelAt[0],
+            labelY: shape.labelAt[1],
+            labelRotation: shape.labelRotation,
+          })),
         })),
+      });
+    });
+
+    it('returns a section drawn as several blocks once, with its shapes in stored order (STAD-01)', async () => {
+      const layout: SeatMapLayout = {
+        viewBox: { width: 704, height: 860 },
+        labelStyle: { size: 16, weight: 400 },
+        stage: {
+          label: 'PITCH',
+          labelAt: [352, 430],
+          shapes: [
+            { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+            { path: 'M180 300L195 300L195 560L180 560Z', color: '#454545' },
+          ],
+        },
+        sections: [
+          {
+            key: 't.standard',
+            label: 'T.STANDARD',
+            color: '#1B1B1B',
+            shapes: [
+              {
+                path: 'M20 200L90 110L120 130L50 220Z',
+                labelAt: [96.8, 172.3],
+                labelRotation: -57,
+              },
+              {
+                path: 'M200 20L520 20L520 60L200 60Z',
+                labelAt: [362.2, 40.6],
+                labelRotation: 0,
+              },
+              {
+                path: 'M600 110L680 200L650 220L580 130Z',
+                labelAt: [625.4, 185.7],
+                labelRotation: 55,
+              },
+            ],
+          },
+          {
+            key: 't.gold',
+            label: 'T.GOLD',
+            color: '#303030',
+            shapes: [
+              {
+                path: 'M250 210L460 210L460 250L250 250Z',
+                labelAt: [356.4, 232.8],
+                labelRotation: 0,
+              },
+            ],
+          },
+        ],
+      };
+      const { event } = await insertEventWithLayout(layout);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      const seatMap = response.body.data.findEventTickets.seatMap;
+      expect(seatMap.labelSize).toBe(16);
+      expect(seatMap.labelWeight).toBe(400);
+      expect(seatMap.stage.shapes).toEqual([
+        { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+        { path: 'M180 300L195 300L195 560L180 560Z', color: '#454545' },
+      ]);
+      expect(seatMap.sections).toEqual([
+        {
+          key: 't.standard',
+          label: 'T.STANDARD',
+          color: '#1B1B1B',
+          shapes: [
+            {
+              path: 'M20 200L90 110L120 130L50 220Z',
+              labelX: 96.8,
+              labelY: 172.3,
+              labelRotation: -57,
+            },
+            {
+              path: 'M200 20L520 20L520 60L200 60Z',
+              labelX: 362.2,
+              labelY: 40.6,
+              labelRotation: 0,
+            },
+            {
+              path: 'M600 110L680 200L650 220L580 130Z',
+              labelX: 625.4,
+              labelY: 185.7,
+              labelRotation: 55,
+            },
+          ],
+        },
+        {
+          key: 't.gold',
+          label: 'T.GOLD',
+          color: '#303030',
+          shapes: [
+            {
+              path: 'M250 210L460 210L460 250L250 250Z',
+              labelX: 356.4,
+              labelY: 232.8,
+              labelRotation: 0,
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('returns stage.label, labelX and labelY as null for a stage without a label (STAD-03)', async () => {
+      const layout: SeatMapLayout = {
+        viewBox: { width: 704, height: 860 },
+        labelStyle: { size: 16, weight: 400 },
+        stage: {
+          label: null,
+          labelAt: null,
+          shapes: [
+            { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+          ],
+        },
+        sections: [
+          {
+            key: 'vip',
+            label: 'VIP',
+            color: '#454545',
+            shapes: [
+              {
+                path: 'M120 300L160 300L160 560L120 560Z',
+                labelAt: [143.6, 429],
+                labelRotation: -90,
+              },
+            ],
+          },
+        ],
+      };
+      const { event } = await insertEventWithLayout(layout);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.seatMap.stage).toEqual({
+        label: null,
+        labelX: null,
+        labelY: null,
+        shapes: [
+          { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+        ],
       });
     });
 
