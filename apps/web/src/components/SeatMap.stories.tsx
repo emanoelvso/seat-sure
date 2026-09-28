@@ -20,11 +20,12 @@ const offer = (
 });
 
 // Every section has a distinct price, so a tooltip for the wrong section
-// can't pass for the right one.
+// can't pass for the right one. Offer names differ from the map labels, so
+// the tooltip shows which one it reads (STAD-07 uses the ticket type name).
 const multiShapeOffers = {
-  "t.gold": offer("t.gold", "T.GOLD", 32500),
-  vip: offer("vip", "VIP", 40000),
-  "b.gold": offer("b.gold", "B.GOLD", 30000),
+  "t.gold": offer("t.gold", "Gold Top", 32500),
+  vip: offer("vip", "VIP Box", 40000),
+  "b.gold": offer("b.gold", "Gold Bottom", 30000),
 };
 
 const pathFills = (section: Element) =>
@@ -243,7 +244,7 @@ export const HoverShowsPriceTooltip: Story = {
 
     const tooltip = await canvas.findByRole("tooltip");
     await expect(canvas.getAllByRole("tooltip")).toHaveLength(1);
-    await expect(within(tooltip).getByText("T.GOLD seat")).toBeVisible();
+    await expect(within(tooltip).getByText("Gold Top seat")).toBeVisible();
     await expect(within(tooltip).getByText("$325")).toBeVisible();
     // Anchored at the hovered (second) block's label point: 252.5/400, 51/300.
     await expect(tooltip.style.left).toBe("63.125%");
@@ -271,7 +272,7 @@ export const FocusShowsPriceTooltip: Story = {
     await expect(vip).toHaveFocus();
 
     const tooltip = await canvas.findByRole("tooltip");
-    await expect(within(tooltip).getByText("VIP seat")).toBeVisible();
+    await expect(within(tooltip).getByText("VIP Box seat")).toBeVisible();
     await expect(within(tooltip).getByText("$400")).toBeVisible();
     await expect(tooltip.id).not.toBe("");
     await expect(vip.getAttribute("aria-describedby")).toBe(tooltip.id);
@@ -312,7 +313,7 @@ export const DisabledSectionHasNoTooltip: Story = {
       map.getByRole("button", { name: "Section VIP" }).querySelector("path")!,
     );
     await expect(
-      within(await canvas.findByRole("tooltip")).getByText("VIP seat"),
+      within(await canvas.findByRole("tooltip")).getByText("VIP Box seat"),
     ).toBeVisible();
   },
 };
@@ -347,6 +348,15 @@ export const PressedAndHoverColors: Story = {
       "var(--color-shade-100)",
     ]);
     await expect(pathFills(bGold)).toEqual(["#1F1F1F"]);
+
+    // Pressed and hovered at once keeps the pressed color.
+    await userEvent.hover(vip.querySelectorAll("path")[1]);
+
+    await expect(pathFills(vip)).toEqual([
+      "var(--color-shade-100)",
+      "var(--color-shade-100)",
+    ]);
+    await expect(pathFills(tGold)).toEqual(["#303030", "#303030"]);
 
     // B.GOLD is disabled: hovering it doesn't tint it.
     await userEvent.hover(bGold.querySelector("path")!);
