@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GqlEvent } from "@/graphql/queries/home-sections";
-import { cityKey, splitArtistEvents } from "./artist-events";
+import { cityKey, splitArtistEvents } from "@/lib/utils/artist-events";
 
 const now = new Date(2026, 8, 26, 12, 0);
 

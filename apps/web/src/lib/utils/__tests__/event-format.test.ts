@@ -6,7 +6,7 @@ import {
   formatEventTimeRange,
   formatVenueAddress,
   googleMapsSearchUrl,
-} from "./event-format";
+} from "@/lib/utils/event-format";
 
 const eightPm = new Date(2026, 10, 6, 20, 0).toISOString();
 const halfPastMidnight = new Date(2026, 10, 7, 0, 30).toISOString();
