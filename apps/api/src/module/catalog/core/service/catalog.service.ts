@@ -10,6 +10,14 @@ import {
   MoreThanOrEqual,
 } from 'typeorm';
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
+import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
+import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
+import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
+import {
+  SeatMap,
+  TicketType,
+} from '@catalogModule/http/graphql/type/event-tickets.type';
+import { isUUID } from 'class-validator';
 
 export interface CreateEventDto {
   type: EventType;
@@ -52,6 +60,7 @@ export class CatalogService {
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly artistRepository: ArtistRepository,
+    private readonly ticketTypeRepository: TicketTypeRepository,
   ) {}
 
   async createEvent(event: CreateEventDto): Promise<Event> {
@@ -235,6 +244,75 @@ export class CatalogService {
       eventsByCity,
       nearbyEvents,
       featuredFestival,
+    };
+  }
+
+  async findEventTickets({
+    eventId,
+    now = new Date(),
+  }: {
+    eventId: string;
+    now?: Date;
+  }) {
+    if (!isUUID(eventId)) {
+      return { event: null, seatMap: null, ticketTypes: [] };
+    }
+
+    const event = await this.eventRepository.findUpcomingPublishedById({
+      id: eventId,
+      now,
+    });
+
+    if (!event) {
+      return { event: null, seatMap: null, ticketTypes: [] };
+    }
+
+    const ticketTypes = await this.ticketTypeRepository.findByEvent(event.id);
+
+    return {
+      event,
+      seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
+      ticketTypes: ticketTypes.map((ticketType) =>
+        this.mapTicketType(ticketType),
+      ),
+    };
+  }
+
+  private mapSeatMap(seatMap: SeatMapEntity): SeatMap {
+    const { layout } = seatMap;
+
+    return {
+      id: seatMap.id,
+      name: seatMap.name,
+      viewBoxWidth: layout.viewBox.width,
+      viewBoxHeight: layout.viewBox.height,
+      stage: {
+        label: layout.stage.label,
+        path: layout.stage.path,
+        labelX: layout.stage.labelAt[0],
+        labelY: layout.stage.labelAt[1],
+      },
+      sections: layout.sections.map((section) => ({
+        key: section.key,
+        label: section.label,
+        path: section.path,
+        color: section.color,
+        labelX: section.labelAt[0],
+        labelY: section.labelAt[1],
+      })),
+    };
+  }
+
+  private mapTicketType(ticketType: TicketTypeEntity): TicketType {
+    return {
+      id: ticketType.id,
+      sectionKey: ticketType.sectionKey,
+      name: ticketType.name,
+      priceCents: ticketType.priceCents,
+      currency: ticketType.currency,
+      seatsAvailable: ticketType.seatsAvailable,
+      maxPerOrder: ticketType.maxPerOrder,
+      tags: ticketType.tags ?? [],
     };
   }
 }

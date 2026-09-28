@@ -80,6 +80,22 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
     return query.addOrderBy('event.startAt', 'ASC').limit(limit).getMany();
   }
 
+  async findUpcomingPublishedById({
+    id,
+    now,
+  }: {
+    id: string;
+    now: Date;
+  }): Promise<Event | null> {
+    return this.entityManager
+      .createQueryBuilder(Event, 'event')
+      .leftJoinAndSelect('event.seatMap', 'seatMap')
+      .where('event.id = :id', { id })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('event.startAt >= :now', { now })
+      .getOne();
+  }
+
   async findNextFestival({ now }: { now: Date }) {
     return this.entityManager
       .createQueryBuilder(Event, 'event')

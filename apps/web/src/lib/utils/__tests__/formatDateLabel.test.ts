@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import formatLabel from "./formatDateLabel";
+import formatLabel from "@/lib/utils/formatDateLabel";
 
 describe("formatDateLabel", () => {
   it("asks to select dates when there is no start date", () => {

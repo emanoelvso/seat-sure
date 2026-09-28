@@ -1,8 +1,10 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { EventArtist } from './event-artist.entity';
+import { SeatMap } from './seat-map.entity';
+import { TicketType } from './ticket-type.entity';
 
 @Entity('Event')
 export class Event extends DefaultEntity<Event> {
@@ -53,4 +55,11 @@ export class Event extends DefaultEntity<Event> {
 
   @Column({ type: 'simple-array', nullable: true })
   tags?: string[];
+
+  @ManyToOne(() => SeatMap, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'seatMapId' })
+  seatMap?: SeatMap | null;
+
+  @OneToMany(() => TicketType, (ticketType) => ticketType.event)
+  ticketTypes: TicketType[];
 }

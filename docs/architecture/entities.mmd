@@ -46,7 +46,7 @@ erDiagram
         uuid id PK
         uuid venueId FK
         string name
-        jsonb layout "viewBox · sections polygons · stage"
+        jsonb layout "viewBox · stage · sections as SVG paths (ADR-013)"
     }
     SEAT {
         uuid id PK

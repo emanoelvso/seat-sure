@@ -14,6 +14,10 @@ export function formatEventTime(iso: string) {
   return format(new Date(iso), "h:mm a");
 }
 
+export function formatEventTimeRange(startIso: string, endIso: string) {
+  return `${formatEventTime(startIso)} - ${formatEventTime(endIso)}`;
+}
+
 export function formatEventLocation({ venue, city, country }: EventPlace) {
   return `${venue} - ${city}, ${country}`;
 }

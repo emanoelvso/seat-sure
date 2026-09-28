@@ -2,8 +2,8 @@ import { CloseIcon } from "@solar-icons/react/outline";
 import { cva, VariantProps } from "class-variance-authority";
 import { ReactNode } from "react";
 
-const subCategoriePillVariant = cva(
-  "inline-flex items-center cursor-pointer py-2 px-4 rounded-2xl text-xs border transition-colors gap-1",
+export const subCategoriePillVariant = cva(
+  "inline-flex items-center cursor-pointer py-2 px-4 rounded-2xl border transition-colors gap-1",
   {
     variants: {
       variant: {
@@ -12,8 +12,12 @@ const subCategoriePillVariant = cva(
         active:
           "border-tint-600 text-tint-400 hover:border-tint-400 hover:text-tint-300 active:border-tint-600 active:text-tint-600 [background:linear-gradient(180deg,rgba(193,79,230,0.40)_0%,rgba(27,27,27,0)_100%)]",
       },
+      size: {
+        xs: "text-xs",
+        sm: "text-sm",
+      },
     },
-    defaultVariants: { variant: "default" },
+    defaultVariants: { variant: "default", size: "xs" },
   },
 );
 
