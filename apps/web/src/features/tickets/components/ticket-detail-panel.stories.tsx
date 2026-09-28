@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
-import { concentricSeatMap } from "@/components/SeatMap.fixture";
+import { concentricSeatMap } from "@/testing/seat-map.fixture";
 import {
   GqlTicketsEvent,
   GqlTicketType,

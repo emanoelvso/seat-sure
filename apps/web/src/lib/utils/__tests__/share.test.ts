@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { shareLink } from "./share";
+import { shareLink } from "@/lib/utils/share";
 
 const data = {
   title: "Adele - The O2 Arena",

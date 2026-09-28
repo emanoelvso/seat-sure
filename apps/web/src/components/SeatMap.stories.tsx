@@ -2,7 +2,7 @@ import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
 import { GqlTicketType } from "@/graphql/queries/find-event-tickets";
 import SeatMap, { SeatMapPreview } from "./SeatMap";
-import { concentricSeatMap, multiShapeSeatMap } from "./SeatMap.fixture";
+import { concentricSeatMap, multiShapeSeatMap } from "@/testing/seat-map.fixture";
 
 const offer = (
   sectionKey: string,
