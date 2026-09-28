@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
 import SeatMap from "./SeatMap";
-import { concentricSeatMap } from "./SeatMap.fixture";
+import { concentricSeatMap } from "@/testing/seat-map.fixture";
 
 const meta: Meta<typeof SeatMap> = {
   title: "Components/SeatMap",

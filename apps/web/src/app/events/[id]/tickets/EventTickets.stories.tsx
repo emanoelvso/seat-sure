@@ -2,7 +2,7 @@ import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { MockedProvider } from "@apollo/client/testing/react";
 import type { MockLink } from "@apollo/client/testing";
 import { expect, screen, within } from "storybook/test";
-import { concentricSeatMap } from "@/components/SeatMap.fixture";
+import { concentricSeatMap } from "@/testing/seat-map.fixture";
 import {
   FIND_EVENT_TICKETS,
   FindEventTickets,
