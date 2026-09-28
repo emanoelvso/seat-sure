@@ -62,7 +62,10 @@ function SectionShapes({
   onShapeEnter?: (shapeIndex: number) => void;
 }) {
   return section.shapes.map((shape, index) => (
-    <g key={shape.path} onPointerEnter={() => onShapeEnter?.(index)}>
+    <g
+      key={shape.path}
+      onPointerEnter={onShapeEnter && (() => onShapeEnter(index))}
+    >
       <path d={shape.path} fill={fill} className={pathClassName} />
       <text
         aria-hidden="true"
@@ -192,5 +195,42 @@ export default function SeatMap({
         </div>
       )}
     </div>
+  );
+}
+
+interface SeatMapPreviewProps {
+  layout: GqlSeatMap;
+  highlightKey?: string;
+}
+
+export function SeatMapPreview({ layout, highlightKey }: SeatMapPreviewProps) {
+  const highlighted = layout.sections.find(
+    (section) => section.key === highlightKey,
+  );
+
+  return (
+    <svg
+      role="img"
+      aria-label={
+        highlighted
+          ? `Section ${highlighted.label} on the seat map`
+          : "Seat map"
+      }
+      viewBox={`0 0 ${layout.viewBoxWidth} ${layout.viewBoxHeight}`}
+      className="h-auto w-full"
+    >
+      <Stage layout={layout} />
+      {layout.sections.map((section) => (
+        <g key={section.key}>
+          <SectionShapes
+            layout={layout}
+            section={section}
+            fill={
+              section === highlighted ? "var(--color-shade-100)" : section.color
+            }
+          />
+        </g>
+      ))}
+    </svg>
   );
 }

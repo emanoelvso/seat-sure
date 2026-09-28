@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
 import { GqlTicketType } from "@/graphql/queries/find-event-tickets";
-import SeatMap from "./SeatMap";
+import SeatMap, { SeatMapPreview } from "./SeatMap";
 import { concentricSeatMap, multiShapeSeatMap } from "./SeatMap.fixture";
 
 const offer = (
@@ -353,5 +353,54 @@ export const PressedAndHoverColors: Story = {
 
     await expect(pathFills(bGold)).toEqual(["#1F1F1F"]);
     await expect(pathFills(tGold)).toEqual(["#303030", "#303030"]);
+  },
+};
+
+const allPathFills = (svg: Element) =>
+  Array.from(svg.querySelectorAll("path"), (path) => path.getAttribute("fill"));
+
+export const PreviewHighlightsSection: Story = {
+  render: () => <SeatMapPreview layout={concentricSeatMap} highlightKey="b" />,
+  play: async ({ canvas }) => {
+    const preview = canvas.getByRole("img", {
+      name: "Section B on the seat map",
+    });
+
+    // Stage, VIP, A, B, C in drawing order: only B uses the pressed color.
+    await expect(allPathFills(preview)).toEqual([
+      "#999999",
+      "#454545",
+      "#303030",
+      "var(--color-shade-100)",
+      "#191919",
+    ]);
+  },
+};
+
+export const PreviewIsNotInteractive: Story = {
+  render: () => <SeatMapPreview layout={concentricSeatMap} highlightKey="b" />,
+  play: async ({ canvas }) => {
+    const preview = canvas.getByRole("img", {
+      name: "Section B on the seat map",
+    });
+
+    await expect(
+      preview.querySelectorAll('button, [tabindex], [role="button"]'),
+    ).toHaveLength(0);
+  },
+};
+
+export const PreviewUnknownSection: Story = {
+  render: () => <SeatMapPreview layout={concentricSeatMap} highlightKey="z" />,
+  play: async ({ canvas }) => {
+    const preview = canvas.getByRole("img", { name: "Seat map" });
+
+    await expect(allPathFills(preview)).toEqual([
+      "#999999",
+      "#454545",
+      "#303030",
+      "#1F1F1F",
+      "#191919",
+    ]);
   },
 };
