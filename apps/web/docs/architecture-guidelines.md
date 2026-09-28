@@ -41,7 +41,7 @@ apps/web/
     ├── features/           # Feature modules
     ├── hooks/              # Shared hooks
     ├── lib/                # Preconfigured libraries (Apollo client, server GraphQL fetcher)
-    ├── testing/            # Test utilities, mocks, fixtures shared across features
+    ├── testing/            # Test utilities, mocks, and fixtures
     ├── types/              # Shared types (api.ts: entities used by several features)
     └── utils/              # Shared pure functions (price, dates, share)
 ```
@@ -96,7 +96,7 @@ src/features/tickets/
 ├── hooks/          # Hooks scoped to this feature
 ├── stores/         # Client state scoped to this feature (only if needed)
 ├── types/          # Types used only inside this feature
-└── utils/          # Pure functions, with colocated *.test.ts
+└── utils/          # Pure functions, with unit tests in utils/__tests__/
 ```
 
 | Feature        | Owns                                                   | Backend context      |
@@ -128,7 +128,7 @@ Add features as new product areas appear (checkout, auth, account). Features are
 | `config/`            | `env.ts` (the only place that reads `process.env`), `paths.ts`                  |
 | `types/`             | `api.ts` for entities shared across features                                   |
 | `utils/`             | Pure, framework-free functions (`price.ts`, `share.ts`)                         |
-| `testing/`           | Shared test helpers, mocks, and fixtures                                        |
+| `testing/`           | Test helpers, mocks, and fixtures (`seat-map.fixture.ts`)                       |
 
 Types that the API and the web app both need can go in the `@seat-sure/shared` workspace package (`packages/shared`).
 
@@ -386,13 +386,14 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 
 | Level       | Tool                                               | What                                             | Where                                 |
 | ----------- | -------------------------------------------------- | ------------------------------------------------ | ------------------------------------- |
-| Unit        | Vitest (`unit` project, Node)                      | Pure functions in `utils/` and `api/` helpers    | Colocated `{name}.test.ts`            |
+| Unit        | Vitest (`unit` project, Node)                      | Pure functions in `utils/` and `api/` helpers    | `__tests__/{name}.test.ts`            |
 | Component   | Storybook + `@storybook/addon-vitest` (Chromium)   | Rendering, interactions (`play()`), a11y          | Colocated `{name}.stories.tsx`        |
 | End-to-end  | Playwright (planned)                               | Critical flows: events → detail → tickets        | To be defined                         |
 
 - Run: `pnpm --filter web test` (all projects) or `pnpm --filter web exec vitest run --project unit`.
 - The `unit` project only matches `src/**/*.test.ts`. Component tests go through Storybook stories.
-- Fixtures used by one feature stay in it (e.g. `seat-map.fixture.ts`); shared ones go in `src/testing/`.
+- Unit tests live in a `__tests__` folder inside the folder they cover (e.g. `src/utils/__tests__/price.test.ts`), and import the code with `@/`.
+- Fixtures, mocks, and test helpers live in `src/testing/` (e.g. `src/testing/seat-map.fixture.ts`), never next to components or utilities.
 - The testing roadmap is in `todo.md` under "Frontend Testing".
 
 ---
@@ -412,8 +413,8 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 | ------------------- | -------------------------------- | ------------------------------------ |
 | Component           | `{name}.tsx` (PascalCase export) | `seat-map.tsx` → `SeatMap`           |
 | Story               | `{name}.stories.tsx`             | `seat-map.stories.tsx`               |
-| Unit test           | `{name}.test.ts`                 | `ticket-listings.test.ts`            |
-| Fixture             | `{name}.fixture.ts`              | `seat-map.fixture.ts`                |
+| Unit test           | `__tests__/{name}.test.ts`       | `__tests__/ticket-listings.test.ts`  |
+| Fixture             | `testing/{name}.fixture.ts`      | `testing/seat-map.fixture.ts`        |
 | GraphQL operation   | `api/{operation}.ts`             | `api/find-event-tickets.ts`          |
 | Server fetcher      | `api/get-{resource}.ts`          | `api/get-event-tickets.ts`           |
 | Client data hook    | `api/use-{resource}.ts`          | `api/use-event-tickets.ts`           |
