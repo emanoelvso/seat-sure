@@ -129,6 +129,10 @@ const mapPressed = (canvas: Canvas) =>
     .getAllByRole("button")
     .map((section) => section.getAttribute("aria-pressed"));
 
+// The detail panel's heading ("Section {name}"), or null while it's closed.
+const panelHeading = (canvas: Canvas, name: string) =>
+  canvas.queryByRole("heading", { level: 2, name });
+
 const meta: Meta<typeof EventTickets> = {
   title: "Pages/EventTickets",
   component: EventTickets,
@@ -231,19 +235,24 @@ export const Default: Story = {
   },
 };
 
-// Rewritten for STAD-15: a card click no longer presses its map section
-// (replaces the map half of SECT-12).
+// Rewritten for STAD-15 and STAD-22: a card click opens the detail panel in
+// place of the listings column and doesn't press its map section (replaces
+// SECT-12, where the card and its map section were pressed).
 export const SelectFromCard: Story = {
   parameters: { mocks: [payload()] },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole("heading", { level: 1, name: "Adele" });
 
-    const card = listings(canvas).getByRole("button", { name: "Section B" });
-    await userEvent.click(card);
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section B" }),
+    );
 
+    await expect(panelHeading(canvas, "Section B")).toBeVisible();
+    await expect(canvas.queryByRole("list", { name: "Listings" })).toBeNull();
     await expect(
-      listings(canvas).getAllByRole("button", { pressed: true }),
-    ).toEqual([card]);
+      canvas.queryByRole("combobox", { name: "Sort by" }),
+    ).toBeNull();
+    await expect(canvas.queryByText("4 Listings")).toBeNull();
     await expect(mapPressed(canvas)).toEqual([
       "false",
       "false",
@@ -298,6 +307,9 @@ export const SelectFromMap: Story = {
 
 const LAWN = ticketType("lawn", "Lawn", 15000);
 
+// Rewritten for STAD-22 and STAD-26: choosing Lawn opens its panel, whose mini
+// map highlights nothing because Lawn has no map section (replaces SECT-12,
+// where the Lawn card was pressed).
 export const DisabledSection: Story = {
   parameters: { mocks: [payload({ ticketTypes: [VIP, A, B, LAWN] })] },
   play: async ({ canvas, userEvent }) => {
@@ -315,12 +327,13 @@ export const DisabledSection: Story = {
       listings(canvas).queryAllByRole("button", { pressed: true }),
     ).toEqual([]);
 
-    const lawn = listings(canvas).getByRole("button", { name: "Section Lawn" });
-    await userEvent.click(lawn);
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section Lawn" }),
+    );
 
-    await expect(
-      listings(canvas).getAllByRole("button", { pressed: true }),
-    ).toEqual([lawn]);
+    await expect(panelHeading(canvas, "Section Lawn")).toBeVisible();
+    await expect(canvas.queryByRole("list", { name: "Listings" })).toBeNull();
+    await expect(canvas.getByRole("img", { name: "Seat map" })).toBeVisible();
     await expect(map.queryAllByRole("button", { pressed: true })).toEqual([]);
     await expect(heroValue(canvas, "hero-sec")).toBe("Lawn");
     await expect(heroValue(canvas, "hero-price")).toBe("$150");
@@ -498,6 +511,8 @@ export const NoMatches: Story = {
   },
 };
 
+// Extended for SECT-30 through the detail panel (STAD-22): the open panel
+// closes when the quantity hides its ticket type. Original assertions kept.
 export const FilterClearsSelection: Story = {
   parameters: { mocks: [payload()] },
   play: async (context) => {
@@ -508,9 +523,16 @@ export const FilterClearsSelection: Story = {
       listings(canvas).getByRole("button", { name: "Section C" }),
     );
     await expect(heroValue(canvas, "hero-sec")).toBe("C");
+    await expect(panelHeading(canvas, "Section C")).toBeVisible();
 
     await pickQuantity(context, "4 tickets");
 
+    await expect(panelHeading(canvas, "Section C")).toBeNull();
+    await expect(cardTitles(canvas)).toEqual([
+      "Section VIP",
+      "Section A",
+      "Section B",
+    ]);
     await expect(heroValue(canvas, "hero-sec")).toBe("—");
     await expect(heroValue(canvas, "hero-price")).toBe("—");
     await expect(
@@ -529,6 +551,8 @@ export const FilterClearsSelection: Story = {
   },
 };
 
+// Extended for SECT-30 through the detail panel (STAD-22): the open panel
+// closes when the price range hides its ticket type. Original assertions kept.
 export const PriceFilterClearsSelection: Story = {
   parameters: { mocks: [payload()] },
   play: async (context) => {
@@ -539,9 +563,16 @@ export const PriceFilterClearsSelection: Story = {
       listings(canvas).getByRole("button", { name: "Section VIP" }),
     );
     await expect(heroValue(canvas, "hero-sec")).toBe("VIP");
+    await expect(panelHeading(canvas, "Section VIP")).toBeVisible();
 
     await applyPrice(context, "$200 - $450", "200", "420");
 
+    await expect(panelHeading(canvas, "Section VIP")).toBeNull();
+    await expect(cardTitles(canvas)).toEqual([
+      "Section A",
+      "Section B",
+      "Section C",
+    ]);
     await expect(heroValue(canvas, "hero-sec")).toBe("—");
     await expect(heroValue(canvas, "hero-price")).toBe("—");
     await expect(
@@ -851,5 +882,93 @@ export const MapHoverShowsPrice: Story = {
     await expect(
       within(canvas.getByRole("tooltip")).getByText("$400"),
     ).toBeVisible();
+  },
+};
+
+export const ListingsWithoutSelection: Story = {
+  parameters: { mocks: [payload()] },
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(canvas.getByRole("list", { name: "Listings" })).toBeVisible();
+    await expect(canvas.getByText("4 Listings")).toBeVisible();
+    await expect(
+      canvas.getByRole("combobox", { name: "Sort by" }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("link", { name: "Get a Ticket" }),
+    ).toBeNull();
+  },
+};
+
+export const BackToListings: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await loaded(canvas);
+
+    // Quantity 3 and $250 - $450 leave VIP, A and B. Then narrow to B.
+    await pickQuantity(context, "3 tickets");
+    await applyPrice(context, "$200 - $450", "250", "450");
+    await userEvent.click(mapSection(canvas, "Section B"));
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section B" }),
+    );
+    await expect(panelHeading(canvas, "Section B")).toBeVisible();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Back to listings" }),
+    );
+
+    await expect(panelHeading(canvas, "Section B")).toBeNull();
+    await expect(cardTitles(canvas)).toEqual(["Section B"]);
+    await expect(canvas.getByText("1 Listing")).toBeVisible();
+    await expect(
+      canvas.getByRole("combobox", { name: "Sort by" }),
+    ).toBeVisible();
+    await expect(
+      listings(canvas).queryAllByRole("button", { pressed: true }),
+    ).toEqual([]);
+    await expect(mapPressed(canvas)).toEqual([
+      "false",
+      "false",
+      "true",
+      "false",
+    ]);
+    await expect(
+      canvas.getByRole("combobox", { name: "Tickets" }),
+    ).toHaveTextContent(/^3 tickets$/);
+    await expect(
+      canvas.getByRole("button", { name: "$250 - $450" }),
+    ).toBeVisible();
+    await expect(heroValue(canvas, "hero-sec")).toBe("—");
+    await expect(heroValue(canvas, "hero-price")).toBe("—");
+  },
+};
+
+export const PanelFollowsQuantity: Story = {
+  parameters: { mocks: [payload()] },
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await loaded(canvas);
+
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section B" }),
+    );
+    await expect(
+      canvas.getAllByRole("definition").map((value) => value.textContent),
+    ).toEqual(["$300/per", "2", "$600"]);
+    await expect(canvas.getByText("2 tickets together")).toBeVisible();
+
+    await pickQuantity(context, "3 tickets");
+
+    await expect(panelHeading(canvas, "Section B")).toBeVisible();
+    await expect(
+      canvas.getAllByRole("definition").map((value) => value.textContent),
+    ).toEqual(["$300/per", "3", "$900"]);
+    await expect(canvas.getByText("3 tickets together")).toBeVisible();
+    await expect(canvas.queryByText("2 tickets together")).toBeNull();
+    await expect(heroValue(canvas, "hero-sec")).toBe("B");
+    await expect(heroValue(canvas, "hero-price")).toBe("$300");
   },
 };
