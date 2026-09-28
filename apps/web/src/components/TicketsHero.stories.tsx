@@ -126,3 +126,17 @@ export const SportTitleKeepsStoredCasing: Story = {
     await expect(title).toHaveTextContent(/^São Paulo vs Corinthians$/);
   },
 };
+
+// STAD-20 covers every non-concert type, so a second one guards against a
+// sport-only check.
+export const FestivalTitleKeepsStoredCasing: Story = {
+  args: {
+    event: { ...event, name: "Rock in Rio", type: "festival" },
+  },
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(getComputedStyle(title).textTransform).toBe("none");
+    await expect(title).toHaveTextContent(/^Rock in Rio$/);
+  },
+};
