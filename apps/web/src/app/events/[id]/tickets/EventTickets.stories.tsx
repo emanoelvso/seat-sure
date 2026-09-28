@@ -27,6 +27,7 @@ const event = {
   __typename: "Event",
   id: EVENT_ID,
   name: "Adele",
+  type: "concert",
   coverImage: "/artist/map.png",
   venue: "The Colosseum at Caesars Palace",
   city: "Las Vegas",
@@ -38,10 +39,21 @@ const event = {
 const seatMap = {
   __typename: "SeatMap",
   ...concentricSeatMap,
-  stage: { __typename: "SeatMapShape", ...concentricSeatMap.stage },
+  stage: {
+    __typename: "SeatMapStage",
+    ...concentricSeatMap.stage,
+    shapes: concentricSeatMap.stage.shapes.map((shape) => ({
+      __typename: "SeatMapStageShape",
+      ...shape,
+    })),
+  },
   sections: concentricSeatMap.sections.map((section) => ({
     __typename: "SeatMapSection",
     ...section,
+    shapes: section.shapes.map((shape) => ({
+      __typename: "SeatMapSectionShape",
+      ...shape,
+    })),
   })),
 };
 

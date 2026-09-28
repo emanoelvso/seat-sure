@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
 import SeatMap from "./SeatMap";
-import { concentricSeatMap } from "./SeatMap.fixture";
+import { concentricSeatMap, multiShapeSeatMap } from "./SeatMap.fixture";
 
 const meta: Meta<typeof SeatMap> = {
   title: "Components/SeatMap",
@@ -42,9 +42,15 @@ export const Default: Story = {
     ]);
     await expect(
       sections.map((section) =>
-        section.querySelector("path")?.getAttribute("d"),
+        Array.from(section.querySelectorAll("path"), (path) =>
+          path.getAttribute("d"),
+        ),
       ),
-    ).toEqual(concentricSeatMap.sections.map((section) => section.path));
+    ).toEqual(
+      concentricSeatMap.sections.map((section) =>
+        section.shapes.map((shape) => shape.path),
+      ),
+    );
   },
 };
 
@@ -120,5 +126,76 @@ export const DisabledSection: Story = {
     await userEvent.keyboard("{Enter}");
 
     await expect(args.onSelect).not.toHaveBeenCalled();
+  },
+};
+
+export const MultiShapeSection: Story = {
+  args: {
+    layout: multiShapeSeatMap,
+    enabledKeys: ["t.gold", "vip", "b.gold"],
+  },
+  play: async ({ canvas }) => {
+    const map = within(canvas.getByRole("group", { name: "Seat map" }));
+
+    const vip = map.getAllByRole("button", { name: "Section VIP" });
+    await expect(vip).toHaveLength(1);
+    await expect(
+      Array.from(vip[0].querySelectorAll("path"), (path) =>
+        path.getAttribute("d"),
+      ),
+    ).toEqual([
+      "M60 100L120 100L120 200L60 200Z",
+      "M280 100L340 100L340 200L280 200Z",
+    ]);
+  },
+};
+
+export const RotatedLabels: Story = {
+  args: {
+    layout: multiShapeSeatMap,
+    enabledKeys: ["t.gold", "vip", "b.gold"],
+  },
+  play: async ({ canvas }) => {
+    const map = within(canvas.getByRole("group", { name: "Seat map" }));
+    const vip = map.getByRole("button", { name: "Section VIP" });
+
+    await expect(
+      Array.from(vip.querySelectorAll("text"), (text) => [
+        text.textContent,
+        text.getAttribute("x"),
+        text.getAttribute("y"),
+        text.getAttribute("transform"),
+        text.getAttribute("font-size"),
+        text.getAttribute("font-weight"),
+      ]),
+    ).toEqual([
+      ["VIP", "90", "150", "rotate(-90 90 150)", "16", "400"],
+      ["VIP", "310", "152", "rotate(90 310 152)", "16", "400"],
+    ]);
+  },
+};
+
+export const StageWithoutLabel: Story = {
+  args: {
+    layout: multiShapeSeatMap,
+    enabledKeys: ["t.gold", "vip", "b.gold"],
+  },
+  play: async ({ canvas }) => {
+    const svg = canvas.getByRole("group", { name: "Seat map" });
+    const outsideSections = (selector: string) =>
+      Array.from(svg.querySelectorAll(selector)).filter(
+        (element) => !element.closest('[role="button"]'),
+      );
+
+    await expect(
+      outsideSections("path").map((path) => [
+        path.getAttribute("d"),
+        path.getAttribute("fill"),
+      ]),
+    ).toEqual([
+      ["M140 110L260 110L260 190L140 190Z", "#999999"],
+      ["M140 95L260 95L260 105L140 105Z", "#454545"],
+    ]);
+    await expect(outsideSections("text")).toHaveLength(0);
   },
 };

@@ -17,6 +17,7 @@ const imageSource = (img: Element | null) => {
 const event: GqlTicketsEvent = {
   id: "e1",
   name: "Adele",
+  type: "concert",
   coverImage: COVER,
   venue: VENUE,
   city: "Las Vegas",

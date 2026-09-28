@@ -1,5 +1,8 @@
 import { KeyboardEvent } from "react";
-import { GqlSeatMap } from "@/graphql/queries/find-event-tickets";
+import {
+  GqlSeatMap,
+  GqlSeatMapSection,
+} from "@/graphql/queries/find-event-tickets";
 
 interface SeatMapProps {
   layout: GqlSeatMap;
@@ -8,14 +11,68 @@ interface SeatMapProps {
   onSelect: (key: string) => void;
 }
 
+function Stage({ layout }: { layout: GqlSeatMap }) {
+  const { stage } = layout;
+
+  return (
+    <>
+      {stage.shapes.map((shape) => (
+        <path key={shape.path} d={shape.path} fill={shape.color} />
+      ))}
+      {stage.label !== null && (
+        <text
+          x={stage.labelX ?? undefined}
+          y={stage.labelY ?? undefined}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={layout.labelSize}
+          fontWeight={layout.labelWeight}
+          className="fill-white"
+        >
+          {stage.label}
+        </text>
+      )}
+    </>
+  );
+}
+
+function SectionShapes({
+  layout,
+  section,
+  fill,
+  pathClassName,
+}: {
+  layout: GqlSeatMap;
+  section: GqlSeatMapSection;
+  fill: string;
+  pathClassName?: string;
+}) {
+  return section.shapes.map((shape) => (
+    <g key={shape.path}>
+      <path d={shape.path} fill={fill} className={pathClassName} />
+      <text
+        aria-hidden="true"
+        x={shape.labelX}
+        y={shape.labelY}
+        transform={`rotate(${shape.labelRotation} ${shape.labelX} ${shape.labelY})`}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={layout.labelSize}
+        fontWeight={layout.labelWeight}
+        className="pointer-events-none select-none fill-white"
+      >
+        {section.label}
+      </text>
+    </g>
+  ));
+}
+
 export default function SeatMap({
   layout,
   enabledKeys,
   selectedKey,
   onSelect,
 }: SeatMapProps) {
-  const { stage } = layout;
-
   return (
     <svg
       role="group"
@@ -23,16 +80,7 @@ export default function SeatMap({
       viewBox={`0 0 ${layout.viewBoxWidth} ${layout.viewBoxHeight}`}
       className="h-auto w-full max-w-[704px]"
     >
-      <path d={stage.path} className="fill-neutral-200" />
-      <text
-        x={stage.labelX}
-        y={stage.labelY}
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="fill-white text-2xl font-bold"
-      >
-        {stage.label}
-      </text>
+      <Stage layout={layout} />
 
       {layout.sections.map((section) => {
         const enabled = enabledKeys.includes(section.key);
@@ -57,21 +105,12 @@ export default function SeatMap({
             onKeyDown={handleKeyDown}
             className={`group outline-none ${enabled ? "cursor-pointer" : "cursor-not-allowed opacity-40"}`}
           >
-            <path
-              d={section.path}
+            <SectionShapes
+              layout={layout}
+              section={section}
               fill={selected ? "var(--color-primary)" : section.color}
-              className="transition-colors group-focus-visible:stroke-tint-400 group-focus-visible:stroke-[3]"
+              pathClassName="transition-colors group-focus-visible:stroke-tint-400 group-focus-visible:stroke-[3]"
             />
-            <text
-              aria-hidden="true"
-              x={section.labelX}
-              y={section.labelY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              className="pointer-events-none select-none fill-white text-2xl font-bold"
-            >
-              {section.label}
-            </text>
           </g>
         );
       })}
