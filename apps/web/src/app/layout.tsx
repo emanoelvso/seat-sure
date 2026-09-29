@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import ApolloClientProvider from "@/providers/ApolloProvider";
+import { AppProvider } from "./provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <ApolloClientProvider>{children}</ApolloClientProvider>
+        <AppProvider>{children}</AppProvider>
       </body>
     </html>
   );
