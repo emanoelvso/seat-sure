@@ -5,7 +5,7 @@ import {
 } from "@solar-icons/react/outline";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { SeatMapPreview } from "@/components/SeatMap";
+import { SeatMapPreview } from "@/features/tickets/components/seat-map";
 import { TagPill } from "@/components/ui/tag-pill";
 import {
   GqlSeatMap,
@@ -16,7 +16,7 @@ import {
   formatEventDate,
   formatEventTimeRange,
 } from "@/utils/event-format";
-import { formatPrice } from "@/lib/utils/price";
+import { formatPrice } from "@/features/tickets/utils/price";
 
 interface TicketDetailPanelProps {
   event: GqlTicketsEvent;

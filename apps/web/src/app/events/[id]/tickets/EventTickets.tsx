@@ -3,11 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { PageMessage } from "@/components/layouts/page-message";
 import { PillSelect } from "@/components/ui/pill-select";
-import PriceRangeFilter from "@/components/PriceRangeFilter";
-import SeatListingCard from "@/components/SeatListingCard";
-import SeatMap from "@/components/SeatMap";
+import { PriceRangeFilter } from "@/features/tickets/components/price-range-filter";
+import { SeatListingCard } from "@/features/tickets/components/seat-listing-card";
+import { SeatMap } from "@/features/tickets/components/seat-map";
 import { SortSelect, SortOrder } from "@/components/ui/sort-select";
-import TicketsHero from "@/components/TicketsHero";
+import { TicketsHero } from "@/features/tickets/components/tickets-hero";
 import { TicketDetailPanel } from "@/features/tickets/components/ticket-detail-panel";
 import {
   FIND_EVENT_TICKETS,
@@ -23,7 +23,7 @@ import {
   priceBounds,
   quantityOptions,
   sortListings,
-} from "@/lib/utils/ticket-listings";
+} from "@/features/tickets/utils/ticket-listings";
 import { useQuery } from "@apollo/client/react";
 import Link from "next/link";
 import { useState } from "react";

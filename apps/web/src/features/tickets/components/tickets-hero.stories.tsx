@@ -5,7 +5,7 @@ import {
   GqlTicketType,
 } from "@/graphql/queries/find-event-tickets";
 import { zonedIso } from "@/testing/dates";
-import TicketsHero from "./TicketsHero";
+import { TicketsHero } from "./tickets-hero";
 
 const COVER = "/artist/map.png";
 const VENUE = "The Colosseum at Caesars Palace";

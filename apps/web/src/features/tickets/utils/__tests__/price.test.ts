@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPrice } from "@/lib/utils/price";
+import { formatPrice } from "@/features/tickets/utils/price";
 
 describe("formatPrice", () => {
   it("formats a whole-dollar amount with no decimals", () => {

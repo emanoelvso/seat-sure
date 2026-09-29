@@ -13,7 +13,7 @@ import {
   formatEventLocation,
   formatEventTimeRange,
 } from "@/utils/event-format";
-import { formatPrice } from "@/lib/utils/price";
+import { formatPrice } from "@/features/tickets/utils/price";
 import {
   GqlTicketsEvent,
   GqlTicketType,
@@ -45,7 +45,7 @@ function SeatDetail({
   );
 }
 
-export default function TicketsHero({ event, selected }: TicketsHeroProps) {
+export function TicketsHero({ event, selected }: TicketsHeroProps) {
   return (
     <section
       aria-label={`${event.name} tickets`}

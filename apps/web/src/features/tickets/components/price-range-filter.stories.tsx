@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen } from "storybook/test";
-import PriceRangeFilter from "./PriceRangeFilter";
+import { PriceRangeFilter } from "./price-range-filter";
 
 const meta: Meta<typeof PriceRangeFilter> = {
   title: "Components/PriceRangeFilter",

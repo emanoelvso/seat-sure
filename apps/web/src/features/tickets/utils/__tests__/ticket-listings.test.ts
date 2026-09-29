@@ -9,7 +9,7 @@ import {
   quantityLabel,
   quantityOptions,
   sortListings,
-} from "@/lib/utils/ticket-listings";
+} from "@/features/tickets/utils/ticket-listings";
 
 const ticketType = (overrides: Partial<GqlTicketType>): GqlTicketType => ({
   id: overrides.sectionKey ?? "vip",

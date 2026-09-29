@@ -7,7 +7,7 @@ import {
   GqlSeatMapSection,
   GqlTicketType,
 } from "@/graphql/queries/find-event-tickets";
-import { formatPrice } from "@/lib/utils/price";
+import { formatPrice } from "@/features/tickets/utils/price";
 
 interface SeatMapProps {
   layout: GqlSeatMap;
@@ -84,7 +84,7 @@ function SectionShapes({
   ));
 }
 
-export default function SeatMap({
+export function SeatMap({
   layout,
   enabledKeys,
   selectedKey,

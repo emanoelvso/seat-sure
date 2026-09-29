@@ -5,8 +5,8 @@ import { Popover } from "radix-ui";
 import { FormEvent, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { subCategoriePillVariant } from "@/components/ui/sub-categorie-pill";
-import { formatPrice } from "@/lib/utils/price";
-import { PriceRange } from "@/lib/utils/ticket-listings";
+import { formatPrice } from "@/features/tickets/utils/price";
+import { PriceRange } from "@/features/tickets/utils/ticket-listings";
 
 interface PriceRangeFilterProps {
   value: PriceRange;
@@ -16,7 +16,7 @@ interface PriceRangeFilterProps {
 const inputClassName =
   "w-24 rounded-lg border border-neutral-500 bg-neutral-700 px-3 py-2 text-sm text-white outline-none focus-visible:border-tint-400";
 
-export default function PriceRangeFilter({
+export function PriceRangeFilter({
   value,
   onApply,
 }: PriceRangeFilterProps) {
