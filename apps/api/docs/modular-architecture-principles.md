@@ -663,8 +663,6 @@ import { addTransactionalDataSource } from 'typeorm-transactional';
 export class TicketingPersistenceModule {}
 ```
 
-`catalog-persistence.module.ts` doesn't register its DataSource yet (tracked in `todo.md`), so `@Transactional({ connectionName: 'catalog' })` fails until it does.
-
 ---
 
 ## Inter-Module Communication Patterns
