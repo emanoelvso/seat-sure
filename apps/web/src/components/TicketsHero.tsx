@@ -6,7 +6,7 @@ import {
   TicketIcon,
 } from "@solar-icons/react/outline";
 import Image from "next/image";
-import Header from "@/components/Header";
+import { Header } from "@/components/layouts/header";
 import { ShareButton } from "@/components/ui/share-button";
 import {
   formatEventDate,

@@ -1,4 +1,4 @@
-export default function HalfStarIcon() {
+export function HalfStarIcon() {
   return (
     <svg
       width="9"

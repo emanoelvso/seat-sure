@@ -1,4 +1,4 @@
-export default function WatchIcon() {
+export function WatchIcon() {
   return (
     <svg
       width="240"

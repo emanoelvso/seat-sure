@@ -1,18 +1,18 @@
 import { MicrophoneIcon } from "@solar-icons/react/outline";
 import { Lobster } from "next/font/google";
 import Link from "next/link";
-import FacebookIcon from "./icons/FacebookIcon";
-import InstagramIcon from "./icons/InstagramIcon";
-import LinkedinIcon from "./icons/LinkedinIcon";
-import YoutubeIcon from "./icons/YoutubeIcon";
-import TelegramIcon from "./icons/TelegramIcon";
+import { FacebookIcon } from "@/components/icons/facebook-icon";
+import { InstagramIcon } from "@/components/icons/instagram-icon";
+import { LinkedinIcon } from "@/components/icons/linkedin-icon";
+import { YoutubeIcon } from "@/components/icons/youtube-icon";
+import { TelegramIcon } from "@/components/icons/telegram-icon";
 
 const lobster = Lobster({
   subsets: ["latin"],
   weight: "400",
 });
 
-export default function Footer() {
+export function Footer() {
   return (
     <footer className="flex flex-col items-center justify-center mb-10">
       <Link

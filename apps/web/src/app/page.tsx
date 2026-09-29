@@ -1,10 +1,10 @@
 import HomeSections from "@/components/HomeSections";
 import FeedbacksCarousel from "@/components/FeedbacksCarousel";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
-import InvestimentIcon from "@/components/icons/InvestimentIcon";
-import SmartDealIcon from "@/components/icons/SmartDealIcon";
-import WatchIcon from "@/components/icons/WatchIcon";
+import { Footer } from "@/components/layouts/footer";
+import { Header } from "@/components/layouts/header";
+import { InvestimentIcon } from "@/components/icons/investiment-icon";
+import { SmartDealIcon } from "@/components/icons/smart-deal-icon";
+import { WatchIcon } from "@/components/icons/watch-icon";
 import SearchBox from "@/components/SearchBox";
 import Faq from "@/components/Faq";
 

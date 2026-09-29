@@ -1,4 +1,4 @@
-export default function InstagramIcon() {
+export function InstagramIcon() {
   return (
     <svg
       width="42"

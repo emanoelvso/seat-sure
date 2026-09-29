@@ -1,4 +1,4 @@
-export default function LinkedinIcon() {
+export function LinkedinIcon() {
   return (
     <svg
       width="42"

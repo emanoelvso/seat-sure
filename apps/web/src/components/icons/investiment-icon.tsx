@@ -1,4 +1,4 @@
-export default function InvestimentIcon() {
+export function InvestimentIcon() {
   return (
     <svg
       width="160"

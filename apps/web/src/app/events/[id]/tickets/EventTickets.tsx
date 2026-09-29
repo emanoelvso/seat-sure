@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import Header from "@/components/Header";
+import { Header } from "@/components/layouts/header";
 import { PillSelect } from "@/components/ui/pill-select";
 import PriceRangeFilter from "@/components/PriceRangeFilter";
 import SeatListingCard from "@/components/SeatListingCard";

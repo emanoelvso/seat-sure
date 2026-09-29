@@ -1,7 +1,7 @@
 import Image from "next/image";
-import StarIcon from "./icons/StarIcon";
-import HalfStarIcon from "./icons/HalfStarIcon";
-import EmptyStarIcon from "./icons/EmptyStarIcon";
+import { StarIcon } from "@/components/icons/star-icon";
+import { HalfStarIcon } from "@/components/icons/half-star-icon";
+import { EmptyStarIcon } from "@/components/icons/empty-star-icon";
 
 interface FeedbackCardProps {
   comment: string;

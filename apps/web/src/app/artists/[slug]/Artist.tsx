@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import EventDateCard from "@/components/EventDateCard";
 import EventShowcase from "@/components/EventShowcase";
 import FestivalBanner from "@/components/FestivalBanner";
-import Header from "@/components/Header";
+import { Header } from "@/components/layouts/header";
 import { LocationSelect } from "@/components/ui/location-select";
 import VenueMapCard from "@/components/VenueMapCard";
 import {

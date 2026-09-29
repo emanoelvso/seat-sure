@@ -1,4 +1,4 @@
-export default function TelegramIcon() {
+export function TelegramIcon() {
   return (
     <svg
       width="42"

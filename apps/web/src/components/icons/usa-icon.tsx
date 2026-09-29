@@ -1,4 +1,4 @@
-export default function UsaIcon() {
+export function UsaIcon() {
   return (
     <svg
       width="24"

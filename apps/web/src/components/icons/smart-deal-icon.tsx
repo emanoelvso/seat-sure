@@ -1,4 +1,4 @@
-export default function SmartDealIcon() {
+export function SmartDealIcon() {
   return (
     <svg
       width="160"

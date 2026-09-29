@@ -1,4 +1,4 @@
-import Footer from "@/components/Footer";
+import { Footer } from "@/components/layouts/footer";
 import Artist from "./Artist";
 
 export default async function ArtistPage({
