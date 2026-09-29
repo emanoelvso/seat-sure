@@ -1,6 +1,6 @@
-import { QuestionAccordion } from "./QuestionAccordion";
+import { QuestionAccordion } from "./question-accordion";
 
-export default function Faq() {
+export function Faq() {
   return (
     <section aria-label="FAQ" className="flex flex-col items-center w-full">
       <div className="mt-34 text-center max-w-xl">

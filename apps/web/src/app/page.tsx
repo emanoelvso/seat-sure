@@ -1,12 +1,12 @@
 import HomeSections from "@/components/HomeSections";
-import FeedbacksCarousel from "@/components/FeedbacksCarousel";
+import { FeedbacksCarousel } from "@/features/testimonials/components/feedbacks-carousel";
 import { Footer } from "@/components/layouts/footer";
 import { Header } from "@/components/layouts/header";
 import { InvestimentIcon } from "@/components/icons/investiment-icon";
 import { SmartDealIcon } from "@/components/icons/smart-deal-icon";
 import { WatchIcon } from "@/components/icons/watch-icon";
 import SearchBox from "@/components/SearchBox";
-import Faq from "@/components/Faq";
+import { Faq } from "@/features/faq/components/faq";
 
 export default function Home() {
   return (

@@ -10,7 +10,7 @@ interface FeedbackCardProps {
   rating: number;
 }
 
-export default function FeedbackCard({
+export function FeedbackCard({
   comment,
   name,
   avatarUrl,

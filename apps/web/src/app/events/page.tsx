@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { ComboBox } from "@/components/ui/combo-box";
 import { DatePickerBox } from "@/components/ui/date-picker-box";
-import Faq from "@/components/Faq";
+import { Faq } from "@/features/faq/components/faq";
 import { Footer } from "@/components/layouts/footer";
 import { Header } from "@/components/layouts/header";
 import { MainCard } from "@/components/main-card";

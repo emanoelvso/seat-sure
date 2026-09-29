@@ -1,5 +1,5 @@
 import { Carousel } from "@/components/ui/carousel";
-import FeedbackCard from "./FeedbackCard";
+import { FeedbackCard } from "./feedback-card";
 
 interface Feedback {
   comment: string;
@@ -13,7 +13,7 @@ interface FeedbacksCarouselProps {
   row2: Feedback[];
 }
 
-export default function FeedbacksCarousel({
+export function FeedbacksCarousel({
   row1,
   row2,
 }: FeedbacksCarouselProps) {
