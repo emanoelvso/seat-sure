@@ -21,6 +21,17 @@ export function filterListings(
   );
 }
 
+export function narrowListings(
+  types: GqlTicketType[],
+  sectionKey?: string,
+): GqlTicketType[] {
+  if (sectionKey === undefined) {
+    return types;
+  }
+
+  return types.filter((ticketType) => ticketType.sectionKey === sectionKey);
+}
+
 export function quantityOptions(types: GqlTicketType[]): number[] {
   if (types.length === 0) {
     return [1];

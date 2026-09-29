@@ -4,6 +4,7 @@ import {
   defaultQuantity,
   filterListings,
   listingsLabel,
+  narrowListings,
   priceBounds,
   quantityLabel,
   quantityOptions,
@@ -133,6 +134,36 @@ describe("sortListings", () => {
     sortListings(types, "desc");
 
     expect(types).toEqual(original);
+  });
+});
+
+describe("narrowListings", () => {
+  // Two "b" entries at the first and last positions, so a result that keeps
+  // only one of them, or reorders them, fails.
+  const bFirst = ticketType({ id: "b-first", sectionKey: "b", name: "B" });
+  const a = ticketType({ sectionKey: "a", name: "A" });
+  const c = ticketType({ sectionKey: "c", name: "C" });
+  const bLast = ticketType({ id: "b-last", sectionKey: "b", name: "B2" });
+  const types = [bFirst, a, c, bLast];
+
+  it("returns every type in input order when no key is given (STAD-13)", () => {
+    expect(narrowListings(types, undefined)).toEqual([bFirst, a, c, bLast]);
+  });
+
+  it("keeps only the types of the given section, in input order (STAD-11)", () => {
+    expect(narrowListings(types, "b")).toEqual([bFirst, bLast]);
+  });
+
+  it("returns an empty list for a key with no types (STAD-11)", () => {
+    expect(narrowListings(types, "lawn")).toEqual([]);
+  });
+
+  it("does not mutate the input array", () => {
+    const input = [...types];
+
+    narrowListings(input, "b");
+
+    expect(input).toEqual([bFirst, a, c, bLast]);
   });
 });
 

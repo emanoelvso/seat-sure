@@ -6,6 +6,7 @@ export const FIND_EVENT_TICKETS = gql`
       event {
         id
         name
+        type
         coverImage
         venue
         city
@@ -18,19 +19,27 @@ export const FIND_EVENT_TICKETS = gql`
         name
         viewBoxWidth
         viewBoxHeight
+        labelSize
+        labelWeight
         stage {
           label
-          path
           labelX
           labelY
+          shapes {
+            path
+            color
+          }
         }
         sections {
           key
           label
-          path
           color
-          labelX
-          labelY
+          shapes {
+            path
+            labelX
+            labelY
+            labelRotation
+          }
         }
       }
       ticketTypes {
@@ -50,6 +59,7 @@ export const FIND_EVENT_TICKETS = gql`
 export interface GqlTicketsEvent {
   id: string;
   name: string;
+  type: string;
   coverImage: string;
   venue: string;
   city: string;
@@ -58,16 +68,30 @@ export interface GqlTicketsEvent {
   endsAt: string;
 }
 
-export interface GqlSeatMapShape {
-  label: string;
+export interface GqlSeatMapStageShape {
+  path: string;
+  color: string;
+}
+
+export interface GqlSeatMapStage {
+  label: string | null;
+  labelX: number | null;
+  labelY: number | null;
+  shapes: GqlSeatMapStageShape[];
+}
+
+export interface GqlSeatMapSectionShape {
   path: string;
   labelX: number;
   labelY: number;
+  labelRotation: number;
 }
 
-export interface GqlSeatMapSection extends GqlSeatMapShape {
+export interface GqlSeatMapSection {
   key: string;
+  label: string;
   color: string;
+  shapes: GqlSeatMapSectionShape[];
 }
 
 export interface GqlSeatMap {
@@ -75,7 +99,9 @@ export interface GqlSeatMap {
   name: string;
   viewBoxWidth: number;
   viewBoxHeight: number;
-  stage: GqlSeatMapShape;
+  labelSize: number;
+  labelWeight: number;
+  stage: GqlSeatMapStage;
   sections: GqlSeatMapSection[];
 }
 

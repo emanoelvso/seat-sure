@@ -3,6 +3,7 @@ import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
+import { Migration1790600000000 } from '@catalogModule/persistence/migration/1790600000000-migration';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { INestApplication } from '@nestjs/common';
@@ -72,19 +73,27 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
                 name
                 viewBoxWidth
                 viewBoxHeight
+                labelSize
+                labelWeight
                 stage {
                   label
-                  path
                   labelX
                   labelY
+                  shapes {
+                    path
+                    color
+                  }
                 }
                 sections {
                   key
                   label
-                  path
                   color
-                  labelX
-                  labelY
+                  shapes {
+                    path
+                    labelX
+                    labelY
+                    labelRotation
+                  }
                 }
               }
               ticketTypes {
@@ -209,38 +218,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
   });
 
   describe('seatMap', () => {
-    it('returns the view box, stage and sections in stored order (SECT-02)', async () => {
-      const layout: SeatMapLayout = {
-        viewBox: { width: 800, height: 600 },
-        stage: {
-          label: 'STAGE',
-          path: 'M10 10L690 10L690 60L10 60Z',
-          labelAt: [350, 35],
-        },
-        sections: [
-          {
-            key: 'vip',
-            label: 'VIP',
-            path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
-            color: '#454545',
-            labelAt: [352, 300],
-          },
-          {
-            key: 'a',
-            label: 'A',
-            path: 'M152 300A200 200 0 1 0 552 300A200 200 0 1 0 152 300Z',
-            color: '#303030',
-            labelAt: [352, 500],
-          },
-          {
-            key: 'b',
-            label: 'B',
-            path: 'M100 350A250 250 0 1 0 600 350A250 250 0 1 0 100 350Z',
-            color: '#1F1F1F',
-            labelAt: [352, 600],
-          },
-        ],
-      };
+    const insertEventWithLayout = async (layout: SeatMapLayout) => {
       const seatMap = seatMapFactory.build({ layout: JSON.stringify(layout) });
       await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
 
@@ -253,6 +231,59 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       };
       await testDbClient.batchInsert(Tables.Event, [event]);
 
+      return { seatMap, event };
+    };
+
+    it('returns the view box, label style, stage and sections in stored order (SECT-02)', async () => {
+      const layout: SeatMapLayout = {
+        viewBox: { width: 800, height: 600 },
+        labelStyle: { size: 24, weight: 700 },
+        stage: {
+          label: 'STAGE',
+          labelAt: [350, 35],
+          shapes: [{ path: 'M10 10L690 10L690 60L10 60Z', color: '#999999' }],
+        },
+        sections: [
+          {
+            key: 'vip',
+            label: 'VIP',
+            color: '#454545',
+            shapes: [
+              {
+                path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
+                labelAt: [352, 300],
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'a',
+            label: 'A',
+            color: '#303030',
+            shapes: [
+              {
+                path: 'M152 300A200 200 0 1 0 552 300A200 200 0 1 0 152 300Z',
+                labelAt: [352, 500],
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'b',
+            label: 'B',
+            color: '#1F1F1F',
+            shapes: [
+              {
+                path: 'M100 350A250 250 0 1 0 600 350A250 250 0 1 0 100 350Z',
+                labelAt: [352, 600],
+                labelRotation: 0,
+              },
+            ],
+          },
+        ],
+      };
+      const { seatMap, event } = await insertEventWithLayout(layout);
+
       const response = await findEventTickets(event.id!).expect(200);
 
       expect(response.body.errors).toBeUndefined();
@@ -260,22 +291,171 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.data.findEventTickets.seatMap).toEqual({
         id: seatMap.id,
         name: seatMap.name,
-        viewBoxWidth: layout.viewBox.width,
-        viewBoxHeight: layout.viewBox.height,
+        viewBoxWidth: 800,
+        viewBoxHeight: 600,
+        labelSize: 24,
+        labelWeight: 700,
         stage: {
-          label: layout.stage.label,
-          path: layout.stage.path,
-          labelX: layout.stage.labelAt[0],
-          labelY: layout.stage.labelAt[1],
+          label: 'STAGE',
+          labelX: 350,
+          labelY: 35,
+          shapes: [{ path: 'M10 10L690 10L690 60L10 60Z', color: '#999999' }],
         },
         sections: layout.sections.map((section) => ({
           key: section.key,
           label: section.label,
-          path: section.path,
           color: section.color,
-          labelX: section.labelAt[0],
-          labelY: section.labelAt[1],
+          shapes: section.shapes.map((shape) => ({
+            path: shape.path,
+            labelX: shape.labelAt[0],
+            labelY: shape.labelAt[1],
+            labelRotation: shape.labelRotation,
+          })),
         })),
+      });
+    });
+
+    it('returns a section drawn as several blocks once, with its shapes in stored order (STAD-01)', async () => {
+      const layout: SeatMapLayout = {
+        viewBox: { width: 704, height: 860 },
+        labelStyle: { size: 16, weight: 400 },
+        stage: {
+          label: 'PITCH',
+          labelAt: [352, 430],
+          shapes: [
+            { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+            { path: 'M180 300L195 300L195 560L180 560Z', color: '#454545' },
+          ],
+        },
+        sections: [
+          {
+            key: 't.standard',
+            label: 'T.STANDARD',
+            color: '#1B1B1B',
+            shapes: [
+              {
+                path: 'M20 200L90 110L120 130L50 220Z',
+                labelAt: [96.8, 172.3],
+                labelRotation: -57,
+              },
+              {
+                path: 'M200 20L520 20L520 60L200 60Z',
+                labelAt: [362.2, 40.6],
+                labelRotation: 0,
+              },
+              {
+                path: 'M600 110L680 200L650 220L580 130Z',
+                labelAt: [625.4, 185.7],
+                labelRotation: 55,
+              },
+            ],
+          },
+          {
+            key: 't.gold',
+            label: 'T.GOLD',
+            color: '#303030',
+            shapes: [
+              {
+                path: 'M250 210L460 210L460 250L250 250Z',
+                labelAt: [356.4, 232.8],
+                labelRotation: 0,
+              },
+            ],
+          },
+        ],
+      };
+      const { event } = await insertEventWithLayout(layout);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      const seatMap = response.body.data.findEventTickets.seatMap;
+      expect(seatMap.labelSize).toBe(16);
+      expect(seatMap.labelWeight).toBe(400);
+      expect(seatMap.stage.shapes).toEqual([
+        { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+        { path: 'M180 300L195 300L195 560L180 560Z', color: '#454545' },
+      ]);
+      expect(seatMap.sections).toEqual([
+        {
+          key: 't.standard',
+          label: 'T.STANDARD',
+          color: '#1B1B1B',
+          shapes: [
+            {
+              path: 'M20 200L90 110L120 130L50 220Z',
+              labelX: 96.8,
+              labelY: 172.3,
+              labelRotation: -57,
+            },
+            {
+              path: 'M200 20L520 20L520 60L200 60Z',
+              labelX: 362.2,
+              labelY: 40.6,
+              labelRotation: 0,
+            },
+            {
+              path: 'M600 110L680 200L650 220L580 130Z',
+              labelX: 625.4,
+              labelY: 185.7,
+              labelRotation: 55,
+            },
+          ],
+        },
+        {
+          key: 't.gold',
+          label: 'T.GOLD',
+          color: '#303030',
+          shapes: [
+            {
+              path: 'M250 210L460 210L460 250L250 250Z',
+              labelX: 356.4,
+              labelY: 232.8,
+              labelRotation: 0,
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('returns stage.label, labelX and labelY as null for a stage without a label (STAD-03)', async () => {
+      const layout: SeatMapLayout = {
+        viewBox: { width: 704, height: 860 },
+        labelStyle: { size: 16, weight: 400 },
+        stage: {
+          label: null,
+          labelAt: null,
+          shapes: [
+            { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+          ],
+        },
+        sections: [
+          {
+            key: 'vip',
+            label: 'VIP',
+            color: '#454545',
+            shapes: [
+              {
+                path: 'M120 300L160 300L160 560L120 560Z',
+                labelAt: [143.6, 429],
+                labelRotation: -90,
+              },
+            ],
+          },
+        ],
+      };
+      const { event } = await insertEventWithLayout(layout);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.seatMap.stage).toEqual({
+        label: null,
+        labelX: null,
+        labelY: null,
+        shapes: [
+          { path: 'M200 300L500 300L500 560L200 560Z', color: '#999999' },
+        ],
       });
     });
 
@@ -291,6 +471,184 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.event.id).toBe(event.id);
       expect(response.body.data.findEventTickets.seatMap).toBeNull();
+    });
+  });
+
+  describe('layout v1 to v2 migration (Migration1790600000000)', () => {
+    const v1Layout = {
+      viewBox: { width: 704, height: 704 },
+      stage: {
+        label: 'STAGE',
+        path: 'M116.5 90C171 35.5 586 90 586 90L116.5 90Z',
+        labelAt: [352, 89],
+      },
+      sections: [
+        {
+          key: 'vip',
+          label: 'VIP',
+          path: 'M183 352A168 168 0 1 0 520 352A168 168 0 1 0 183 352Z',
+          color: '#454545',
+          labelAt: [351, 353],
+        },
+        {
+          key: 'a',
+          label: 'A',
+          path: 'M516 189C548 221 570 262 579 307L483 221Z',
+          color: '#303030',
+          labelAt: [350, 562],
+        },
+        {
+          key: 'c',
+          label: 'C',
+          path: 'M600 103C650 152 683 215 697 283L566 137Z',
+          color: '#191919',
+          labelAt: [349, 684],
+        },
+      ],
+    };
+
+    const runMigrationUp = async () => {
+      const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
+      const queryRunner = dataSource.createQueryRunner();
+      try {
+        await new Migration1790600000000().up(queryRunner);
+      } finally {
+        await queryRunner.release();
+      }
+    };
+
+    const readLayout = async (seatMapId: string) =>
+      (await testDbClient(Tables.SeatMap).where({ id: seatMapId }).first())
+        .layout;
+
+    it('serves a migrated v1 layout with label style 24/700, one #999999 stage shape and one unrotated shape per section in stored order (STAD-02)', async () => {
+      const seatMap = seatMapFactory.build({
+        layout: JSON.stringify(v1Layout),
+      });
+      await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
+
+      await runMigrationUp();
+
+      const event = {
+        ...eventFactory.build({
+          status: EventStatus.PUBLISHED,
+          startAt: hoursFromNow(24),
+        }),
+        seatMapId: seatMap.id,
+      };
+      await testDbClient.batchInsert(Tables.Event, [event]);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.seatMap).toEqual({
+        id: seatMap.id,
+        name: seatMap.name,
+        viewBoxWidth: 704,
+        viewBoxHeight: 704,
+        labelSize: 24,
+        labelWeight: 700,
+        stage: {
+          label: 'STAGE',
+          labelX: 352,
+          labelY: 89,
+          shapes: [
+            {
+              path: 'M116.5 90C171 35.5 586 90 586 90L116.5 90Z',
+              color: '#999999',
+            },
+          ],
+        },
+        sections: [
+          {
+            key: 'vip',
+            label: 'VIP',
+            color: '#454545',
+            shapes: [
+              {
+                path: 'M183 352A168 168 0 1 0 520 352A168 168 0 1 0 183 352Z',
+                labelX: 351,
+                labelY: 353,
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'a',
+            label: 'A',
+            color: '#303030',
+            shapes: [
+              {
+                path: 'M516 189C548 221 570 262 579 307L483 221Z',
+                labelX: 350,
+                labelY: 562,
+                labelRotation: 0,
+              },
+            ],
+          },
+          {
+            key: 'c',
+            label: 'C',
+            color: '#191919',
+            shapes: [
+              {
+                path: 'M600 103C650 152 683 215 697 283L566 137Z',
+                labelX: 349,
+                labelY: 684,
+                labelRotation: 0,
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('leaves layouts that are already v2 unchanged when up runs again (guard)', async () => {
+      const v2Layout: SeatMapLayout = {
+        viewBox: { width: 704, height: 860 },
+        labelStyle: { size: 16, weight: 400 },
+        stage: {
+          label: null,
+          labelAt: null,
+          shapes: [
+            { path: 'M200 300L500 300L500 560L200 560Z', color: '#454545' },
+          ],
+        },
+        sections: [
+          {
+            key: 't.standard',
+            label: 'T.STANDARD',
+            color: '#1B1B1B',
+            shapes: [
+              {
+                path: 'M20 200L90 110L120 130L50 220Z',
+                labelAt: [96.8, 172.3],
+                labelRotation: -57,
+              },
+              {
+                path: 'M600 110L680 200L650 220L580 130Z',
+                labelAt: [625.4, 185.7],
+                labelRotation: 55,
+              },
+            ],
+          },
+        ],
+      };
+      const v1SeatMap = seatMapFactory.build({
+        layout: JSON.stringify(v1Layout),
+      });
+      const v2SeatMap = seatMapFactory.build({
+        layout: JSON.stringify(v2Layout),
+      });
+      await testDbClient.batchInsert(Tables.SeatMap, [v1SeatMap, v2SeatMap]);
+
+      await runMigrationUp();
+      const migratedOnce = await readLayout(v1SeatMap.id);
+
+      await runMigrationUp();
+
+      expect(await readLayout(v1SeatMap.id)).toEqual(migratedOnce);
+      expect(await readLayout(v2SeatMap.id)).toEqual(v2Layout);
     });
   });
 

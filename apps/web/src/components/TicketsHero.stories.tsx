@@ -17,6 +17,7 @@ const imageSource = (img: Element | null) => {
 const event: GqlTicketsEvent = {
   id: "e1",
   name: "Adele",
+  type: "concert",
   coverImage: COVER,
   venue: VENUE,
   city: "Las Vegas",
@@ -103,5 +104,39 @@ export const ShareAndHeart: Story = {
     const heart = canvas.getByTestId("heart-icon");
     await expect(heart).toHaveAttribute("aria-hidden", "true");
     await expect(heart.closest("button, a")).toBeNull();
+  },
+};
+
+export const ConcertTitleUppercase: Story = {
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(getComputedStyle(title).textTransform).toBe("uppercase");
+  },
+};
+
+export const SportTitleKeepsStoredCasing: Story = {
+  args: {
+    event: { ...event, name: "São Paulo vs Corinthians", type: "sport" },
+  },
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(getComputedStyle(title).textTransform).toBe("none");
+    await expect(title).toHaveTextContent(/^São Paulo vs Corinthians$/);
+  },
+};
+
+// STAD-20 covers every non-concert type, so a second one guards against a
+// sport-only check.
+export const FestivalTitleKeepsStoredCasing: Story = {
+  args: {
+    event: { ...event, name: "Rock in Rio", type: "festival" },
+  },
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(getComputedStyle(title).textTransform).toBe("none");
+    await expect(title).toHaveTextContent(/^Rock in Rio$/);
   },
 };
