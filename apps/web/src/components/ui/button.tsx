@@ -38,7 +38,7 @@ interface ButtonProps
   iconSize?: number;
 }
 
-export default function Button({
+export function Button({
   variant,
   size,
   children,

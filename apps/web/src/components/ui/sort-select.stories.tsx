@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen } from "storybook/test";
-import SortSelect from "./SortSelect";
+import { SortSelect } from "./sort-select";
 
 const meta: Meta<typeof SortSelect> = {
   title: "Components/SortSelect",

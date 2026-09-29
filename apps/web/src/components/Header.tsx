@@ -1,10 +1,10 @@
 import { Lobster } from "next/font/google";
 import Link from "next/link";
-import Button from "./Button";
+import { Button } from "@/components/ui/button";
 import UsaIcon from "./icons/UsaIcon";
 import { AltArrowDownIcon, BellIcon } from "@solar-icons/react/outline";
 import Image from "next/image";
-import Input from "./Input";
+import { Input } from "@/components/ui/input";
 const lobster = Lobster({
   weight: "400",
   subsets: ["latin"],

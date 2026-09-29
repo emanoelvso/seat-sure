@@ -5,9 +5,9 @@ import {
   ClockCircleIcon,
   MapPointIcon,
 } from "@solar-icons/react/outline";
-import { buttonVariants } from "@/components/Button";
-import ShareButton from "@/components/ShareButton";
-import TagPill from "@/components/TagPill";
+import { buttonVariants } from "@/components/ui/button";
+import { ShareButton } from "@/components/ui/share-button";
+import { TagPill } from "@/components/ui/tag-pill";
 import { GqlEvent } from "@/graphql/queries/home-sections";
 import {
   formatEventDate,

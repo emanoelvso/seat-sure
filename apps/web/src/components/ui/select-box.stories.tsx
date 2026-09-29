@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { AltArrowDownIcon } from "@solar-icons/react/outline";
-import SelectBox from "./SelectBox";
+import { SelectBox } from "./select-box";
 
 const options = [
   { value: "concert", label: "Concert" },

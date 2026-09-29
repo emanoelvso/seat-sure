@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import IconButton from "./IconButton";
+import { IconButton } from "./icon-button";
 import { MinimalisticMagnifierOutlineIcon } from "@solar-icons/react";
 
 const meta: Meta<typeof IconButton> = {

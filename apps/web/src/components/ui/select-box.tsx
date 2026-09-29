@@ -22,7 +22,7 @@ interface SelectBoxProps {
   onChange?: (value?: string | undefined) => void;
 }
 
-export default function SelectBox({
+export function SelectBox({
   options,
   defaultValue,
   placeholder,

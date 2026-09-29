@@ -1,4 +1,4 @@
-import Carousel from "./Carousel";
+import { Carousel } from "@/components/ui/carousel";
 import SingerCard from "./SingerCard";
 
 export interface Singer {

@@ -20,7 +20,7 @@ function formatCountdown(totalSeconds: number): string {
     .join(" ");
 }
 
-export default function CountdownBadge({ eventDate }: CountdownBadgeProps) {
+export function CountdownBadge({ eventDate }: CountdownBadgeProps) {
   // null until mounted: the server and the hydrating client render nothing,
   // so the ticking seconds can't cause a hydration mismatch.
   const [remaining, setRemaining] = useState<number | null>(null);

@@ -54,7 +54,7 @@ interface InputProps
   placeholder?: string;
 }
 
-export default function Input({
+export function Input({
   variant,
   size,
   label,

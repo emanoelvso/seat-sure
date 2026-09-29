@@ -1,11 +1,11 @@
 "use client";
 
-import Button from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import EventDateCard from "@/components/EventDateCard";
 import EventShowcase from "@/components/EventShowcase";
 import FestivalBanner from "@/components/FestivalBanner";
 import Header from "@/components/Header";
-import LocationSelect from "@/components/LocationSelect";
+import { LocationSelect } from "@/components/ui/location-select";
 import VenueMapCard from "@/components/VenueMapCard";
 import {
   FIND_ARTIST_BY_SLUG,

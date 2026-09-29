@@ -13,7 +13,7 @@ interface ComboBoxProps {
   leftIcon?: Icon;
 }
 
-export default function ComboBox({
+export function ComboBox({
   options,
   value,
   onChange,

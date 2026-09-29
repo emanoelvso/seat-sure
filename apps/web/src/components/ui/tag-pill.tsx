@@ -21,7 +21,7 @@ interface TagPillProps extends VariantProps<typeof tagPillVariant> {
   children: ReactNode;
 }
 
-export default function TagPill({ children, variant, size }: TagPillProps) {
+export function TagPill({ children, variant, size }: TagPillProps) {
   return (
     <span className={tagPillVariant({ variant, size })}>
       <span>{children}</span>

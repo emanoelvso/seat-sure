@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen } from "storybook/test";
-import PillSelect from "./PillSelect";
+import { PillSelect } from "./pill-select";
 
 const options = [
   { value: "1", label: "1 ticket" },

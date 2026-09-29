@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ArrowRightIcon } from "@solar-icons/react/outline";
 import React from "react";
-import Button from "./Button";
+import { Button } from "./button";
 
 const meta: Meta<typeof Button> = {
   title: "Components/Button",

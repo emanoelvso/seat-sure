@@ -13,7 +13,7 @@ interface DatePickerBoxProps {
   onChange: (range: DateRange | undefined) => void;
 }
 
-export default function DatePickerBox({
+export function DatePickerBox({
   label,
   value,
   leftIcon,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import MainCard, { MainCardProps } from "./MainCard";
-import SubCategoriePill from "./SubCategoriePill";
+import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
 import { useState } from "react";
 
 interface EventShowcaseProps {

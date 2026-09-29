@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import SubCategoriePill from "./SubCategoriePill";
+import { SubCategoriePill } from "./sub-categorie-pill";
 
 const meta: Meta<typeof SubCategoriePill> = {
   title: "Components/SubCategoriePill",

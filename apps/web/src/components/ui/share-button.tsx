@@ -13,7 +13,7 @@ interface ShareButtonProps {
   title: string;
 }
 
-export default function ShareButton({ title }: ShareButtonProps) {
+export function ShareButton({ title }: ShareButtonProps) {
   const [feedback, setFeedback] = useState("");
 
   useEffect(() => {

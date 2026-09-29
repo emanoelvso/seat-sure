@@ -1,4 +1,4 @@
-import Carousel from "./Carousel";
+import { Carousel } from "@/components/ui/carousel";
 import FeedbackCard from "./FeedbackCard";
 
 interface Feedback {

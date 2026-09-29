@@ -1,12 +1,12 @@
 "use client";
 
-import Button from "@/components/Button";
+import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
-import PillSelect from "@/components/PillSelect";
+import { PillSelect } from "@/components/ui/pill-select";
 import PriceRangeFilter from "@/components/PriceRangeFilter";
 import SeatListingCard from "@/components/SeatListingCard";
 import SeatMap from "@/components/SeatMap";
-import SortSelect, { SortOrder } from "@/components/SortSelect";
+import { SortSelect, SortOrder } from "@/components/ui/sort-select";
 import TicketsHero from "@/components/TicketsHero";
 import { TicketDetailPanel } from "@/features/tickets/components/ticket-detail-panel";
 import {

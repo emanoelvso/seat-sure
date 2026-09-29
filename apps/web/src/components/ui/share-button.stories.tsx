@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, waitFor } from "storybook/test";
-import ShareButton from "./ShareButton";
+import { ShareButton } from "./share-button";
 
 const meta: Meta<typeof ShareButton> = {
   title: "Components/ShareButton",

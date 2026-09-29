@@ -3,8 +3,8 @@
 import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import { Popover } from "radix-ui";
 import { FormEvent, useId, useState } from "react";
-import Button from "@/components/Button";
-import { subCategoriePillVariant } from "@/components/SubCategoriePill";
+import { Button } from "@/components/ui/button";
+import { subCategoriePillVariant } from "@/components/ui/sub-categorie-pill";
 import { formatPrice } from "@/lib/utils/price";
 import { PriceRange } from "@/lib/utils/ticket-listings";
 

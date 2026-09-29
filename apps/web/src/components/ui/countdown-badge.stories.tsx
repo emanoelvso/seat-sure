@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { renderToString } from "react-dom/server";
 import { expect } from "storybook/test";
-import CountdownBadge from "./CountdownBadge";
+import { CountdownBadge } from "./countdown-badge";
 
 const hoursFromNow = (hours: number) =>
   new Date(Date.now() + hours * 3600 * 1000).toISOString();

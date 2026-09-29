@@ -1,6 +1,6 @@
 import { ChairIcon, TicketIcon } from "@solar-icons/react/outline";
 import { useId } from "react";
-import TagPill from "@/components/TagPill";
+import { TagPill } from "@/components/ui/tag-pill";
 import { formatPrice } from "@/lib/utils/price";
 import { GqlTicketType } from "@/graphql/queries/find-event-tickets";
 import { quantityLabel } from "@/lib/utils/ticket-listings";

@@ -30,7 +30,7 @@ function CarouselRow<T>({
   );
 }
 
-export default function Carousel<T>({
+export function Carousel<T>({
   row1,
   row2,
   renderItem,

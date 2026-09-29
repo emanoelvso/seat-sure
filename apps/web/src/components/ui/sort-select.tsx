@@ -13,7 +13,7 @@ interface SortSelectProps {
   onChange: (value: SortOrder) => void;
 }
 
-export default function SortSelect({ value, onChange }: SortSelectProps) {
+export function SortSelect({ value, onChange }: SortSelectProps) {
   return (
     <div className="flex items-center gap-2">
       <span aria-hidden="true" className="text-neutral-100">

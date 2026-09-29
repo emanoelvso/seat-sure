@@ -1,42 +1,46 @@
-import { AltArrowDownIcon, CheckCircleIcon } from "@solar-icons/react/outline";
+import {
+  AltArrowDownIcon,
+  CheckCircleIcon,
+  MapPointIcon,
+} from "@solar-icons/react/outline";
 import { Select } from "radix-ui";
-import { subCategoriePillVariant } from "@/components/SubCategoriePill";
 
-interface PillSelectOption {
+interface LocationOption {
   value: string;
   label: string;
 }
 
-interface PillSelectProps {
-  label: string;
+interface LocationSelectProps {
+  options: LocationOption[];
   value: string;
-  options: PillSelectOption[];
   onChange: (value: string) => void;
-  variant?: "default" | "active";
 }
 
-export default function PillSelect({
-  label,
-  value,
+export function LocationSelect({
   options,
+  value,
   onChange,
-  variant = "default",
-}: PillSelectProps) {
+}: LocationSelectProps) {
   return (
     <Select.Root value={value} onValueChange={onChange}>
       <Select.Trigger
-        aria-label={label}
-        className={`${subCategoriePillVariant({ variant, size: "sm" })} outline-none focus-visible:ring-2 focus-visible:ring-tint-400`}
+        aria-label="City"
+        className="flex cursor-pointer items-center gap-6 outline-none focus-visible:text-tint-400"
       >
-        <Select.Value />
-        <Select.Icon className="flex">
-          <AltArrowDownIcon size={16} />
+        <span className="flex items-center gap-2">
+          <MapPointIcon size={24} />
+          <span className="text-xl font-bold">
+            <Select.Value />
+          </span>
+        </span>
+        <Select.Icon>
+          <AltArrowDownIcon size={24} />
         </Select.Icon>
       </Select.Trigger>
       <Select.Portal>
         <Select.Content
           position="popper"
-          align="start"
+          align="end"
           sideOffset={8}
           className="z-50 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-neutral-500 bg-neutral-1000 shadow-lg"
         >

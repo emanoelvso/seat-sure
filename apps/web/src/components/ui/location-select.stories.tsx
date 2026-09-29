@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen } from "storybook/test";
-import LocationSelect from "./LocationSelect";
+import { LocationSelect } from "./location-select";
 
 const meta: Meta<typeof LocationSelect> = {
   title: "Components/LocationSelect",

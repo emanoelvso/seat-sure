@@ -1,6 +1,6 @@
 import { CalendarIcon, MapPointIcon } from "@solar-icons/react/outline";
 import Image from "next/image";
-import CountdownBadge from "@/components/CountdownBadge";
+import { CountdownBadge } from "@/components/ui/countdown-badge";
 
 export interface MainCardProps {
   className?: string;

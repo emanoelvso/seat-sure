@@ -13,7 +13,7 @@ import {
   TicketIcon,
   Widget3Icon,
 } from "@solar-icons/react/outline";
-import IconButton from "./IconButton";
+import { IconButton } from "@/components/ui/icon-button";
 
 export default function SearchBox() {
   return (

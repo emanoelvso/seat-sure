@@ -4,9 +4,9 @@ import {
   TicketIcon,
 } from "@solar-icons/react/outline";
 import Link from "next/link";
-import Button, { buttonVariants } from "@/components/Button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SeatMapPreview } from "@/components/SeatMap";
-import TagPill from "@/components/TagPill";
+import { TagPill } from "@/components/ui/tag-pill";
 import {
   GqlSeatMap,
   GqlTicketsEvent,

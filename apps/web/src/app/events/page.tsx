@@ -1,13 +1,13 @@
 "use client";
-import Button from "@/components/Button";
-import ComboBox from "@/components/ComboBox";
-import DatePickerBox from "@/components/DatePickerBox";
+import { Button } from "@/components/ui/button";
+import { ComboBox } from "@/components/ui/combo-box";
+import { DatePickerBox } from "@/components/ui/date-picker-box";
 import Faq from "@/components/Faq";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import MainCard from "@/components/MainCard";
-import SelectBox from "@/components/SelectBox";
-import SubCategoriePill from "@/components/SubCategoriePill";
+import { SelectBox } from "@/components/ui/select-box";
+import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
 import { useQuery } from "@apollo/client/react";
 import { WidgetOutlineIcon } from "@solar-icons/react";
 import {

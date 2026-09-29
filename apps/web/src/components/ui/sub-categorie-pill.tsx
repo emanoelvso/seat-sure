@@ -28,7 +28,7 @@ interface SubCategoriePillProps extends VariantProps<
   onClick?: () => void;
 }
 
-export default function SubCategoriePill({
+export function SubCategoriePill({
   children,
   variant,
   onClick,

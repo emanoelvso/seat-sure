@@ -7,7 +7,7 @@ import {
 } from "@solar-icons/react/outline";
 import Image from "next/image";
 import Header from "@/components/Header";
-import ShareButton from "@/components/ShareButton";
+import { ShareButton } from "@/components/ui/share-button";
 import {
   formatEventDate,
   formatEventLocation,
