@@ -1,4 +1,5 @@
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
+import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { INestApplication } from '@nestjs/common';
@@ -14,12 +15,14 @@ import { DataSource } from 'typeorm';
 describe('AppModule (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
+  const venue = venueFactory.build();
 
   beforeAll(async () => {
     const nestTestSetup = await createNestApp([AppModule]);
 
     module = nestTestSetup.module;
     app = nestTestSetup.app;
+    await testDbClient.batchInsert(Tables.Venue, [venue]);
   });
 
   beforeEach(async () => {
@@ -28,6 +31,7 @@ describe('AppModule (e2e)', () => {
 
   afterAll(async () => {
     await testDbClient(Tables.Event).del();
+    await testDbClient(Tables.Venue).where({ id: venue.id }).del();
     await testDbClient.destroy();
     const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
     if (dataSource.isInitialized) {
@@ -40,6 +44,7 @@ describe('AppModule (e2e)', () => {
     const concert = eventFactory.build({
       type: EventType.CONCERT,
       status: EventStatus.PUBLISHED,
+      venueId: venue.id,
     });
     await testDbClient.batchInsert(Tables.Event, [concert]);
 

@@ -8,6 +8,7 @@ import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { EventRepository } from '@catalogModule/persistence/repository/catalog.repository';
 import { ArtistRepository } from './repository/artist.repository';
 import { TicketTypeRepository } from './repository/ticket-type.repository';
+import { VenueRepository } from './repository/venue.repository';
 
 @Module({
   imports: [
@@ -32,7 +33,17 @@ import { TicketTypeRepository } from './repository/ticket-type.repository';
       },
     }),
   ],
-  providers: [EventRepository, ArtistRepository, TicketTypeRepository],
-  exports: [EventRepository, ArtistRepository, TicketTypeRepository],
+  providers: [
+    EventRepository,
+    ArtistRepository,
+    TicketTypeRepository,
+    VenueRepository,
+  ],
+  exports: [
+    EventRepository,
+    ArtistRepository,
+    TicketTypeRepository,
+    VenueRepository,
+  ],
 })
 export class CatalogPersistenceModule {}

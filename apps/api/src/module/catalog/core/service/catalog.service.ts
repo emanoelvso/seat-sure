@@ -16,16 +16,17 @@ import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entit
 import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
 import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
 import { EventModel } from '@catalogModule/core/model/event.model';
+import { VenueRepository } from '@catalogModule/persistence/repository/venue.repository';
+import { VenueNotFoundException } from '@catalogModule/core/exception/venue-not-found.exception';
 import { isUUID } from 'class-validator';
+import { Transactional } from 'typeorm-transactional';
 
 export interface CreateEventDto {
   type: EventType;
   name: string;
   description?: string;
   coverImage: string;
-  venue: string;
-  city: string;
-  country: string;
+  venueId: string;
   date: Date;
   startAt: Date;
   endsAt: Date;
@@ -60,10 +61,21 @@ export class CatalogService {
     private readonly eventRepository: EventRepository,
     private readonly artistRepository: ArtistRepository,
     private readonly ticketTypeRepository: TicketTypeRepository,
+    private readonly venueRepository: VenueRepository,
   ) {}
 
-  async createEvent(event: CreateEventDto): Promise<EventModel> {
-    const newEvent = new Event(event);
+  @Transactional({ connectionName: 'catalog' })
+  async createEvent({
+    venueId,
+    ...event
+  }: CreateEventDto): Promise<EventModel> {
+    const venue = await this.venueRepository.findOneById(venueId);
+
+    if (!venue) {
+      throw new VenueNotFoundException();
+    }
+
+    const newEvent = new Event({ ...event, venue });
     await this.eventRepository.save(newEvent);
     return this.toEventModel(newEvent);
   }
@@ -131,7 +143,10 @@ export class CatalogService {
     limit = 20,
     offset,
   }: FindEventsProps) {
-    const options: FindManyOptions<Event> = { take: limit + 1 };
+    const options: FindManyOptions<Event> = {
+      relations: { venue: true },
+      take: limit + 1,
+    };
 
     if (offset) {
       options.skip = offset;
@@ -142,7 +157,7 @@ export class CatalogService {
     }
 
     if (city) {
-      options.where = { ...options.where, city };
+      options.where = { ...options.where, venue: { city } };
     }
 
     if (priceRange) {
@@ -175,7 +190,7 @@ export class CatalogService {
 
     const hasMore = (events?.length || 0) > limit;
 
-    const cities = [...new Set(events?.map((e) => e.city))].sort();
+    const cities = [...new Set(events?.map((e) => e.venue.city))].sort();
 
     const page = hasMore ? events?.slice(0, limit) : events;
 
@@ -222,12 +237,9 @@ export class CatalogService {
     const eventsByCity = Array.from(
       events
         .reduce((groups, event) => {
-          const key = `${event.city}|${event.country}`;
-          const group = groups.get(key) ?? {
-            city: event.city,
-            country: event.country,
-            events: [],
-          };
+          const { city, country } = event.venue;
+          const key = `${city}|${country}`;
+          const group = groups.get(key) ?? { city, country, events: [] };
 
           group.events.push(this.toEventModel(event));
           groups.set(key, group);
@@ -288,9 +300,9 @@ export class CatalogService {
       description: event.description,
       type: event.type,
       coverImage: event.coverImage,
-      venue: event.venue,
-      city: event.city,
-      country: event.country,
+      venue: event.venue.name,
+      city: event.venue.city,
+      country: event.venue.country,
       date: event.date,
       startAt: event.startAt,
       endsAt: event.endsAt,

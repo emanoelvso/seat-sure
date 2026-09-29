@@ -1,6 +1,7 @@
 import { artistFactory } from '@catalogModule/__test__/factory/artist.factory';
 import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist.factory';
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
+import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
@@ -17,11 +18,74 @@ describe('CatalogResolver (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
 
+  // Allianz Parque and The O2 Arena differ in name, city and country, so a
+  // response can only match one of them. Tokio Marine Hall shares Allianz
+  // Parque's city, and Budweiser Gardens shares The O2 Arena's city in
+  // another country.
+  const allianzParque = venueFactory.build({
+    name: 'Allianz Parque',
+    city: 'São Paulo',
+    state: 'SP',
+    country: 'Brazil',
+  });
+  const tokioMarineHall = venueFactory.build({
+    name: 'Tokio Marine Hall',
+    city: 'São Paulo',
+    state: 'SP',
+    country: 'Brazil',
+  });
+  const jeunesseArena = venueFactory.build({
+    name: 'Jeunesse Arena',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
+    country: 'Brazil',
+  });
+  const theO2Arena = venueFactory.build({
+    name: 'The O2 Arena',
+    city: 'London',
+    state: 'England',
+    country: 'United Kingdom',
+  });
+  const budweiserGardens = venueFactory.build({
+    name: 'Budweiser Gardens',
+    city: 'London',
+    state: 'ON',
+    country: 'Canada',
+  });
+  const theColosseum = venueFactory.build({
+    name: 'The Colosseum at Caesars Palace',
+    city: 'Las Vegas',
+    state: 'NV',
+    country: 'USA',
+  });
+  const venues = [
+    allianzParque,
+    tokioMarineHall,
+    jeunesseArena,
+    theO2Arena,
+    budweiserGardens,
+    theColosseum,
+  ];
+
+  const buildEvent = (
+    overrides: Parameters<typeof eventFactory.build>[0] = {},
+  ) => eventFactory.build({ venueId: allianzParque.id, ...overrides });
+
+  const byId = <T extends { id: string }>(events: T[]) =>
+    Object.fromEntries(events.map((event) => [event.id, event]));
+
+  const venueFields = (venue: (typeof venues)[number]) => ({
+    venue: venue.name,
+    city: venue.city,
+    country: venue.country,
+  });
+
   beforeAll(async () => {
     const nestTestSetup = await createNestApp([CatalogModule]);
 
     module = nestTestSetup.module;
     app = nestTestSetup.app;
+    await testDbClient.batchInsert(Tables.Venue, venues);
   });
 
   beforeEach(async () => {
@@ -34,6 +98,12 @@ describe('CatalogResolver (e2e)', () => {
     await testDbClient(Tables.EventArtist).del();
     await testDbClient(Tables.Artist).del();
     await testDbClient(Tables.Event).del();
+    await testDbClient(Tables.Venue)
+      .whereIn(
+        'id',
+        venues.map((venue) => venue.id),
+      )
+      .del();
     await testDbClient.destroy();
     const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
     if (dataSource.isInitialized) {
@@ -43,15 +113,13 @@ describe('CatalogResolver (e2e)', () => {
   });
 
   describe('Catalog - Mutation createEvent ', () => {
-    it('creates a new event', async () => {
+    it('creates a new event at the venue of the given venueId (ALIGN-13)', async () => {
       const eventInput = {
         name: 'The Weeknd',
         description: 'After Hours Til Dawn Tour',
         coverImage:
           'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-        venue: 'Allianz Parque',
-        city: 'São Paulo',
-        country: 'Brazil',
+        venueId: allianzParque.id,
         date: '2026-10-15T03:00:00.000Z',
         startAt: '2026-10-16T00:00:00.000Z',
         endsAt: '2026-10-16T00:00:00.000Z',
@@ -71,9 +139,7 @@ describe('CatalogResolver (e2e)', () => {
                 name: "${eventInput.name}",
                 description: "${eventInput.description}",
                 coverImage: "${eventInput.coverImage}",
-                venue: "${eventInput.venue}",
-                city: "${eventInput.city}",
-                country: "${eventInput.country}",
+                venueId: "${eventInput.venueId}",
                 date: "${eventInput.date}",
                 startAt: "${eventInput.startAt}",
                 endsAt: "${eventInput.endsAt}",
@@ -126,9 +192,9 @@ describe('CatalogResolver (e2e)', () => {
       expect(description).toBe(eventInput.description);
       expect(type).toBe(eventInput.type);
       expect(coverImage).toBe(eventInput.coverImage);
-      expect(venue).toBe(eventInput.venue);
-      expect(city).toBe(eventInput.city);
-      expect(country).toBe(eventInput.country);
+      expect(venue).toBe(allianzParque.name);
+      expect(city).toBe(allianzParque.city);
+      expect(country).toBe(allianzParque.country);
       expect(date).toBe(eventInput.date);
       expect(startAt).toBe(eventInput.startAt);
       expect(endsAt).toBe(eventInput.endsAt);
@@ -136,6 +202,9 @@ describe('CatalogResolver (e2e)', () => {
       expect(status).toBe(eventInput.status);
       expect(category).toBe(eventInput.category);
       expect(price).toBe(eventInput.price);
+
+      const stored = await testDbClient(Tables.Event).where({ id }).first();
+      expect(stored.venueId).toBe(allianzParque.id);
     });
 
     it('throws error for invalid input', async () => {
@@ -144,9 +213,7 @@ describe('CatalogResolver (e2e)', () => {
         description: 'After Hours Til Dawn Tour',
         coverImage:
           'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-        venue: 'Allianz Parque',
-        city: 'São Paulo',
-        country: 'Brazil',
+        venueId: allianzParque.id,
         date: '2026-10-15T03:00:00.000Z',
         startAt: '2026-10-16T00:00:00.000Z',
         endsAt: '2026-10-16T00:00:00.000Z',
@@ -165,9 +232,7 @@ describe('CatalogResolver (e2e)', () => {
                 name: "${eventInput.name}",
                 description: "${eventInput.description}",
                 coverImage: "${eventInput.coverImage}",
-                venue: "${eventInput.venue}",
-                city: "${eventInput.city}",
-                country: "${eventInput.country}",
+                venueId: "${eventInput.venueId}",
                 date: "${eventInput.date}",
                 startAt: "${eventInput.startAt}",
                 endsAt: "${eventInput.endsAt}",
@@ -201,40 +266,88 @@ describe('CatalogResolver (e2e)', () => {
         'Expected value of type "EventInput" to include required field "price',
       );
     });
+
+    const createEventAt = (venueId: string) =>
+      request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            mutation CreateEvent($EventInput: EventInput!) {
+              createEvent(EventInput: $EventInput) {
+                id
+              }
+            }
+          `,
+          variables: {
+            EventInput: {
+              name: 'Kendrick Lamar',
+              description: 'GNX Tour',
+              coverImage:
+                'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=800',
+              venueId,
+              date: '2026-12-12T03:00:00.000Z',
+              startAt: '2026-12-13T00:00:00.000Z',
+              endsAt: '2026-12-13T02:30:00.000Z',
+              doorsOpen: '2026-12-12T22:30:00.000Z',
+              status: 'published',
+              price: 239.99,
+              category: 'Hip-Hop',
+              type: 'concert',
+            },
+          },
+        });
+
+    it('returns Venue not found and stores no event for an unknown venueId (ALIGN-14)', async () => {
+      const response = await createEventAt(
+        'b1000000-0000-4000-8000-000000000001',
+      );
+
+      expect(response.body.errors[0].message).toBe('Venue not found');
+      expect(await testDbClient(Tables.Event).select('id')).toEqual([]);
+    });
+
+    it('returns a validation error and stores no event for a venueId that is not a UUID (ALIGN-15)', async () => {
+      const response = await createEventAt('not-a-uuid');
+
+      expect(
+        response.body.errors[0].extensions.originalError.message,
+      ).toContain('venueId must be a UUID');
+      expect(await testDbClient(Tables.Event).select('id')).toEqual([]);
+    });
   });
 
   describe('Catalog - Query getHomeSections ', () => {
     it('should return home sections', async () => {
       await testDbClient.batchInsert(Tables.Event, [
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.SHOW,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.SHOW,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.SPORT,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.SPORT,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.FESTIVAL,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.FESTIVAL,
           status: EventStatus.PUBLISHED,
         }),
@@ -333,39 +446,86 @@ describe('CatalogResolver (e2e)', () => {
       expect(festivals.events.length).toBe(2);
       expect(festivals.categories.length).toBeGreaterThanOrEqual(1);
     });
+
+    it('returns each event with the name, city and country of its own venue (ALIGN-10)', async () => {
+      const atAllianzParque = buildEvent({
+        type: EventType.CONCERT,
+        status: EventStatus.PUBLISHED,
+      });
+      const atTheO2Arena = buildEvent({
+        type: EventType.CONCERT,
+        status: EventStatus.PUBLISHED,
+        venueId: theO2Arena.id,
+      });
+      await testDbClient.batchInsert(Tables.Event, [
+        atAllianzParque,
+        atTheO2Arena,
+      ]);
+
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query {
+              getHomeSections {
+                concerts {
+                  events {
+                    id
+                    venue
+                    city
+                    country
+                  }
+                }
+              }
+            }
+          `,
+        });
+
+      expect(response.body.errors).toBeUndefined();
+      expect(byId(response.body.data.getHomeSections.concerts.events)).toEqual({
+        [atAllianzParque.id!]: {
+          id: atAllianzParque.id,
+          ...venueFields(allianzParque),
+        },
+        [atTheO2Arena.id!]: {
+          id: atTheO2Arena.id,
+          ...venueFields(theO2Arena),
+        },
+      });
+    });
   });
 
   describe('Catalog - Query findEvents ', () => {
     it('should return filtered events', async () => {
       await testDbClient.batchInsert(Tables.Event, [
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
-          city: 'São Paulo',
+          venueId: allianzParque.id,
           price: 150,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
-          city: 'São Paulo',
+          venueId: allianzParque.id,
           price: 400,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
-          city: 'Rio de Janeiro',
+          venueId: jeunesseArena.id,
           price: 250,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.SHOW,
           status: EventStatus.PUBLISHED,
-          city: 'São Paulo',
+          venueId: allianzParque.id,
           price: 200,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.SPORT,
           status: EventStatus.PUBLISHED,
-          city: 'Rio de Janeiro',
+          venueId: jeunesseArena.id,
           price: 500,
         }),
       ]);
@@ -391,7 +551,7 @@ describe('CatalogResolver (e2e)', () => {
           variables: {
             FindEventsInput: {
               type: 'CONCERT',
-              city: 'São Paulo',
+              city: allianzParque.city,
               priceRange: { min: 100, max: 300 },
             },
           },
@@ -401,10 +561,122 @@ describe('CatalogResolver (e2e)', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0].type).toBe(EventType.CONCERT);
-      expect(events[0].city).toBe('São Paulo');
+      expect(events[0].city).toBe(allianzParque.city);
       expect(events[0].price).toBe(150);
-      expect(cities).toEqual(['São Paulo']);
+      expect(cities).toEqual([allianzParque.city]);
       expect(hasMore).toBe(false);
+    });
+
+    const findEvents = (FindEventsInput?: object) =>
+      request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query FindEvents($FindEventsInput: FindEventsInput) {
+              findEvents(FindEventsInput: $FindEventsInput) {
+                cities
+                hasMore
+                events {
+                  id
+                  venue
+                  city
+                  country
+                }
+              }
+            }
+          `,
+          variables: { FindEventsInput },
+        });
+
+    it('returns each event with the name, city and country of its own venue (ALIGN-10)', async () => {
+      const atAllianzParque = buildEvent({ status: EventStatus.PUBLISHED });
+      const atTheO2Arena = buildEvent({
+        status: EventStatus.PUBLISHED,
+        venueId: theO2Arena.id,
+      });
+      await testDbClient.batchInsert(Tables.Event, [
+        atAllianzParque,
+        atTheO2Arena,
+      ]);
+
+      const response = await findEvents();
+
+      expect(response.body.errors).toBeUndefined();
+      expect(byId(response.body.data.findEvents.events)).toEqual({
+        [atAllianzParque.id!]: {
+          id: atAllianzParque.id,
+          ...venueFields(allianzParque),
+        },
+        [atTheO2Arena.id!]: {
+          id: atTheO2Arena.id,
+          ...venueFields(theO2Arena),
+        },
+      });
+    });
+
+    it('filters on the city of the event venue (ALIGN-11)', async () => {
+      const atAllianzParque = buildEvent({ status: EventStatus.PUBLISHED });
+      const atTokioMarineHall = buildEvent({
+        status: EventStatus.PUBLISHED,
+        venueId: tokioMarineHall.id,
+      });
+      await testDbClient.batchInsert(Tables.Event, [
+        atAllianzParque,
+        atTokioMarineHall,
+        buildEvent({
+          status: EventStatus.PUBLISHED,
+          venueId: jeunesseArena.id,
+        }),
+        buildEvent({
+          status: EventStatus.PUBLISHED,
+          venueId: theO2Arena.id,
+        }),
+      ]);
+
+      const response = await findEvents({ city: allianzParque.city });
+
+      expect(response.body.errors).toBeUndefined();
+      const { cities, events } = response.body.data.findEvents;
+      expect(byId(events)).toEqual({
+        [atAllianzParque.id!]: {
+          id: atAllianzParque.id,
+          ...venueFields(allianzParque),
+        },
+        [atTokioMarineHall.id!]: {
+          id: atTokioMarineHall.id,
+          ...venueFields(tokioMarineHall),
+        },
+      });
+      expect(cities).toEqual([allianzParque.city]);
+    });
+
+    it('lists the sorted venue cities of the page plus the extra row read for hasMore (ALIGN-11)', async () => {
+      await testDbClient.batchInsert(Tables.Event, [
+        buildEvent({
+          status: EventStatus.PUBLISHED,
+          venueId: jeunesseArena.id,
+        }),
+        buildEvent({
+          status: EventStatus.PUBLISHED,
+          venueId: theO2Arena.id,
+        }),
+        buildEvent({
+          status: EventStatus.PUBLISHED,
+          venueId: allianzParque.id,
+        }),
+      ]);
+
+      const response = await findEvents({ limit: 2 });
+
+      expect(response.body.errors).toBeUndefined();
+      const { cities, events, hasMore } = response.body.data.findEvents;
+      expect(events).toHaveLength(2);
+      expect(hasMore).toBe(true);
+      expect(cities).toEqual([
+        theO2Arena.city,
+        jeunesseArena.city,
+        allianzParque.city,
+      ]);
     });
 
     it('throw error when input is wrong', async () => {
@@ -478,19 +750,19 @@ describe('CatalogResolver (e2e)', () => {
         slug: 'coldplay',
         stage_name: 'Coldplay',
       });
-      const upcoming = eventFactory.build({
+      const upcoming = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(1),
       });
-      const past = eventFactory.build({
+      const past = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(-1),
       });
-      const draft = eventFactory.build({
+      const draft = buildEvent({
         status: EventStatus.DRAFT,
         startAt: hoursFromNow(48),
       });
-      const otherArtistEvent = eventFactory.build({
+      const otherArtistEvent = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(48),
       });
@@ -517,19 +789,18 @@ describe('CatalogResolver (e2e)', () => {
         slug: 'adele',
         stage_name: 'Adele',
       });
-      const upcomingIn = (city: string, country: string, hours: number) =>
-        eventFactory.build({
+      const upcomingAt = (venueId: string, hours: number) =>
+        buildEvent({
           status: EventStatus.PUBLISHED,
-          city,
-          country,
+          venueId,
           startAt: hoursFromNow(hours),
         });
-      const saoPauloLater = upcomingIn('São Paulo', 'Brazil', 240);
-      const rioFirst = upcomingIn('Rio de Janeiro', 'Brazil', 120);
-      const saoPauloFirst = upcomingIn('São Paulo', 'Brazil', 48);
-      const londonCanada = upcomingIn('London', 'Canada', 72);
-      const londonUk = upcomingIn('London', 'United Kingdom', 24);
-      const rioLater = upcomingIn('Rio de Janeiro', 'Brazil', 480);
+      const saoPauloLater = upcomingAt(allianzParque.id, 240);
+      const rioFirst = upcomingAt(jeunesseArena.id, 120);
+      const saoPauloFirst = upcomingAt(allianzParque.id, 48);
+      const londonCanada = upcomingAt(budweiserGardens.id, 72);
+      const londonUk = upcomingAt(theO2Arena.id, 24);
+      const rioLater = upcomingAt(jeunesseArena.id, 480);
       const events = [
         saoPauloLater,
         rioFirst,
@@ -554,11 +825,144 @@ describe('CatalogResolver (e2e)', () => {
           }) => [group.city, group.country, group.events.map((e) => e.id)],
         ),
       ).toEqual([
-        ['London', 'United Kingdom', [londonUk.id]],
-        ['São Paulo', 'Brazil', [saoPauloFirst.id, saoPauloLater.id]],
-        ['London', 'Canada', [londonCanada.id]],
-        ['Rio de Janeiro', 'Brazil', [rioFirst.id, rioLater.id]],
+        [theO2Arena.city, theO2Arena.country, [londonUk.id]],
+        [
+          allianzParque.city,
+          allianzParque.country,
+          [saoPauloFirst.id, saoPauloLater.id],
+        ],
+        [budweiserGardens.city, budweiserGardens.country, [londonCanada.id]],
+        [jeunesseArena.city, jeunesseArena.country, [rioFirst.id, rioLater.id]],
       ]);
+    });
+
+    it('groups events at different venues of the same city and country (ALIGN-12)', async () => {
+      const artist = artistFactory.build({
+        slug: 'adele',
+        stage_name: 'Adele',
+      });
+      const atAllianzParque = buildEvent({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      const atJeunesseArena = buildEvent({
+        status: EventStatus.PUBLISHED,
+        venueId: jeunesseArena.id,
+        startAt: hoursFromNow(48),
+      });
+      const atTokioMarineHall = buildEvent({
+        status: EventStatus.PUBLISHED,
+        venueId: tokioMarineHall.id,
+        startAt: hoursFromNow(72),
+      });
+      const events = [atAllianzParque, atJeunesseArena, atTokioMarineHall];
+
+      await testDbClient.batchInsert(Tables.Artist, [artist]);
+      await testDbClient.batchInsert(Tables.Event, events);
+      await linkEvents(artist.id, events);
+
+      const response = await findArtistBySlug('adele');
+
+      expect(response.body.data.findArtistBySlug.eventsByCity).toEqual([
+        {
+          city: allianzParque.city,
+          country: allianzParque.country,
+          events: [{ id: atAllianzParque.id }, { id: atTokioMarineHall.id }],
+        },
+        {
+          city: jeunesseArena.city,
+          country: jeunesseArena.country,
+          events: [{ id: atJeunesseArena.id }],
+        },
+      ]);
+    });
+
+    it('returns each event with the name, city and country of its own venue (ALIGN-10)', async () => {
+      const artist = artistFactory.build({
+        slug: 'adele',
+        stage_name: 'Adele',
+        genres: 'soul',
+      });
+      const concert = (venueId: string, hours: number) =>
+        buildEvent({
+          type: EventType.CONCERT,
+          status: EventStatus.PUBLISHED,
+          category: 'Rock',
+          venueId,
+          startAt: hoursFromNow(hours),
+        });
+      const ownAtAllianzParque = concert(allianzParque.id, 24);
+      const ownAtTheO2Arena = concert(theO2Arena.id, 48);
+      const nearbyAtTheO2Arena = concert(theO2Arena.id, 12);
+      const nearbyAtAllianzParque = concert(allianzParque.id, 36);
+      const festivalAtTheO2Arena = buildEvent({
+        type: EventType.FESTIVAL,
+        status: EventStatus.PUBLISHED,
+        venueId: theO2Arena.id,
+        startAt: hoursFromNow(72),
+      });
+
+      await testDbClient.batchInsert(Tables.Artist, [artist]);
+      await testDbClient.batchInsert(Tables.Event, [
+        ownAtAllianzParque,
+        ownAtTheO2Arena,
+        nearbyAtTheO2Arena,
+        nearbyAtAllianzParque,
+        festivalAtTheO2Arena,
+      ]);
+      await linkEvents(artist.id, [ownAtAllianzParque, ownAtTheO2Arena]);
+
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query FindArtistBySlug($FindArtistInput: FindArtistInput!) {
+              findArtistBySlug(FindArtistInput: $FindArtistInput) {
+                eventsByCity {
+                  events {
+                    id
+                    venue
+                    city
+                    country
+                  }
+                }
+                nearbyEvents {
+                  id
+                  venue
+                  city
+                  country
+                }
+                featuredFestival {
+                  id
+                  venue
+                  city
+                  country
+                }
+              }
+            }
+          `,
+          variables: { FindArtistInput: { slug: 'adele' } },
+        });
+
+      expect(response.body.errors).toBeUndefined();
+      const { eventsByCity, nearbyEvents, featuredFestival } =
+        response.body.data.findArtistBySlug;
+      expect(eventsByCity).toEqual([
+        {
+          events: [
+            { id: ownAtAllianzParque.id, ...venueFields(allianzParque) },
+          ],
+        },
+        { events: [{ id: ownAtTheO2Arena.id, ...venueFields(theO2Arena) }] },
+      ]);
+      expect(nearbyEvents).toEqual([
+        { id: nearbyAtTheO2Arena.id, ...venueFields(theO2Arena) },
+        { id: nearbyAtAllianzParque.id, ...venueFields(allianzParque) },
+      ]);
+      expect(featuredFestival).toEqual({
+        id: festivalAtTheO2Arena.id,
+        ...venueFields(theO2Arena),
+      });
     });
 
     it('returns at most the 100 earliest upcoming events', async () => {
@@ -567,10 +971,9 @@ describe('CatalogResolver (e2e)', () => {
         stage_name: 'Adele',
       });
       const events = Array.from({ length: 101 }, (_, index) =>
-        eventFactory.build({
+        buildEvent({
           status: EventStatus.PUBLISHED,
-          city: 'Las Vegas',
-          country: 'USA',
+          venueId: theColosseum.id,
           startAt: hoursFromNow(24 * (index + 1)),
         }),
       );
@@ -590,7 +993,7 @@ describe('CatalogResolver (e2e)', () => {
 
     describe('nearbyEvents', () => {
       const upcomingConcert = (category: string, hours: number) =>
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
           category,
@@ -612,13 +1015,13 @@ describe('CatalogResolver (e2e)', () => {
         });
         const ownConcert = upcomingConcert('Pop', 1);
         const pastConcert = upcomingConcert('Pop', -1);
-        const draftConcert = eventFactory.build({
+        const draftConcert = buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.DRAFT,
           category: 'Pop',
           startAt: hoursFromNow(1),
         });
-        const upcomingShow = eventFactory.build({
+        const upcomingShow = buildEvent({
           type: EventType.SHOW,
           status: EventStatus.PUBLISHED,
           category: 'Pop',
@@ -696,7 +1099,7 @@ describe('CatalogResolver (e2e)', () => {
 
     describe('featuredFestival', () => {
       const festival = (status: EventStatus, hours: number) =>
-        eventFactory.build({
+        buildEvent({
           type: EventType.FESTIVAL,
           status,
           startAt: hoursFromNow(hours),
@@ -714,7 +1117,7 @@ describe('CatalogResolver (e2e)', () => {
         });
         const pastFestival = festival(EventStatus.PUBLISHED, -1);
         const draftFestival = festival(EventStatus.DRAFT, 1);
-        const upcomingConcert = eventFactory.build({
+        const upcomingConcert = buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
           startAt: hoursFromNow(2),
@@ -773,11 +1176,11 @@ describe('CatalogResolver (e2e)', () => {
 
       await testDbClient.batchInsert(Tables.Artist, [artist]);
       await testDbClient.batchInsert(Tables.Event, [
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
         }),
-        eventFactory.build({
+        buildEvent({
           type: EventType.CONCERT,
           status: EventStatus.PUBLISHED,
         }),

@@ -23,7 +23,11 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
     },
     options?: Partial<FindManyOptions<Event>>,
   ) {
-    return super.find({ where: { type }, ...options });
+    return super.find({
+      where: { type },
+      relations: { venue: true },
+      ...options,
+    });
   }
 
   async findUpcomingByArtist({
@@ -37,6 +41,7 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
   }) {
     return this.entityManager
       .createQueryBuilder(Event, 'event')
+      .innerJoinAndSelect('event.venue', 'venue')
       .innerJoin('event.eventArtists', 'ea')
       .where('ea.artistId = :artistId', { artistId })
       .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
@@ -59,6 +64,7 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
   }) {
     const query = this.entityManager
       .createQueryBuilder(Event, 'event')
+      .innerJoinAndSelect('event.venue', 'venue')
       .where('event.type = :type', { type: EventType.CONCERT })
       .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
       .andWhere('event.startAt >= :now', { now })
@@ -89,6 +95,7 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
   }): Promise<Event | null> {
     return this.entityManager
       .createQueryBuilder(Event, 'event')
+      .innerJoinAndSelect('event.venue', 'venue')
       .leftJoinAndSelect('event.seatMap', 'seatMap')
       .where('event.id = :id', { id })
       .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
@@ -99,6 +106,7 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
   async findNextFestival({ now }: { now: Date }) {
     return this.entityManager
       .createQueryBuilder(Event, 'event')
+      .innerJoinAndSelect('event.venue', 'venue')
       .where('event.type = :type', { type: EventType.FESTIVAL })
       .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
       .andWhere('event.startAt >= :now', { now })

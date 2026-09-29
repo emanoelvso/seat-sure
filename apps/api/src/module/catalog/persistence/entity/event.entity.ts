@@ -5,6 +5,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { EventArtist } from './event-artist.entity';
 import { SeatMap } from './seat-map.entity';
 import { TicketType } from './ticket-type.entity';
+import { Venue } from './venue.entity';
 
 @Entity('CatalogEvent')
 export class Event extends DefaultEntity<Event> {
@@ -23,14 +24,9 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'timestamptz' })
   date: Date;
 
-  @Column({ type: 'varchar' })
-  venue: string;
-
-  @Column({ type: 'varchar' })
-  city: string;
-
-  @Column({ type: 'varchar' })
-  country: string;
+  @ManyToOne(() => Venue, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'venueId' })
+  venue: Venue;
 
   @Column({ type: 'timestamptz' })
   startAt: Date;

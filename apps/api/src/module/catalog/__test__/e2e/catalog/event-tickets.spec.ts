@@ -1,6 +1,7 @@
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
+import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
 import { Migration1790600000000 } from '@catalogModule/persistence/migration/1790600000000-migration';
@@ -19,11 +20,31 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
 
+  // Two venues whose name, city and country all differ, so a response can only
+  // match one of them.
+  const venue = venueFactory.build({
+    name: 'Allianz Parque',
+    city: 'São Paulo',
+    state: 'SP',
+    country: 'Brazil',
+  });
+  const otherVenue = venueFactory.build({
+    name: 'The O2 Arena',
+    city: 'London',
+    state: 'England',
+    country: 'United Kingdom',
+  });
+
+  const buildEvent = (
+    overrides: Parameters<typeof eventFactory.build>[0] = {},
+  ) => eventFactory.build({ venueId: venue.id, ...overrides });
+
   beforeAll(async () => {
     const nestTestSetup = await createNestApp([CatalogModule]);
 
     module = nestTestSetup.module;
     app = nestTestSetup.app;
+    await testDbClient.batchInsert(Tables.Venue, [venue, otherVenue]);
   });
 
   beforeEach(async () => {
@@ -40,6 +61,9 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     await testDbClient(Tables.Artist).del();
     await testDbClient(Tables.Event).del();
     await testDbClient(Tables.SeatMap).del();
+    await testDbClient(Tables.Venue)
+      .whereIn('id', [venue.id, otherVenue.id])
+      .del();
     await testDbClient.destroy();
     const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
     if (dataSource.isInitialized) {
@@ -113,7 +137,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       });
 
   it('returns the event fields of a published event whose startAt is tomorrow (SECT-01)', async () => {
-    const event = eventFactory.build({
+    const event = buildEvent({
       type: EventType.CONCERT,
       status: EventStatus.PUBLISHED,
       startAt: hoursFromNow(24),
@@ -128,11 +152,43 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       id: event.id,
       name: event.name,
       coverImage: event.coverImage,
-      venue: event.venue,
-      city: event.city,
-      country: event.country,
+      venue: venue.name,
+      city: venue.city,
+      country: venue.country,
       startAt: event.startAt!.toISOString(),
       endsAt: event.endsAt!.toISOString(),
+    });
+  });
+
+  it('returns each event with the name, city and country of its own venue (ALIGN-10)', async () => {
+    const atVenue = buildEvent({
+      status: EventStatus.PUBLISHED,
+      startAt: hoursFromNow(24),
+    });
+    const atOtherVenue = buildEvent({
+      status: EventStatus.PUBLISHED,
+      startAt: hoursFromNow(48),
+      venueId: otherVenue.id,
+    });
+
+    await testDbClient.batchInsert(Tables.Event, [atVenue, atOtherVenue]);
+
+    const first = await findEventTickets(atVenue.id!).expect(200);
+    const second = await findEventTickets(atOtherVenue.id!).expect(200);
+
+    expect(first.body.errors).toBeUndefined();
+    expect(first.body.data.findEventTickets.event).toMatchObject({
+      id: atVenue.id,
+      venue: venue.name,
+      city: venue.city,
+      country: venue.country,
+    });
+    expect(second.body.errors).toBeUndefined();
+    expect(second.body.data.findEventTickets.event).toMatchObject({
+      id: atOtherVenue.id,
+      venue: otherVenue.name,
+      city: otherVenue.city,
+      country: otherVenue.country,
     });
   });
 
@@ -143,7 +199,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     const plusNineOffset = `${new Date(instant.getTime() + 9 * 3_600_000)
       .toISOString()
       .slice(0, 19)}+09:00`;
-    const event = eventFactory.build({ status: EventStatus.PUBLISHED });
+    const event = buildEvent({ status: EventStatus.PUBLISHED });
 
     await testDbClient.batchInsert(Tables.Event, [
       { ...event, startAt: plusNineOffset },
@@ -158,7 +214,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
   });
 
   it('returns a published event starting 1h from now (edge: later today)', async () => {
-    const event = eventFactory.build({
+    const event = buildEvent({
       status: EventStatus.PUBLISHED,
       startAt: hoursFromNow(1),
     });
@@ -184,7 +240,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
 
     it('returns event: null and seatMap: null for a draft event', async () => {
-      const draft = eventFactory.build({
+      const draft = buildEvent({
         status: EventStatus.DRAFT,
         startAt: hoursFromNow(24),
       });
@@ -199,7 +255,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
 
     it('returns event: null and seatMap: null for a canceled event', async () => {
-      const canceled = eventFactory.build({
+      const canceled = buildEvent({
         status: EventStatus.CANCELED,
         startAt: hoursFromNow(24),
       });
@@ -214,7 +270,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
 
     it('returns event: null and seatMap: null for a past published event', async () => {
-      const past = eventFactory.build({
+      const past = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(-1),
       });
@@ -244,7 +300,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
 
       const event = {
-        ...eventFactory.build({
+        ...buildEvent({
           status: EventStatus.PUBLISHED,
           startAt: hoursFromNow(24),
         }),
@@ -481,7 +537,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
 
     it('returns seatMap: null and event present for an event without a seat map (SECT-06)', async () => {
-      const event = eventFactory.build({
+      const event = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(24),
       });
@@ -557,7 +613,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       await runMigrationUp();
 
       const event = {
-        ...eventFactory.build({
+        ...buildEvent({
           status: EventStatus.PUBLISHED,
           startAt: hoursFromNow(24),
         }),
@@ -681,11 +737,11 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
 
   describe('ticketTypes', () => {
     it('returns exactly the non-deleted ticket types of the queried event, never another event’s (SECT-03)', async () => {
-      const eventA = eventFactory.build({
+      const eventA = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(24),
       });
-      const eventB = eventFactory.build({
+      const eventB = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(48),
       });
@@ -762,7 +818,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
 
     it('excludes a soft-deleted ticket type (SECT-03)', async () => {
-      const event = eventFactory.build({
+      const event = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(24),
       });
@@ -786,7 +842,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
 
     it('returns tags: [] for a ticket type with NULL tags', async () => {
-      const event = eventFactory.build({
+      const event = buildEvent({
         status: EventStatus.PUBLISHED,
         startAt: hoursFromNow(24),
       });
