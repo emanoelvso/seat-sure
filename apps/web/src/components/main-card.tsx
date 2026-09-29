@@ -13,7 +13,7 @@ export interface MainCardProps {
   category?: string | null;
 }
 
-export default function MainCard({
+export function MainCard({
   className,
   avatarUrl,
   name,

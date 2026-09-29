@@ -2,9 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import EventDateCard from "@/components/EventDateCard";
-import EventShowcase from "@/components/EventShowcase";
+import { EventShowcase } from "@/components/event-showcase";
 import FestivalBanner from "@/components/FestivalBanner";
 import { Header } from "@/components/layouts/header";
+import { PageMessage } from "@/components/layouts/page-message";
 import { LocationSelect } from "@/components/ui/location-select";
 import VenueMapCard from "@/components/VenueMapCard";
 import {
@@ -17,18 +18,7 @@ import { formatVenueAddress } from "@/lib/utils/event-format";
 import { useQuery } from "@apollo/client/react";
 import Image from "next/image";
 import Link from "next/link";
-import { ReactNode, useId, useState } from "react";
-
-function PageMessage({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <Header />
-      <div className="flex flex-col items-start gap-6 px-27 pb-25">
-        {children}
-      </div>
-    </>
-  );
-}
+import { useId, useState } from "react";
 
 export default function Artist({ slug }: { slug: string }) {
   const [selectedCity, setSelectedCity] = useState<string>();

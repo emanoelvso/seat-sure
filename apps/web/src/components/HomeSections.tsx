@@ -7,7 +7,7 @@ import {
   GetHomeSectionsData,
   GqlEvent,
 } from "@/graphql/queries/home-sections";
-import EventShowcase from "./EventShowcase";
+import { EventShowcase } from "./event-showcase";
 import SingersCarousel, { Singer } from "./SingersCarousel";
 import { toCardProps } from "@/lib/utils/card-props";
 import { env } from "@/config/env";

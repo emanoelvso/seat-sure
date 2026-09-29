@@ -5,7 +5,7 @@ import { DatePickerBox } from "@/components/ui/date-picker-box";
 import Faq from "@/components/Faq";
 import { Footer } from "@/components/layouts/footer";
 import { Header } from "@/components/layouts/header";
-import MainCard from "@/components/MainCard";
+import { MainCard } from "@/components/main-card";
 import { SelectBox } from "@/components/ui/select-box";
 import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
 import { useQuery } from "@apollo/client/react";

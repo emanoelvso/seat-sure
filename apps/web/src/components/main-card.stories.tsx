@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import MainCard from "./MainCard";
+import { MainCard } from "./main-card";
 
 const meta: Meta<typeof MainCard> = {
   title: "Components/MainCard",

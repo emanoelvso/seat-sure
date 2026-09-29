@@ -1,4 +1,4 @@
-import { MainCardProps } from "@/components/MainCard";
+import { MainCardProps } from "@/components/main-card";
 import { env } from "@/config/env";
 import { GqlEvent } from "@/graphql/queries/home-sections";
 

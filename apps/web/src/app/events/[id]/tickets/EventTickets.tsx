@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Header } from "@/components/layouts/header";
+import { PageMessage } from "@/components/layouts/page-message";
 import { PillSelect } from "@/components/ui/pill-select";
 import PriceRangeFilter from "@/components/PriceRangeFilter";
 import SeatListingCard from "@/components/SeatListingCard";
@@ -26,18 +26,7 @@ import {
 } from "@/lib/utils/ticket-listings";
 import { useQuery } from "@apollo/client/react";
 import Link from "next/link";
-import { ReactNode, useState } from "react";
-
-function PageMessage({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <Header />
-      <div className="flex flex-col items-start gap-6 px-27 pb-25">
-        {children}
-      </div>
-    </>
-  );
-}
+import { useState } from "react";
 
 interface Filters {
   quantity: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import MainCard, { MainCardProps } from "./MainCard";
+import { MainCard, MainCardProps } from "./main-card";
 import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
 import { useState } from "react";
 
@@ -11,7 +11,7 @@ interface EventShowcaseProps {
   events: MainCardProps[];
 }
 
-export default function EventShowcase({
+export function EventShowcase({
   title,
   subCategories,
   events,
