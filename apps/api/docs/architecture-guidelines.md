@@ -9,7 +9,7 @@ Where code goes and how it is named in the Seat Sure backend. For module boundar
 
 The backend is a NestJS modular monolith ([ADR-005](../../../docs/adrs/005-nestjs-as-backend-framework.md)) based on **Hexagonal** and **Clean Architecture** principles. Folder structure and file naming are enforced by `eslint-plugin-project-structure` through `.projectStructurerc.json`.
 
-- **Domain modules** map 1:1 to the bounded contexts in [`docs/architecture/bounded-contexts.md`](../../../docs/architecture/bounded-contexts.md).
+- **Domain modules** map 1:1 to the bounded contexts in [`docs/architecture/bounded-contexts.md`](../../../docs/architecture/bounded-contexts.md). How contexts and subdomains are identified: [ddd-strategic-design-theory.md](./ddd-strategic-design-theory.md) and [domain-identification-guidelines.md](./domain-identification-guidelines.md).
 - **GraphQL is the primary API** ([ADR-001](../../../docs/adrs/001-graphql-primary-api-with-rest-for-specialized-endpoints.md)). REST exists only for Stripe webhooks, uploads, and health checks.
 - **PostgreSQL + Redis** ([ADR-002](../../../docs/adrs/002-postgresql-and-redis-as-database-stack.md)), accessed through TypeORM and BullMQ.
 - **kebab-case** for every file and folder, with a suffix that states the file's purpose.
@@ -102,7 +102,13 @@ catalog/
 └── browse/               # Sub-domain
 ```
 
-Don't split a module until it has a real reason to; start with a standard domain module.
+Don't split a module until it has a real reason to; start with a standard domain module. Sub-domain modules separate operational areas (e.g. back-office admin vs public browsing), each with its own NestJS module.
+
+### Feature Folders
+
+When a domain module grows to about five services or use cases, organize it by business feature instead: `catalog/event/`, `catalog/artist/`, each with its own `core/`, `http/`, and `persistence/` layers, all registered in the single `{module}.module.ts`. Features are folders, never NestJS modules. See [feature-folders-guidelines.md](./feature-folders-guidelines.md).
+
+No module uses feature folders yet, and `.projectStructurerc.json` doesn't accept them yet (tracked in `todo.md`).
 
 ---
 
@@ -646,7 +652,7 @@ export class PaymentService {
 
 ### ❌ God Services
 
-A service that grows unrelated responsibilities (events, artists, venues, seat maps, pricing...) should be split into focused services or use cases.
+A service that grows unrelated responsibilities (events, artists, venues, seat maps, pricing...) should be split into focused services or use cases. Once a module has about five of them, group them into [feature folders](./feature-folders-guidelines.md).
 
 ---
 
@@ -655,7 +661,7 @@ A service that grows unrelated responsibilities (events, artists, venues, seat m
 Folder structure and file names are validated by `eslint-plugin-project-structure` using `.projectStructurerc.json`:
 
 ```bash
-pnpm --filter api lint:check   # also runs in the husky pre-commit hook
+pnpm --filter api lint:check   # pre-commit runs `eslint --fix` on staged files
 pnpm --filter api lint:fix
 ```
 
