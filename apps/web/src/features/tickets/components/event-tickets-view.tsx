@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { PageMessage } from "@/components/layouts/page-message";
 import { PillSelect } from "@/components/ui/pill-select";
 import { PriceRangeFilter } from "@/features/tickets/components/price-range-filter";
 import { SeatListingCard } from "@/features/tickets/components/seat-listing-card";
@@ -10,8 +8,7 @@ import { SortSelect, SortOrder } from "@/components/ui/sort-select";
 import { TicketsHero } from "@/features/tickets/components/tickets-hero";
 import { TicketDetailPanel } from "@/features/tickets/components/ticket-detail-panel";
 import {
-  FIND_EVENT_TICKETS,
-  FindEventTicketsData,
+  FindEventTickets,
   GqlTicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import {
@@ -24,8 +21,6 @@ import {
   quantityOptions,
   sortListings,
 } from "@/features/tickets/utils/ticket-listings";
-import { useQuery } from "@apollo/client/react";
-import Link from "next/link";
 import { useState } from "react";
 
 interface Filters {
@@ -37,61 +32,20 @@ function ticketsOptionLabel(quantity: number) {
   return quantity === 1 ? "1 ticket" : `${quantity} tickets`;
 }
 
-export default function EventTickets({ eventId }: { eventId: string }) {
+export function EventTicketsView({
+  eventTickets,
+}: {
+  eventTickets: FindEventTickets;
+}) {
   const [quantityChoice, setQuantityChoice] = useState<number>();
   const [priceChoice, setPriceChoice] = useState<PriceRange>();
   const [sort, setSort] = useState<SortOrder>("desc");
   const [pressedKey, setPressedKey] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
 
-  const { data, loading, error, refetch } = useQuery<FindEventTicketsData>(
-    FIND_EVENT_TICKETS,
-    {
-      variables: {
-        input: {
-          eventId,
-        },
-      },
-    },
-  );
-
-  if (loading && !data) {
-    return (
-      <PageMessage>
-        <p role="status" className="text-lg text-neutral-200">
-          Loading tickets…
-        </p>
-      </PageMessage>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageMessage>
-        <div role="alert" className="flex flex-col items-start gap-6">
-          <p className="text-2xl font-semibold">
-            We couldn&apos;t load tickets for this event.
-          </p>
-          <Button onClick={() => refetch()}>Try again</Button>
-        </div>
-      </PageMessage>
-    );
-  }
-
-  const event = data?.findEventTickets.event;
-
-  if (!event) {
-    return (
-      <PageMessage>
-        <h1 className="text-4xl font-bold">Event not found</h1>
-        <Link href="/events" className="text-primary hover:text-tint-400">
-          Browse events
-        </Link>
-      </PageMessage>
-    );
-  }
-
-  const { seatMap, ticketTypes } = data.findEventTickets;
+  // The page already called notFound() when event is null.
+  const event = eventTickets.event!;
+  const { seatMap, ticketTypes } = eventTickets;
 
   if (!seatMap) {
     return (

@@ -1,23 +1,13 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { TZDate } from "@date-fns/tz";
-import { MockedProvider } from "@apollo/client/testing/react";
-import type { MockLink } from "@apollo/client/testing";
 import { expect, screen, within } from "storybook/test";
 import { env } from "@/config/env";
 import { concentricSeatMap } from "@/testing/seat-map.fixture";
 import { zonedIso } from "@/testing/dates";
-import {
-  FIND_EVENT_TICKETS,
-  FindEventTickets,
-} from "@/features/tickets/api/find-event-tickets";
-import EventTickets from "./EventTickets";
+import { FindEventTickets } from "@/features/tickets/api/find-event-tickets";
+import { EventTicketsView } from "./event-tickets-view";
 
 const EVENT_ID = "3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c0d";
-
-const request = {
-  query: FIND_EVENT_TICKETS,
-  variables: { input: { eventId: EVENT_ID } },
-};
 
 // `days` after today at `hour:minute`, all in the configured time zone.
 const daysFromNow = (days: number, hour: number, minute = 0) => {
@@ -32,7 +22,6 @@ const daysFromNow = (days: number, hour: number, minute = 0) => {
 };
 
 const event = {
-  __typename: "Event",
   id: EVENT_ID,
   name: "Adele",
   type: "concert",
@@ -44,26 +33,7 @@ const event = {
   endsAt: daysFromNow(10, 22, 30),
 };
 
-const seatMap = {
-  __typename: "SeatMap",
-  ...concentricSeatMap,
-  stage: {
-    __typename: "SeatMapStage",
-    ...concentricSeatMap.stage,
-    shapes: concentricSeatMap.stage.shapes.map((shape) => ({
-      __typename: "SeatMapStageShape",
-      ...shape,
-    })),
-  },
-  sections: concentricSeatMap.sections.map((section) => ({
-    __typename: "SeatMapSection",
-    ...section,
-    shapes: section.shapes.map((shape) => ({
-      __typename: "SeatMapSectionShape",
-      ...shape,
-    })),
-  })),
-};
+const seatMap = concentricSeatMap;
 
 const ticketType = (
   sectionKey: string,
@@ -75,7 +45,6 @@ const ticketType = (
     tags?: string[];
   } = {},
 ) => ({
-  __typename: "TicketType",
   id: `tt-${sectionKey}`,
   sectionKey,
   name,
@@ -100,19 +69,13 @@ const ticketTypes = [B, VIP, C, A];
 
 const payload = (
   overrides: Partial<Record<keyof FindEventTickets, unknown>> = {},
-) => ({
-  request,
-  result: {
-    data: {
-      findEventTickets: {
-        __typename: "EventTickets",
-        event,
-        seatMap,
-        ticketTypes,
-        ...overrides,
-      },
-    },
-  },
+): { eventTickets: FindEventTickets } => ({
+  eventTickets: {
+    event,
+    seatMap,
+    ticketTypes,
+    ...overrides,
+  } as FindEventTickets,
 });
 
 type Canvas = ReturnType<typeof within>;
@@ -141,66 +104,19 @@ const mapPressed = (canvas: Canvas) =>
 const panelHeading = (canvas: Canvas, name: string) =>
   canvas.queryByRole("heading", { level: 2, name });
 
-const meta: Meta<typeof EventTickets> = {
+const meta: Meta<typeof EventTicketsView> = {
   title: "Pages/EventTickets",
-  component: EventTickets,
-  args: { eventId: EVENT_ID },
+  component: EventTicketsView,
+  args: payload(),
   parameters: { layout: "fullscreen" },
-  decorators: [
-    (Story, { parameters }) => (
-      <MockedProvider mocks={parameters.mocks as MockLink.MockedResponse[]}>
-        <Story />
-      </MockedProvider>
-    ),
-  ],
-} satisfies Meta<typeof EventTickets>;
+} satisfies Meta<typeof EventTicketsView>;
 
 export default meta;
 
-type Story = StoryObj<typeof EventTickets>;
-
-export const Loading: Story = {
-  parameters: { mocks: [{ request, delay: Infinity }] },
-  play: async ({ canvas }) => {
-    await expect(await canvas.findByRole("status")).toHaveTextContent(
-      "Loading tickets…",
-    );
-  },
-};
-
-export const ErrorThenRetry: Story = {
-  parameters: {
-    mocks: [{ request, error: new Error("Network down") }, payload()],
-  },
-  play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "We couldn't load tickets for this event.",
-    );
-
-    await userEvent.click(canvas.getByRole("button", { name: "Try again" }));
-
-    await expect(
-      await canvas.findByRole("heading", { level: 1, name: "Adele" }),
-    ).toBeVisible();
-  },
-};
-
-export const NotFound: Story = {
-  parameters: {
-    mocks: [payload({ event: null, seatMap: null, ticketTypes: [] })],
-  },
-  play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "Event not found" }),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole("link", { name: "Browse events" }),
-    ).toHaveAttribute("href", "/events");
-  },
-};
+type Story = StoryObj<typeof EventTicketsView>;
 
 export const NoSeatMap: Story = {
-  parameters: { mocks: [payload({ seatMap: null })] },
+  args: payload({ seatMap: null }),
   play: async ({ canvas }) => {
     await expect(
       await canvas.findByRole("heading", { level: 1, name: "Adele" }),
@@ -218,7 +134,7 @@ export const NoSeatMap: Story = {
 };
 
 export const Default: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas }) => {
     await canvas.findByRole("heading", { level: 1, name: "Adele" });
 
@@ -247,7 +163,7 @@ export const Default: Story = {
 // place of the listings column and doesn't press its map section (replaces
 // SECT-12, where the card and its map section were pressed).
 export const SelectFromCard: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole("heading", { level: 1, name: "Adele" });
 
@@ -276,7 +192,7 @@ export const SelectFromCard: Story = {
 // listings and leaves the hero alone (replaces SECT-13, where it selected the
 // ticket type). Pointer and keyboard paths, as before.
 export const SelectFromMap: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole("heading", { level: 1, name: "Adele" });
     const map = seatMapGroup(canvas);
@@ -319,7 +235,7 @@ const LAWN = ticketType("lawn", "Lawn", 15000);
 // map highlights nothing because Lawn has no map section (replaces SECT-12,
 // where the Lawn card was pressed).
 export const DisabledSection: Story = {
-  parameters: { mocks: [payload({ ticketTypes: [VIP, A, B, LAWN] })] },
+  args: payload({ ticketTypes: [VIP, A, B, LAWN] }),
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole("heading", { level: 1, name: "Adele" });
     const map = seatMapGroup(canvas);
@@ -349,7 +265,7 @@ export const DisabledSection: Story = {
 };
 
 export const SingleListing: Story = {
-  parameters: { mocks: [payload({ ticketTypes: [B] })] },
+  args: payload({ ticketTypes: [B] }),
   play: async ({ canvas }) => {
     await expect(await canvas.findByText("1 Listing")).toBeVisible();
     await expect(cardTitles(canvas)).toEqual(["Section B"]);
@@ -386,7 +302,7 @@ const loaded = (canvas: Canvas) =>
   canvas.findByRole("heading", { level: 1, name: "Adele" });
 
 export const QuantityOptions: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
 
@@ -407,7 +323,7 @@ export const QuantityOptions: Story = {
 };
 
 export const QuantityFilter: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas } = context;
     await loaded(canvas);
@@ -435,7 +351,7 @@ export const QuantityFilter: Story = {
 };
 
 export const PriceFilter: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas } = context;
     await loaded(canvas);
@@ -454,7 +370,7 @@ export const PriceFilter: Story = {
 };
 
 export const PriceInvalid: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas } = context;
     await loaded(canvas);
@@ -478,7 +394,7 @@ export const PriceInvalid: Story = {
 };
 
 export const Sort: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
 
@@ -504,7 +420,7 @@ export const Sort: Story = {
 };
 
 export const NoMatches: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas } = context;
     await loaded(canvas);
@@ -522,7 +438,7 @@ export const NoMatches: Story = {
 // Extended for SECT-30 through the detail panel (STAD-22): the open panel
 // closes when the quantity hides its ticket type. Original assertions kept.
 export const FilterClearsSelection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas, userEvent } = context;
     await loaded(canvas);
@@ -562,7 +478,7 @@ export const FilterClearsSelection: Story = {
 // Extended for SECT-30 through the detail panel (STAD-22): the open panel
 // closes when the price range hides its ticket type. Original assertions kept.
 export const PriceFilterClearsSelection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas, userEvent } = context;
     await loaded(canvas);
@@ -600,7 +516,7 @@ export const PriceFilterClearsSelection: Story = {
 };
 
 export const NoTicketTypes: Story = {
-  parameters: { mocks: [payload({ ticketTypes: [] })] },
+  args: payload({ ticketTypes: [] }),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
 
@@ -634,7 +550,7 @@ const mapSection = (canvas: Canvas, name: string) =>
   seatMapGroup(canvas).getByRole("button", { name });
 
 export const UnpressSection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
     const sectionB = mapSection(canvas, "Section B");
@@ -651,7 +567,7 @@ export const UnpressSection: Story = {
 };
 
 export const NarrowingKeepsSectionsEnabled: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
 
@@ -676,7 +592,7 @@ export const NarrowingKeepsSectionsEnabled: Story = {
 };
 
 export const CardKeepsPressedSection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
 
@@ -697,7 +613,7 @@ export const CardKeepsPressedSection: Story = {
 };
 
 export const MapPressKeepsOrClearsSelection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
     const sectionA = mapSection(canvas, "Section A");
@@ -744,7 +660,7 @@ export const MapPressKeepsOrClearsSelection: Story = {
 };
 
 export const QuantityClearsPressedSection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas, userEvent } = context;
     await loaded(canvas);
@@ -777,7 +693,7 @@ export const QuantityClearsPressedSection: Story = {
 };
 
 export const PriceClearsPressedSection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas, userEvent } = context;
     await loaded(canvas);
@@ -811,7 +727,7 @@ export const PriceClearsPressedSection: Story = {
 
 // Lawn has no map shape, and C has no ticket type (disabled).
 export const NarrowingEdgeCases: Story = {
-  parameters: { mocks: [payload({ ticketTypes: [VIP, A, B, LAWN] })] },
+  args: payload({ ticketTypes: [VIP, A, B, LAWN] }),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
     const withLawn = ["Section VIP", "Section A", "Section B", "Section Lawn"];
@@ -837,7 +753,7 @@ export const NarrowingEdgeCases: Story = {
 };
 
 export const SortKeepsPressedSection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
     const sectionB = mapSection(canvas, "Section B");
@@ -867,7 +783,7 @@ export const SortKeepsPressedSection: Story = {
 };
 
 export const MapHoverShowsPrice: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
     const shape = (name: string) =>
@@ -894,7 +810,7 @@ export const MapHoverShowsPrice: Story = {
 };
 
 export const ListingsWithoutSelection: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas }) => {
     await loaded(canvas);
 
@@ -910,7 +826,7 @@ export const ListingsWithoutSelection: Story = {
 };
 
 export const BackToListings: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas, userEvent } = context;
     await loaded(canvas);
@@ -955,7 +871,7 @@ export const BackToListings: Story = {
 };
 
 export const PanelFollowsQuantity: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async (context) => {
     const { canvas, userEvent } = context;
     await loaded(canvas);
