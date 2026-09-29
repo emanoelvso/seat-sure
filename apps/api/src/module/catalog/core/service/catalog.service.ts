@@ -15,6 +15,7 @@ import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
 import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
 import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
+import { EventModel } from '@catalogModule/core/model/event.model';
 import { isUUID } from 'class-validator';
 
 export interface CreateEventDto {
@@ -61,10 +62,10 @@ export class CatalogService {
     private readonly ticketTypeRepository: TicketTypeRepository,
   ) {}
 
-  async createEvent(event: CreateEventDto): Promise<Event> {
+  async createEvent(event: CreateEventDto): Promise<EventModel> {
     const newEvent = new Event(event);
     await this.eventRepository.save(newEvent);
-    return newEvent;
+    return this.toEventModel(newEvent);
   }
 
   async getHomeSections() {
@@ -87,7 +88,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: shows,
+        events: shows?.map((event) => this.toEventModel(event)),
       },
       concerts: {
         categories: [
@@ -97,7 +98,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: concerts,
+        events: concerts?.map((event) => this.toEventModel(event)),
       },
       sports: {
         categories: [
@@ -107,7 +108,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: sports,
+        events: sports?.map((event) => this.toEventModel(event)),
       },
       festivals: {
         categories: [
@@ -117,7 +118,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: festivals,
+        events: festivals?.map((event) => this.toEventModel(event)),
       },
     };
   }
@@ -176,9 +177,11 @@ export class CatalogService {
 
     const cities = [...new Set(events?.map((e) => e.city))].sort();
 
+    const page = hasMore ? events?.slice(0, limit) : events;
+
     return {
       cities,
-      events: hasMore ? events?.slice(0, limit) : events,
+      events: page?.map((event) => this.toEventModel(event)),
       hasMore,
     };
   }
@@ -226,10 +229,10 @@ export class CatalogService {
             events: [],
           };
 
-          group.events.push(event);
+          group.events.push(this.toEventModel(event));
           groups.set(key, group);
           return groups;
-        }, new Map<string, { city: string; country: string; events: typeof events }>())
+        }, new Map<string, { city: string; country: string; events: EventModel[] }>())
         .values(),
     );
 
@@ -240,8 +243,10 @@ export class CatalogService {
         cover: artist?.cover_image_url,
       },
       eventsByCity,
-      nearbyEvents,
-      featuredFestival,
+      nearbyEvents: nearbyEvents.map((event) => this.toEventModel(event)),
+      featuredFestival: featuredFestival
+        ? this.toEventModel(featuredFestival)
+        : null,
     };
   }
 
@@ -268,11 +273,32 @@ export class CatalogService {
     const ticketTypes = await this.ticketTypeRepository.findByEvent(event.id);
 
     return {
-      event,
+      event: this.toEventModel(event),
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
       ticketTypes: ticketTypes.map((ticketType) =>
         this.mapTicketType(ticketType),
       ),
+    };
+  }
+
+  private toEventModel(event: Event): EventModel {
+    return {
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      type: event.type,
+      coverImage: event.coverImage,
+      venue: event.venue,
+      city: event.city,
+      country: event.country,
+      date: event.date,
+      startAt: event.startAt,
+      endsAt: event.endsAt,
+      doorsOpen: event.doorsOpen,
+      status: event.status,
+      category: event.category,
+      price: event.price,
+      tags: event.tags,
     };
   }
 
