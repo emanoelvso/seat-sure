@@ -136,6 +136,27 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     });
   });
 
+  it('returns a startAt written with a +09:00 offset as the same instant in UTC (ALIGN-27)', async () => {
+    const instant = new Date(
+      Math.floor(hoursFromNow(48).getTime() / 1000) * 1000,
+    );
+    const plusNineOffset = `${new Date(instant.getTime() + 9 * 3_600_000)
+      .toISOString()
+      .slice(0, 19)}+09:00`;
+    const event = eventFactory.build({ status: EventStatus.PUBLISHED });
+
+    await testDbClient.batchInsert(Tables.Event, [
+      { ...event, startAt: plusNineOffset },
+    ]);
+
+    const response = await findEventTickets(event.id!).expect(200);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.findEventTickets.event.startAt).toBe(
+      instant.toISOString(),
+    );
+  });
+
   it('returns a published event starting 1h from now (edge: later today)', async () => {
     const event = eventFactory.build({
       status: EventStatus.PUBLISHED,

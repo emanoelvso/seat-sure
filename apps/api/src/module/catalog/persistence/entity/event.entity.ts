@@ -20,7 +20,7 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'varchar' })
   coverImage: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   date: Date;
 
   @Column({ type: 'varchar' })
@@ -32,13 +32,13 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'varchar' })
   country: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   startAt: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   endsAt: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   doorsOpen: Date;
 
   @Column({ type: 'enum', enum: EventStatus })
