@@ -1,10 +1,10 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect } from "storybook/test";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 import { zonedIso } from "@/testing/dates";
 import { FestivalBanner } from "./festival-banner";
 
-const festival: GqlEvent = {
+const festival: EventSummary = {
   id: "f1",
   name: "Music Festival",
   description: "Mehdi Lorestani with DJ Hamed",

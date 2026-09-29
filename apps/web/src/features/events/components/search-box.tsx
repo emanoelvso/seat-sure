@@ -15,7 +15,7 @@ import {
 } from "@solar-icons/react/outline";
 import { IconButton } from "@/components/ui/icon-button";
 
-export default function SearchBox() {
+export function SearchBox() {
   return (
     <>
       <div className="bg-neutral-800/80 py-7 px-14 rounded-2xl border border-neutral-500">

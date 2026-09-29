@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 
 const ART = "/artist/festival-banner";
 
@@ -14,7 +14,7 @@ const equalizers = [
 const cornerGlow = "drop-shadow-[0_0_3px_var(--color-primary)]";
 
 interface FestivalBannerProps {
-  event: GqlEvent;
+  event: EventSummary;
 }
 
 export function FestivalBanner({ event }: FestivalBannerProps) {

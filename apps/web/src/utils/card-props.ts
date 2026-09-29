@@ -1,8 +1,8 @@
 import { MainCardProps } from "@/components/main-card";
 import { env } from "@/config/env";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 
-export function toCardProps(events: GqlEvent[]): MainCardProps[] {
+export function toCardProps(events: EventSummary[]): MainCardProps[] {
   return events.map((event) => ({
     avatarUrl: event.coverImage,
     name: event.name,

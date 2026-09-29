@@ -1,10 +1,10 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 import { zonedIso } from "@/testing/dates";
 import { EventDateCard } from "./event-date-card";
 
-const event: GqlEvent = {
+const event: EventSummary = {
   id: "e1",
   name: "Adele",
   description: "Weekends with Adele",

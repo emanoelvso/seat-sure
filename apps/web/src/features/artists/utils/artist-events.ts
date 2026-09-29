@@ -1,10 +1,10 @@
 import { addMonths } from "date-fns";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 
 interface CityEvents {
   city: string;
   country: string;
-  events?: GqlEvent[] | null;
+  events?: EventSummary[] | null;
 }
 
 export function cityKey({ city, country }: { city: string; country: string }) {

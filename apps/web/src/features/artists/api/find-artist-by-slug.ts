@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 
 export const FIND_ARTIST_BY_SLUG = gql`
   query FindArtistBySlug($input: FindArtistInput!) {
@@ -76,12 +76,12 @@ interface Artist {
 export interface EventsByCity {
   city: string;
   country: string;
-  events?: GqlEvent[] | null;
+  events?: EventSummary[] | null;
 }
 
 export interface FindArtistBySlug {
   artist?: Artist | null;
   eventsByCity?: EventsByCity[] | null;
-  nearbyEvents?: GqlEvent[] | null;
-  featuredFestival?: GqlEvent | null;
+  nearbyEvents?: EventSummary[] | null;
+  featuredFestival?: EventSummary | null;
 }

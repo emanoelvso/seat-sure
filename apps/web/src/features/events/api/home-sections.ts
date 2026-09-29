@@ -1,4 +1,5 @@
 import { gql } from "@apollo/client";
+import { EventSummary } from "@/types/api";
 
 export const GET_HOME_SECTIONS = gql`
   query GetHomeSections {
@@ -75,39 +76,23 @@ export const GET_HOME_SECTIONS = gql`
   }
 `;
 
-export interface GqlEvent {
-  id: string;
-  name: string;
-  description?: string;
-  coverImage: string;
-  venue: string;
-  city: string;
-  country: string;
-  date: string;
-  startAt: string;
-  status: string;
-  price: number;
-  category: string;
-  tags?: string[];
-}
-
 export interface GetHomeSectionsData {
   getHomeSections: {
     concerts: {
       categories?: string[] | null;
-      events?: GqlEvent[] | null;
+      events?: EventSummary[] | null;
     };
     shows: {
       categories?: string[] | null;
-      events?: GqlEvent[] | null;
+      events?: EventSummary[] | null;
     };
     sports: {
       categories?: string[] | null;
-      events?: GqlEvent[] | null;
+      events?: EventSummary[] | null;
     };
     festivals: {
       categories?: string[] | null;
-      events?: GqlEvent[] | null;
+      events?: EventSummary[] | null;
     };
   };
 }

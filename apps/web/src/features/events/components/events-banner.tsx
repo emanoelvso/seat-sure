@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
-export default function EventsBanner() {
+export function EventsBanner() {
   return (
     <div className="mt-32 relative w-full h-[336px] rounded-2xl overflow-hidden">
       <Image className="object-cover" src={"/artists.png"} alt="Avatar" fill />

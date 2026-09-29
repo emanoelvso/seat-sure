@@ -8,7 +8,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { ShareButton } from "@/components/ui/share-button";
 import { TagPill } from "@/components/ui/tag-pill";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 import {
   formatEventDate,
   formatEventLocation,
@@ -16,7 +16,7 @@ import {
 } from "@/utils/event-format";
 
 interface EventDateCardProps {
-  event: GqlEvent;
+  event: EventSummary;
   shareTitle: string;
 }
 

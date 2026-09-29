@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GqlEvent } from "@/graphql/queries/home-sections";
+import { EventSummary } from "@/types/api";
 import { cityKey, splitArtistEvents } from "@/features/artists/utils/artist-events";
 
 const now = new Date(2026, 8, 26, 12, 0);
@@ -11,15 +11,15 @@ const event = (id: string, city: string, country: string, startAt: Date) =>
     country,
     venue: `${city} Arena`,
     startAt: startAt.toISOString(),
-  }) as GqlEvent;
+  }) as EventSummary;
 
-const group = (city: string, country: string, events: GqlEvent[]) => ({
+const group = (city: string, country: string, events: EventSummary[]) => ({
   city,
   country,
   events,
 });
 
-const ids = (events: GqlEvent[]) => events.map((e) => e.id);
+const ids = (events: EventSummary[]) => events.map((e) => e.id);
 
 describe("splitArtistEvents", () => {
   const lasVegas = group("Las Vegas", "USA", [

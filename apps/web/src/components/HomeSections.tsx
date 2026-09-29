@@ -1,20 +1,20 @@
 "use client";
+// HomeSections is deleted in T19, when app/page.tsx composes the sections.
+/* eslint-disable import/no-restricted-paths */
 
 import { TZDate } from "@date-fns/tz";
 import { useQuery } from "@apollo/client/react";
 import {
   GET_HOME_SECTIONS,
   GetHomeSectionsData,
-  GqlEvent,
-} from "@/graphql/queries/home-sections";
+} from "@/features/events/api/home-sections";
+import { EventSummary } from "@/types/api";
 import { EventShowcase } from "./event-showcase";
-// HomeSections is deleted in T19, when app/page.tsx composes TopSingers.
-// eslint-disable-next-line import/no-restricted-paths
 import { SingersCarousel, Singer } from "@/features/artists/components/singers-carousel";
 import { toCardProps } from "@/utils/card-props";
 import { env } from "@/config/env";
 
-function toSingerProps(events: GqlEvent[]): Singer[] {
+function toSingerProps(events: EventSummary[]): Singer[] {
   return events.map((c) => {
     const date = new TZDate(c.date, env.timeZone);
 

@@ -5,7 +5,7 @@ import { Header } from "@/components/layouts/header";
 import { InvestimentIcon } from "@/components/icons/investiment-icon";
 import { SmartDealIcon } from "@/components/icons/smart-deal-icon";
 import { WatchIcon } from "@/components/icons/watch-icon";
-import SearchBox from "@/components/SearchBox";
+import { SearchBox } from "@/features/events/components/search-box";
 import { Faq } from "@/features/faq/components/faq";
 
 export default function Home() {

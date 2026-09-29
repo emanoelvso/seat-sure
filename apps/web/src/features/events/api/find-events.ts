@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { GqlEvent } from "./home-sections";
+import { EventSummary } from "@/types/api";
 
 export const FIND_EVENTS = gql`
   query findEvents($input: FindEventsInput) {
@@ -31,6 +31,6 @@ export interface FindEventsData {
 
 interface FindEvents {
   cities: string[];
-  events?: GqlEvent[] | null;
+  events?: EventSummary[] | null;
   hasMore: boolean;
 }

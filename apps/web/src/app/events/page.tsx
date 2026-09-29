@@ -18,8 +18,8 @@ import {
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import { formatDateLabel } from "@/utils/format-date-label";
-import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
-import EventsBanner from "@/components/EventsBanner";
+import { FIND_EVENTS, FindEventsData } from "@/features/events/api/find-events";
+import { EventsBanner } from "@/features/events/components/events-banner";
 import { toCardProps } from "@/utils/card-props";
 
 type EventType = "CONCERT" | "SHOW" | "SPORT" | "FESTIVAL";
