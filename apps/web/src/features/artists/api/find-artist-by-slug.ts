@@ -1,7 +1,13 @@
-import { gql } from "@apollo/client";
-import { EventSummary } from "@/types/api";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type {
+  FindArtistBySlugQuery,
+  FindArtistBySlugQueryVariables,
+} from "@/types/__generated__/graphql";
 
-export const FIND_ARTIST_BY_SLUG = gql`
+export const FIND_ARTIST_BY_SLUG: TypedDocumentNode<
+  FindArtistBySlugQuery,
+  FindArtistBySlugQueryVariables
+> = gql`
   query FindArtistBySlug($input: FindArtistInput!) {
     findArtistBySlug(FindArtistInput: $input) {
       artist {
@@ -63,25 +69,4 @@ export const FIND_ARTIST_BY_SLUG = gql`
   }
 `;
 
-export interface FindArtistBySlugData {
-  findArtistBySlug: FindArtistBySlug;
-}
-
-interface Artist {
-  name: string;
-  cover: string;
-  bio: string;
-}
-
-export interface EventsByCity {
-  city: string;
-  country: string;
-  events?: EventSummary[] | null;
-}
-
-export interface FindArtistBySlug {
-  artist?: Artist | null;
-  eventsByCity?: EventsByCity[] | null;
-  nearbyEvents?: EventSummary[] | null;
-  featuredFestival?: EventSummary | null;
-}
+export type FindArtistBySlug = FindArtistBySlugQuery["findArtistBySlug"];

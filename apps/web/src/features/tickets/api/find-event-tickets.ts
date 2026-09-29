@@ -1,6 +1,13 @@
-import { gql } from "@apollo/client";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type {
+  FindEventTicketsQuery,
+  FindEventTicketsQueryVariables,
+} from "@/types/__generated__/graphql";
 
-export const FIND_EVENT_TICKETS = gql`
+export const FIND_EVENT_TICKETS: TypedDocumentNode<
+  FindEventTicketsQuery,
+  FindEventTicketsQueryVariables
+> = gql`
   query FindEventTickets($input: FindEventTicketsInput!) {
     findEventTickets(FindEventTicketsInput: $input) {
       event {
@@ -56,72 +63,8 @@ export const FIND_EVENT_TICKETS = gql`
   }
 `;
 
-export interface GqlTicketsEvent {
-  id: string;
-  name: string;
-  type: string;
-  coverImage: string;
-  venue: string;
-  city: string;
-  country: string;
-  startAt: string;
-  endsAt: string;
-}
-
-export interface GqlSeatMapStageShape {
-  path: string;
-  color: string;
-}
-
-export interface GqlSeatMapStage {
-  label: string | null;
-  labelX: number | null;
-  labelY: number | null;
-  shapes: GqlSeatMapStageShape[];
-}
-
-export interface GqlSeatMapSectionShape {
-  path: string;
-  labelX: number;
-  labelY: number;
-  labelRotation: number;
-}
-
-export interface GqlSeatMapSection {
-  key: string;
-  label: string;
-  color: string;
-  shapes: GqlSeatMapSectionShape[];
-}
-
-export interface GqlSeatMap {
-  id: string;
-  name: string;
-  viewBoxWidth: number;
-  viewBoxHeight: number;
-  labelSize: number;
-  labelWeight: number;
-  stage: GqlSeatMapStage;
-  sections: GqlSeatMapSection[];
-}
-
-export interface GqlTicketType {
-  id: string;
-  sectionKey: string;
-  name: string;
-  priceCents: number;
-  currency: string;
-  seatsAvailable: number;
-  maxPerOrder: number;
-  tags: string[];
-}
-
-export interface FindEventTickets {
-  event: GqlTicketsEvent | null;
-  seatMap: GqlSeatMap | null;
-  ticketTypes: GqlTicketType[];
-}
-
-export interface FindEventTicketsData {
-  findEventTickets: FindEventTickets;
-}
+export type FindEventTickets = FindEventTicketsQuery["findEventTickets"];
+export type TicketsEvent = NonNullable<FindEventTickets["event"]>;
+export type SeatMapLayout = NonNullable<FindEventTickets["seatMap"]>;
+export type SeatMapSection = SeatMapLayout["sections"][number];
+export type TicketType = FindEventTickets["ticketTypes"][number];

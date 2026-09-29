@@ -2,11 +2,11 @@ import { ChairIcon, TicketIcon } from "@solar-icons/react/outline";
 import { useId } from "react";
 import { TagPill } from "@/components/ui/tag-pill";
 import { formatPrice } from "@/features/tickets/utils/price";
-import { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
+import { TicketType } from "@/features/tickets/api/find-event-tickets";
 import { quantityLabel } from "@/features/tickets/utils/ticket-listings";
 
 interface SeatListingCardProps {
-  ticketType: GqlTicketType;
+  ticketType: TicketType;
   quantity: number;
   selected: boolean;
   onSelect: () => void;

@@ -27,7 +27,7 @@ export default async function EventsPage({
     <>
       <Header />
       <main>
-        <EventsFilters cities={cities} />
+        <EventsFilters cities={cities ?? []} />
         <EventsList
           events={events ?? []}
           hasMore={hasMore}

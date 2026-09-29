@@ -19,7 +19,6 @@ const event = (
   country: "USA",
   date: zonedIso(2026, 10, day),
   startAt: zonedIso(2026, 10, day, 20),
-  status: "published",
   price: 199,
   category: "Pop",
 });

@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { graphqlServerFetch } from "@/lib/graphql-server";
 import { getHomeSections } from "@/features/events/api/get-home-sections";
-import {
-  GET_HOME_SECTIONS,
-  GetHomeSectionsData,
-} from "@/features/events/api/home-sections";
+import { GET_HOME_SECTIONS } from "@/features/events/api/home-sections";
+import type { GetHomeSectionsQuery } from "@/types/__generated__/graphql";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/graphql-server");
@@ -21,7 +19,7 @@ describe("getHomeSections", () => {
     };
     mockedFetch.mockResolvedValueOnce({
       getHomeSections: sections,
-    } as unknown as GetHomeSectionsData);
+    } as unknown as GetHomeSectionsQuery);
 
     const result = await getHomeSections();
 

@@ -1,9 +1,10 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
-import { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
+import { TicketType } from "@/features/tickets/api/find-event-tickets";
 import { SeatListingCard } from "./seat-listing-card";
 
-const vip: GqlTicketType = {
+const vip: TicketType = {
+  __typename: "TicketType",
   id: "tt-vip",
   sectionKey: "vip",
   name: "VIP",

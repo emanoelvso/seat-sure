@@ -14,7 +14,6 @@ const event: EventSummary = {
   country: "USA",
   date: zonedIso(2026, 10, 6),
   startAt: zonedIso(2026, 10, 6, 20, 0),
-  status: "published",
   price: 449.99,
   category: "Pop",
   tags: ["Popular", "Best Seller"],

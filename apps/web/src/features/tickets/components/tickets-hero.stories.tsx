@@ -1,8 +1,8 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn } from "storybook/test";
 import {
-  GqlTicketsEvent,
-  GqlTicketType,
+  TicketsEvent,
+  TicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import { zonedIso } from "@/testing/dates";
 import { TicketsHero } from "./tickets-hero";
@@ -15,7 +15,8 @@ const imageSource = (img: Element | null) => {
   return url.searchParams.get("url") ?? url.pathname;
 };
 
-const event: GqlTicketsEvent = {
+const event: TicketsEvent = {
+  __typename: "Event",
   id: "e1",
   name: "Adele",
   type: "concert",
@@ -27,7 +28,8 @@ const event: GqlTicketsEvent = {
   endsAt: zonedIso(2026, 2, 6, 22, 30),
 };
 
-const sectionB: GqlTicketType = {
+const sectionB: TicketType = {
+  __typename: "TicketType",
   id: "tt-b",
   sectionKey: "b",
   name: "B",

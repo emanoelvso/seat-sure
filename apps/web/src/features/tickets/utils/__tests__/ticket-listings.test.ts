@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
+import type { TicketType } from "@/features/tickets/api/find-event-tickets";
 import {
   defaultQuantity,
   filterListings,
@@ -12,7 +12,8 @@ import {
   sortListings,
 } from "@/features/tickets/utils/ticket-listings";
 
-const ticketType = (overrides: Partial<GqlTicketType>): GqlTicketType => ({
+const ticketType = (overrides: Partial<TicketType>): TicketType => ({
+  __typename: "TicketType",
   id: overrides.sectionKey ?? "vip",
   sectionKey: "vip",
   name: "VIP",

@@ -1,7 +1,13 @@
-import { gql } from "@apollo/client";
-import { EventSummary } from "@/types/api";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type {
+  GetHomeSectionsQuery,
+  GetHomeSectionsQueryVariables,
+} from "@/types/__generated__/graphql";
 
-export const GET_HOME_SECTIONS = gql`
+export const GET_HOME_SECTIONS: TypedDocumentNode<
+  GetHomeSectionsQuery,
+  GetHomeSectionsQueryVariables
+> = gql`
   query GetHomeSections {
     getHomeSections {
       concerts {
@@ -75,24 +81,3 @@ export const GET_HOME_SECTIONS = gql`
     }
   }
 `;
-
-export interface GetHomeSectionsData {
-  getHomeSections: {
-    concerts: {
-      categories?: string[] | null;
-      events?: EventSummary[] | null;
-    };
-    shows: {
-      categories?: string[] | null;
-      events?: EventSummary[] | null;
-    };
-    sports: {
-      categories?: string[] | null;
-      events?: EventSummary[] | null;
-    };
-    festivals: {
-      categories?: string[] | null;
-      events?: EventSummary[] | null;
-    };
-  };
-}

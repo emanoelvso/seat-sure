@@ -8,9 +8,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { SeatMapPreview } from "@/features/tickets/components/seat-map";
 import { TagPill } from "@/components/ui/tag-pill";
 import {
-  GqlSeatMap,
-  GqlTicketsEvent,
-  GqlTicketType,
+  SeatMapLayout,
+  TicketsEvent,
+  TicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import {
   formatEventDate,
@@ -19,10 +19,10 @@ import {
 import { formatPrice } from "@/features/tickets/utils/price";
 
 interface TicketDetailPanelProps {
-  event: GqlTicketsEvent;
-  ticketType: GqlTicketType;
+  event: TicketsEvent;
+  ticketType: TicketType;
   quantity: number;
-  seatMap: GqlSeatMap;
+  seatMap: SeatMapLayout;
   onBack: () => void;
 }
 

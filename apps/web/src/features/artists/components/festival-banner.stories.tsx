@@ -14,7 +14,6 @@ const festival: EventSummary = {
   country: "USA",
   date: zonedIso(2026, 10, 20),
   startAt: zonedIso(2026, 10, 20, 18, 0),
-  status: "published",
   price: 199,
   category: "Electronic",
 };

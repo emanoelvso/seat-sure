@@ -3,19 +3,19 @@
 import { CupIcon } from "@solar-icons/react/outline";
 import { KeyboardEvent, useId, useState } from "react";
 import {
-  GqlSeatMap,
-  GqlSeatMapSection,
-  GqlTicketType,
+  SeatMapLayout,
+  SeatMapSection,
+  TicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import { formatPrice } from "@/features/tickets/utils/price";
 
 interface SeatMapProps {
-  layout: GqlSeatMap;
+  layout: SeatMapLayout;
   enabledKeys: string[];
   selectedKey?: string;
   onSelect: (key: string) => void;
   /** Ticket type shown in each section's tooltip, by section key. */
-  offers?: Record<string, GqlTicketType>;
+  offers?: Record<string, TicketType>;
 }
 
 interface ShapeRef {
@@ -23,7 +23,7 @@ interface ShapeRef {
   shapeIndex: number;
 }
 
-function Stage({ layout }: { layout: GqlSeatMap }) {
+function Stage({ layout }: { layout: SeatMapLayout }) {
   const { stage } = layout;
 
   return (
@@ -55,8 +55,8 @@ function SectionShapes({
   pathClassName,
   onShapeEnter,
 }: {
-  layout: GqlSeatMap;
-  section: GqlSeatMapSection;
+  layout: SeatMapLayout;
+  section: SeatMapSection;
   fill: string;
   pathClassName?: string;
   onShapeEnter?: (shapeIndex: number) => void;
@@ -199,7 +199,7 @@ export function SeatMap({
 }
 
 interface SeatMapPreviewProps {
-  layout: GqlSeatMap;
+  layout: SeatMapLayout;
   highlightKey?: string;
 }
 

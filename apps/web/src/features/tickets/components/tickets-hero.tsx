@@ -15,13 +15,13 @@ import {
 } from "@/utils/event-format";
 import { formatPrice } from "@/features/tickets/utils/price";
 import {
-  GqlTicketsEvent,
-  GqlTicketType,
+  TicketsEvent,
+  TicketType,
 } from "@/features/tickets/api/find-event-tickets";
 
 interface TicketsHeroProps {
-  event: GqlTicketsEvent;
-  selected?: GqlTicketType;
+  event: TicketsEvent;
+  selected?: TicketType;
 }
 
 const PLACEHOLDER = "—";

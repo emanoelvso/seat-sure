@@ -9,7 +9,7 @@ import { TicketsHero } from "@/features/tickets/components/tickets-hero";
 import { TicketDetailPanel } from "@/features/tickets/components/ticket-detail-panel";
 import {
   FindEventTickets,
-  GqlTicketType,
+  TicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import {
   filterListings,
@@ -78,7 +78,7 @@ export function EventTicketsView({
 
   // The pressed section and the selection are cleared in the same handler
   // that hides them, so relaxing a filter never brings them back (SECT-30).
-  function clearSelectionIfHidden(nextListed: GqlTicketType[]) {
+  function clearSelectionIfHidden(nextListed: TicketType[]) {
     if (!nextListed.some((ticketType) => ticketType.id === selectedId)) {
       setSelectedId(undefined);
     }

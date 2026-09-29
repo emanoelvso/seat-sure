@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { graphqlServerFetch } from "@/lib/graphql-server";
 import { getEvents } from "@/features/events/api/get-events";
-import { FIND_EVENTS, FindEventsData } from "@/features/events/api/find-events";
+import { FIND_EVENTS } from "@/features/events/api/find-events";
 import { toFindEventsInput } from "@/features/events/utils/events-search-params";
+import type { FindEventsQuery } from "@/types/__generated__/graphql";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/graphql-server");
@@ -26,7 +27,7 @@ describe("getEvents", () => {
     };
     mockedFetch.mockResolvedValueOnce({
       findEvents,
-    } as unknown as FindEventsData);
+    } as unknown as FindEventsQuery);
 
     const result = await getEvents(params);
 

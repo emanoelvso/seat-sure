@@ -1,4 +1,4 @@
-import { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
+import { TicketType } from "@/features/tickets/api/find-event-tickets";
 import { TicketsSearchParams } from "@/features/tickets/utils/tickets-search-params";
 
 export interface PriceRange {
@@ -7,9 +7,9 @@ export interface PriceRange {
 }
 
 export function filterListings(
-  types: GqlTicketType[],
+  types: TicketType[],
   { quantity, price }: { quantity: number; price: PriceRange },
-): GqlTicketType[] {
+): TicketType[] {
   const minCents = price.min * 100;
   const maxCents = price.max * 100;
 
@@ -23,9 +23,9 @@ export function filterListings(
 }
 
 export function narrowListings(
-  types: GqlTicketType[],
+  types: TicketType[],
   sectionKey?: string,
-): GqlTicketType[] {
+): TicketType[] {
   if (sectionKey === undefined) {
     return types;
   }
@@ -33,7 +33,7 @@ export function narrowListings(
   return types.filter((ticketType) => ticketType.sectionKey === sectionKey);
 }
 
-export function quantityOptions(types: GqlTicketType[]): number[] {
+export function quantityOptions(types: TicketType[]): number[] {
   if (types.length === 0) {
     return [1];
   }
@@ -47,7 +47,7 @@ export function defaultQuantity(options: number[]): number {
   return Math.min(2, options.at(-1)!);
 }
 
-export function priceBounds(types: GqlTicketType[]): PriceRange | null {
+export function priceBounds(types: TicketType[]): PriceRange | null {
   if (types.length === 0) {
     return null;
   }
@@ -64,7 +64,7 @@ export function priceBounds(types: GqlTicketType[]): PriceRange | null {
 // invalid for this event's ticket types (MIG-49, MIG-50).
 export function resolveTicketFilters(
   { quantity, min, max }: Pick<TicketsSearchParams, "quantity" | "min" | "max">,
-  types: GqlTicketType[],
+  types: TicketType[],
 ): { quantity: number; price: PriceRange | null } {
   const options = quantityOptions(types);
 
@@ -89,9 +89,9 @@ export function quantityLabel(quantity: number): string {
 }
 
 export function sortListings(
-  types: GqlTicketType[],
+  types: TicketType[],
   order: "desc" | "asc",
-): GqlTicketType[] {
+): TicketType[] {
   const direction = order === "desc" ? -1 : 1;
 
   return [...types].sort((a, b) => {

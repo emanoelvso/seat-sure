@@ -1,7 +1,13 @@
-import { gql } from "@apollo/client";
-import { EventSummary } from "@/types/api";
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type {
+  FindEventsQuery,
+  FindEventsQueryVariables,
+} from "@/types/__generated__/graphql";
 
-export const FIND_EVENTS = gql`
+export const FIND_EVENTS: TypedDocumentNode<
+  FindEventsQuery,
+  FindEventsQueryVariables
+> = gql`
   query findEvents($input: FindEventsInput) {
     findEvents(FindEventsInput: $input) {
       cities
@@ -24,13 +30,3 @@ export const FIND_EVENTS = gql`
     }
   }
 `;
-
-export interface FindEventsData {
-  findEvents: FindEvents;
-}
-
-interface FindEvents {
-  cities: string[];
-  events?: EventSummary[] | null;
-  hasMore: boolean;
-}

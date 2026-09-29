@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
-import { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
+import { TicketType } from "@/features/tickets/api/find-event-tickets";
 import { SeatMap, SeatMapPreview } from "./seat-map";
 import { concentricSeatMap, multiShapeSeatMap } from "@/testing/seat-map.fixture";
 
@@ -8,7 +8,8 @@ const offer = (
   sectionKey: string,
   name: string,
   priceCents: number,
-): GqlTicketType => ({
+): TicketType => ({
+  __typename: "TicketType",
   id: `tt-${sectionKey}`,
   sectionKey,
   name,

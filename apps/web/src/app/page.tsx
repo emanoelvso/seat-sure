@@ -35,24 +35,24 @@ export default async function Home() {
 
         <EventShowcase
           title="Concert"
-          subCategories={concerts.categories}
-          events={toCardProps(concerts.events ?? [])}
+          subCategories={concerts?.categories}
+          events={toCardProps(concerts?.events ?? [])}
         />
         <EventShowcase
           title="Show"
-          subCategories={shows.categories}
-          events={toCardProps(shows.events ?? [])}
+          subCategories={shows?.categories}
+          events={toCardProps(shows?.events ?? [])}
         />
-        <TopSingers concerts={concerts.events ?? []} />
+        <TopSingers concerts={concerts?.events ?? []} />
         <EventShowcase
           title="Sport"
-          subCategories={sports.categories}
-          events={toCardProps(sports.events ?? [])}
+          subCategories={sports?.categories}
+          events={toCardProps(sports?.events ?? [])}
         />
         <EventShowcase
           title="Festivals"
-          subCategories={festivals.categories}
-          events={toCardProps(festivals.events ?? [])}
+          subCategories={festivals?.categories}
+          events={toCardProps(festivals?.events ?? [])}
         />
 
         <section aria-label="Features" className="flex gap-6 mt-53">

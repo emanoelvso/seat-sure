@@ -12,7 +12,6 @@ const event: EventSummary = {
   country: "USA",
   date: "2026-11-07T01:00:00.000Z",
   startAt: "2026-11-07T01:00:00.000Z",
-  status: "published",
   price: 449.99,
   category: "Pop",
 };
