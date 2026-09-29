@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
 import { GqlEvent } from "@/graphql/queries/home-sections";
+import { zonedIso } from "@/testing/dates";
 import EventDateCard from "./EventDateCard";
 
 const event: GqlEvent = {
@@ -11,8 +12,8 @@ const event: GqlEvent = {
   venue: "The Colosseum at Caesars Palace",
   city: "Las Vegas",
   country: "USA",
-  date: new Date(2026, 10, 6).toISOString(),
-  startAt: new Date(2026, 10, 6, 20, 0).toISOString(),
+  date: zonedIso(2026, 10, 6),
+  startAt: zonedIso(2026, 10, 6, 20, 0),
   status: "published",
   price: 449.99,
   category: "Pop",

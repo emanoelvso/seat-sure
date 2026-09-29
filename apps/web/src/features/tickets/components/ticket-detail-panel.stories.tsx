@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
 import { concentricSeatMap } from "@/testing/seat-map.fixture";
+import { zonedIso } from "@/testing/dates";
 import {
   GqlTicketsEvent,
   GqlTicketType,
@@ -19,8 +20,8 @@ const event: GqlTicketsEvent = {
   venue: "The Colosseum at Caesars Palace",
   city: "Las Vegas",
   country: "USA",
-  startAt: new Date(2026, 2, 6, 20, 0).toISOString(),
-  endsAt: new Date(2026, 2, 6, 22, 30).toISOString(),
+  startAt: zonedIso(2026, 2, 6, 20, 0),
+  endsAt: zonedIso(2026, 2, 6, 22, 30),
 };
 
 const ticketType: GqlTicketType = {
@@ -92,8 +93,8 @@ export const DateFromStartAcrossMidnight: Story = {
   args: {
     event: {
       ...event,
-      startAt: new Date(2026, 2, 6, 23, 0).toISOString(),
-      endsAt: new Date(2026, 2, 7, 1, 30).toISOString(),
+      startAt: zonedIso(2026, 2, 6, 23, 0),
+      endsAt: zonedIso(2026, 2, 7, 1, 30),
     },
   },
   play: async ({ canvas }) => {

@@ -1,8 +1,11 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { TZDate } from "@date-fns/tz";
 import { MockedProvider } from "@apollo/client/testing/react";
 import type { MockLink } from "@apollo/client/testing";
 import { expect, screen, within } from "storybook/test";
+import { env } from "@/config/env";
 import { concentricSeatMap } from "@/testing/seat-map.fixture";
+import { zonedIso } from "@/testing/dates";
 import {
   FIND_EVENT_TICKETS,
   FindEventTickets,
@@ -16,11 +19,16 @@ const request = {
   variables: { input: { eventId: EVENT_ID } },
 };
 
+// `days` after today at `hour:minute`, all in the configured time zone.
 const daysFromNow = (days: number, hour: number, minute = 0) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(hour, minute, 0, 0);
-  return date.toISOString();
+  const today = new TZDate(Date.now(), env.timeZone);
+  return zonedIso(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + days,
+    hour,
+    minute,
+  );
 };
 
 const event = {

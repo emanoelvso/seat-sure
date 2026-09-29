@@ -1,4 +1,6 @@
+import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
+import { env } from "@/config/env";
 
 interface EventPlace {
   venue: string;
@@ -6,16 +8,20 @@ interface EventPlace {
   country: string;
 }
 
-export function formatEventDate(iso: string) {
-  return format(new Date(iso), "MMM dd - yyyy");
+export function formatEventDate(iso: string, timeZone = env.timeZone) {
+  return format(new Date(iso), "MMM dd - yyyy", { in: tz(timeZone) });
 }
 
-export function formatEventTime(iso: string) {
-  return format(new Date(iso), "h:mm a");
+export function formatEventTime(iso: string, timeZone = env.timeZone) {
+  return format(new Date(iso), "h:mm a", { in: tz(timeZone) });
 }
 
-export function formatEventTimeRange(startIso: string, endIso: string) {
-  return `${formatEventTime(startIso)} - ${formatEventTime(endIso)}`;
+export function formatEventTimeRange(
+  startIso: string,
+  endIso: string,
+  timeZone = env.timeZone,
+) {
+  return `${formatEventTime(startIso, timeZone)} - ${formatEventTime(endIso, timeZone)}`;
 }
 
 export function formatEventLocation({ venue, city, country }: EventPlace) {

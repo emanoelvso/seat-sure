@@ -4,6 +4,7 @@ import {
   GqlTicketsEvent,
   GqlTicketType,
 } from "@/graphql/queries/find-event-tickets";
+import { zonedIso } from "@/testing/dates";
 import TicketsHero from "./TicketsHero";
 
 const COVER = "/artist/map.png";
@@ -22,8 +23,8 @@ const event: GqlTicketsEvent = {
   venue: VENUE,
   city: "Las Vegas",
   country: "USA",
-  startAt: new Date(2026, 2, 6, 20, 0).toISOString(),
-  endsAt: new Date(2026, 2, 6, 22, 30).toISOString(),
+  startAt: zonedIso(2026, 2, 6, 20, 0),
+  endsAt: zonedIso(2026, 2, 6, 22, 30),
 };
 
 const sectionB: GqlTicketType = {

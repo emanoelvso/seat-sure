@@ -1,4 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { TZDate } from "@date-fns/tz";
 import { MockedProvider } from "@apollo/client/testing/react";
 import type { MockLink } from "@apollo/client/testing";
 import { expect, fn, screen, within } from "storybook/test";
@@ -6,6 +7,8 @@ import {
   FIND_ARTIST_BY_SLUG,
   FindArtistBySlug,
 } from "@/graphql/queries/find-artist-by-slug";
+import { env } from "@/config/env";
+import { zonedIso } from "@/testing/dates";
 import Artist from "./Artist";
 
 const ARTIST_COVER = "/artists.png";
@@ -23,11 +26,15 @@ const request = {
   variables: { input: { slug: "adele" } },
 };
 
+// `days` after today at `hour`, both in the configured time zone.
 const daysFromNow = (days: number, hour = 20) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(hour, 0, 0, 0);
-  return date.toISOString();
+  const today = new TZDate(Date.now(), env.timeZone);
+  return zonedIso(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + days,
+    hour,
+  );
 };
 
 const baseEvent = (id: string, city: string, country: string, venue: string, startAt: string) => ({
