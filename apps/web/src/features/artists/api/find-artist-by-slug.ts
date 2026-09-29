@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { GqlEvent } from "./home-sections";
+import { GqlEvent } from "@/graphql/queries/home-sections";
 
 export const FIND_ARTIST_BY_SLUG = gql`
   query FindArtistBySlug($input: FindArtistInput!) {

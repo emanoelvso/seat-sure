@@ -6,7 +6,7 @@ import { expect, fn, screen, within } from "storybook/test";
 import {
   FIND_ARTIST_BY_SLUG,
   FindArtistBySlug,
-} from "@/graphql/queries/find-artist-by-slug";
+} from "@/features/artists/api/find-artist-by-slug";
 import { env } from "@/config/env";
 import { zonedIso } from "@/testing/dates";
 import Artist from "./Artist";

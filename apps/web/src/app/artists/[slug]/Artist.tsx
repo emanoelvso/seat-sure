@@ -11,7 +11,7 @@ import { VenueMapCard } from "@/features/artists/components/venue-map-card";
 import {
   FIND_ARTIST_BY_SLUG,
   FindArtistBySlugData,
-} from "@/graphql/queries/find-artist-by-slug";
+} from "@/features/artists/api/find-artist-by-slug";
 import { cityKey, splitArtistEvents } from "@/features/artists/utils/artist-events";
 import { toCardProps } from "@/utils/card-props";
 import { formatVenueAddress } from "@/utils/event-format";
