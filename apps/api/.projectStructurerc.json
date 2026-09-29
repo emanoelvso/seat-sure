@@ -1,6 +1,7 @@
 // @ts-check
 {
   "$schema": "node_modules/eslint-plugin-project-structure/folderStructure.schema.json",
+  "projectRoot": "apps/api",
   "structureRoot": ".",
   "structure": [
     { "name": "src", "ruleId": "src_folder" },
