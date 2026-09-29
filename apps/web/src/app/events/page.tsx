@@ -21,36 +21,13 @@ import { formatDateLabel } from "@/utils/format-date-label";
 import { FIND_EVENTS, FindEventsData } from "@/features/events/api/find-events";
 import { EventsBanner } from "@/features/events/components/events-banner";
 import { toCardProps } from "@/utils/card-props";
-
-type EventType = "CONCERT" | "SHOW" | "SPORT" | "FESTIVAL";
-type PriceRange = "-100" | "100-300" | "300-500" | "+500";
-
-function formatPrice(price: PriceRange | undefined) {
-  switch (price) {
-    case "-100":
-      return { min: 100 };
-    case "100-300":
-      return { min: 100, max: 300 };
-    case "300-500":
-      return { min: 300, max: 500 };
-    case "+500":
-      return { min: 500 };
-  }
-}
-
-const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  CONCERT: "Concerts",
-  SHOW: "Shows",
-  SPORT: "Sports",
-  FESTIVAL: "Festivals",
-};
-
-const PRICE_LABELS: Record<PriceRange, string> = {
-  "-100": "Under $100",
-  "100-300": "$100-300$",
-  "300-500": "$300-$500",
-  "+500": "Over $500",
-};
+import {
+  EVENT_TYPE_LABELS,
+  EventType,
+  PRICE_LABELS,
+  PriceRange,
+  priceRangeFor,
+} from "@/features/events/utils/events-search-params";
 
 export default function Events() {
   const [type, setEventType] = useState<EventType | undefined>(undefined);
@@ -66,7 +43,7 @@ export default function Events() {
           type,
           city,
           dateRange: when,
-          priceRange: formatPrice(price),
+          priceRange: priceRangeFor(price),
           offset: 0,
         },
       },
@@ -86,7 +63,7 @@ export default function Events() {
           type,
           city,
           dateRange: when,
-          priceRange: formatPrice(price),
+          priceRange: priceRangeFor(price),
           offset: events.length,
         },
       },
