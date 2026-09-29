@@ -108,7 +108,7 @@ Don't split a module until it has a real reason to; start with a standard domain
 
 When a domain module grows to about five services or use cases, organize it by business feature instead: `catalog/event/`, `catalog/artist/`, each with its own `core/`, `http/`, and `persistence/` layers, all registered in the single `{module}.module.ts`. Features are folders, never NestJS modules. See [feature-folders-guidelines.md](./feature-folders-guidelines.md).
 
-No module uses feature folders yet, and `.projectStructurerc.json` doesn't accept them yet (tracked in `todo.md`).
+`.projectStructurerc.json` has a `feature_domain_module_folder` rule for this shape, but no module uses feature folders yet, so no module entry points at it.
 
 ---
 

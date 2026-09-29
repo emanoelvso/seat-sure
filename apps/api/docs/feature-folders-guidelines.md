@@ -4,7 +4,7 @@ _Organizing a domain module as vertical slices_
 
 - All paths are relative to `apps/api/`.
 - **Status**: no Seat Sure module uses feature folders yet. Catalog is small enough for the standard layout ([When to Apply](#when-to-apply-feature-folders)).
-- `.projectStructurerc.json` doesn't accept feature folders yet. Adding the rule is tracked in `todo.md` and must happen before the first module adopts them.
+- `.projectStructurerc.json` already has the `feature_domain_module_folder` rule for this shape, unused until a module's entry under `module_folder` switches to it.
 - Don't restructure an existing module into feature folders unless a task asks for it.
 
 ---
@@ -530,7 +530,7 @@ catalog/event/
 
 ### 2. First Feature Folder in a Module (one-time setup)
 
-- [ ] Add the feature-folder rule to `.projectStructurerc.json` and switch the module's entry under `module_folder` to it (tracked in `todo.md`)
+- [ ] Switch the module's entry under `module_folder` in `.projectStructurerc.json` to `feature_domain_module_folder` (the rule already exists)
 - [ ] Move the persistence infrastructure to `shared/persistence/`: the persistence module, both DataSource files, and `migration/`
 - [ ] Widen the entities glob in `typeorm-datasource.factory.ts` to every feature: `join(__dirname, '..', '..', '**', 'persistence', 'entity', '*.entity.{ts,js}')`
 - [ ] Update the `{module}:db:generate`, `{module}:db:migrate`, and `{module}:db:drop` scripts in `package.json` to the new `typeorm-datasource.ts` and `migration/` paths
