@@ -21,19 +21,21 @@ function formatCountdown(totalSeconds: number): string {
 }
 
 export default function CountdownBadge({ eventDate }: CountdownBadgeProps) {
-  const [remaining, setRemaining] = useState(() =>
-    differenceInSeconds(new Date(eventDate), new Date())
-  );
+  // null until mounted: the server and the hydrating client render nothing,
+  // so the ticking seconds can't cause a hydration mismatch.
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const tick = () =>
       setRemaining(differenceInSeconds(new Date(eventDate), new Date()));
-    }, 1000);
+
+    tick();
+    const interval = setInterval(tick, 1000);
 
     return () => clearInterval(interval);
   }, [eventDate]);
 
-  if (remaining >= 24 * 3600) return null;
+  if (remaining === null || remaining >= 24 * 3600) return null;
 
   return (
     <div className="flex justify-between items-center bg-error-500 text-xs px-4 py-2">
