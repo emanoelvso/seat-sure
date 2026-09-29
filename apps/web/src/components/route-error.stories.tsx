@@ -21,6 +21,7 @@ export const ArtistError: Story = {
     await expect(canvas.getByRole("alert")).toHaveTextContent(
       "We couldn't load this artist.",
     );
+    await expect(canvas.getByRole("banner")).toBeVisible();
   },
 };
 
@@ -30,6 +31,7 @@ export const TicketsError: Story = {
     await expect(canvas.getByRole("alert")).toHaveTextContent(
       "We couldn't load tickets for this event.",
     );
+    await expect(canvas.getByRole("banner")).toBeVisible();
   },
 };
 
@@ -39,6 +41,7 @@ export const EventsError: Story = {
     await expect(canvas.getByRole("alert")).toHaveTextContent(
       "We couldn't load events.",
     );
+    await expect(canvas.getByRole("banner")).toBeVisible();
   },
 };
 

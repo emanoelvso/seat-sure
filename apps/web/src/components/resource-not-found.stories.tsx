@@ -20,6 +20,7 @@ export const ArtistNotFound: Story = {
     await expect(
       canvas.getByRole("link", { name: "Browse events" }),
     ).toHaveAttribute("href", "/events");
+    await expect(canvas.getByRole("banner")).toBeVisible();
   },
 };
 
@@ -32,5 +33,6 @@ export const EventNotFound: Story = {
     await expect(
       canvas.getByRole("link", { name: "Browse events" }),
     ).toHaveAttribute("href", "/events");
+    await expect(canvas.getByRole("banner")).toBeVisible();
   },
 };

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageMessage } from "@/components/layouts/page-message";
 
 interface ResourceNotFoundProps {
   title: string;
@@ -6,11 +7,11 @@ interface ResourceNotFoundProps {
 
 export function ResourceNotFound({ title }: ResourceNotFoundProps) {
   return (
-    <>
+    <PageMessage>
       <h1 className="text-4xl font-bold">{title}</h1>
       <Link href="/events" className="text-primary hover:text-tint-400">
         Browse events
       </Link>
-    </>
+    </PageMessage>
   );
 }
