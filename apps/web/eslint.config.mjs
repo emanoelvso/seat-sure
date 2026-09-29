@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, globalIgnores } from "eslint/config";
+import checkFile from "eslint-plugin-check-file";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
@@ -50,6 +51,38 @@ const eslintConfig = defineConfig([
         "error",
         { basePath: rootDir, zones: boundaryZones },
       ],
+    },
+  },
+  // Bulletproof React naming: kebab-case files and folders (Next.js route
+  // segments under src/app), named exports.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    plugins: { "check-file": checkFile },
+    rules: {
+      "check-file/filename-naming-convention": [
+        "error",
+        { "src/**/*.{ts,tsx}": "KEBAB_CASE" },
+        { ignoreMiddleExtensions: true },
+      ],
+      "check-file/folder-naming-convention": [
+        "error",
+        {
+          "src/app/**/": "NEXT_JS_APP_ROUTER_CASE",
+          "src/!(app)/**/": "KEBAB_CASE",
+        },
+        { ignoreWords: ["__tests__", "__generated__"] },
+      ],
+      "import/no-default-export": "error",
+    },
+  },
+  // Next.js special files and story `meta` must export by default.
+  {
+    files: [
+      "src/app/**/{page,layout,error,not-found,loading,global-error}.tsx",
+      "**/*.stories.tsx",
+    ],
+    rules: {
+      "import/no-default-export": "off",
     },
   },
   // Override default ignores of eslint-config-next.
