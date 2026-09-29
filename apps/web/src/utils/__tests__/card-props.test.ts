@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GqlEvent } from "@/graphql/queries/home-sections";
-import { toCardProps } from "@/lib/utils/card-props";
+import { toCardProps } from "@/utils/card-props";
 
 // 01:00 UTC on Nov 7 is still 10:00 PM on Nov 6 in São Paulo (UTC-3).
 const event: GqlEvent = {

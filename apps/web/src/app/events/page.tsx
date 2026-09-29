@@ -17,10 +17,10 @@ import {
 } from "@solar-icons/react/outline";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
-import formatLabel from "@/lib/utils/formatDateLabel";
+import { formatDateLabel } from "@/utils/format-date-label";
 import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
 import EventsBanner from "@/components/EventsBanner";
-import { toCardProps } from "@/lib/utils/card-props";
+import { toCardProps } from "@/utils/card-props";
 
 type EventType = "CONCERT" | "SHOW" | "SPORT" | "FESTIVAL";
 type PriceRange = "-100" | "100-300" | "300-500" | "+500";
@@ -159,7 +159,7 @@ export default function Events() {
             )}
             {when?.from && (
               <SubCategoriePill onClick={() => setWhen(undefined)}>
-                {formatLabel(when)}
+                {formatDateLabel(when)}
               </SubCategoriePill>
             )}
             {city && (

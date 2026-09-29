@@ -13,8 +13,8 @@ import {
   FindArtistBySlugData,
 } from "@/graphql/queries/find-artist-by-slug";
 import { cityKey, splitArtistEvents } from "@/lib/utils/artist-events";
-import { toCardProps } from "@/lib/utils/card-props";
-import { formatVenueAddress } from "@/lib/utils/event-format";
+import { toCardProps } from "@/utils/card-props";
+import { formatVenueAddress } from "@/utils/event-format";
 import { useQuery } from "@apollo/client/react";
 import Image from "next/image";
 import Link from "next/link";

@@ -6,7 +6,7 @@ import {
   formatEventTimeRange,
   formatVenueAddress,
   googleMapsSearchUrl,
-} from "@/lib/utils/event-format";
+} from "@/utils/event-format";
 import { zonedIso } from "@/testing/dates";
 
 const eightPm = zonedIso(2026, 10, 6, 20, 0);

@@ -2,7 +2,7 @@
 
 import { ShareIcon } from "@solar-icons/react/outline";
 import { useEffect, useState } from "react";
-import { shareLink } from "@/lib/utils/share";
+import { shareLink } from "@/utils/share";
 
 const FEEDBACK = {
   copied: "Link copied",

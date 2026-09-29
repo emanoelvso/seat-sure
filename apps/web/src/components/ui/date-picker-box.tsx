@@ -1,5 +1,5 @@
 "use client";
-import formatLabel from "@/lib/utils/formatDateLabel";
+import { formatDateLabel } from "@/utils/format-date-label";
 import { Icon } from "@solar-icons/react/lib/types";
 import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import { Popover } from "radix-ui";
@@ -37,7 +37,7 @@ export function DatePickerBox({
                   "absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-300",
                 size: 18,
               })}
-              <span>{formatLabel(value)}</span>
+              <span>{formatDateLabel(value)}</span>
               <AltArrowDownIcon size={18} className="text-neutral-300" />
             </button>
           </Popover.Trigger>

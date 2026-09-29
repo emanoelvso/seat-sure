@@ -9,7 +9,7 @@ import {
 } from "@/graphql/queries/home-sections";
 import { EventShowcase } from "./event-showcase";
 import SingersCarousel, { Singer } from "./SingersCarousel";
-import { toCardProps } from "@/lib/utils/card-props";
+import { toCardProps } from "@/utils/card-props";
 import { env } from "@/config/env";
 
 function toSingerProps(events: GqlEvent[]): Singer[] {

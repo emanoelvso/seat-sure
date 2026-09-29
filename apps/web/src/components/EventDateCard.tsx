@@ -13,7 +13,7 @@ import {
   formatEventDate,
   formatEventLocation,
   formatEventTime,
-} from "@/lib/utils/event-format";
+} from "@/utils/event-format";
 
 interface EventDateCardProps {
   event: GqlEvent;

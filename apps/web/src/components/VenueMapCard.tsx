@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { googleMapsSearchUrl } from "@/lib/utils/event-format";
+import { googleMapsSearchUrl } from "@/utils/event-format";
 
 interface VenueMapCardProps {
   address: string;

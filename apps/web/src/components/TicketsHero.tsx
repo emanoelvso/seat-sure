@@ -12,7 +12,7 @@ import {
   formatEventDate,
   formatEventLocation,
   formatEventTimeRange,
-} from "@/lib/utils/event-format";
+} from "@/utils/event-format";
 import { formatPrice } from "@/lib/utils/price";
 import {
   GqlTicketsEvent,

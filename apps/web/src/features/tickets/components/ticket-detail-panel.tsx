@@ -15,7 +15,7 @@ import {
 import {
   formatEventDate,
   formatEventTimeRange,
-} from "@/lib/utils/event-format";
+} from "@/utils/event-format";
 import { formatPrice } from "@/lib/utils/price";
 
 interface TicketDetailPanelProps {
