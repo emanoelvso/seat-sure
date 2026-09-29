@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { join } from 'path';
 import { CatalogPersistenceModule } from '@catalogModule/persistence/catalog-persistence.module';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
@@ -9,7 +10,9 @@ import { CatalogService } from './core/service/catalog.service';
   imports: [
     CatalogPersistenceModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
-      autoSchemaFile: true,
+      // Written on boot and committed: apps/web codegen reads it.
+      autoSchemaFile: join(process.cwd(), 'schema.gql'),
+      sortSchema: true,
       driver: ApolloDriver,
     }),
   ],
