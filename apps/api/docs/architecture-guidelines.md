@@ -368,7 +368,7 @@ shared/
 5. Add `{name}:db:generate`, `{name}:db:migrate`, and `{name}:db:drop` scripts to `package.json`, and include them in the `db:*:all` scripts and `test:db:reset`.
 6. Import the module in `src/app.module.ts`.
 7. Add the module's tables to `test/enum/table.enum.ts`.
-8. If the module has resolvers: `GraphQLModule.forRoot` is currently registered inside `CatalogModule`. It must move to a shared place before a second module registers resolvers.
+8. If the module has resolvers: `GraphQLModule.forRoot` is already registered once, in `src/module/shared/module/graphql/graphql.module.ts` (`GraphqlModule`), imported by `AppModule` and prepended by `createNestApp()`. Domain modules don't import `GraphQLModule` themselves.
 
 ### Adding a GraphQL Query or Mutation
 

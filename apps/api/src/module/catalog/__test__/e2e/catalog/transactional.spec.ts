@@ -3,6 +3,7 @@ import { CatalogPersistenceModule } from '@catalogModule/persistence/catalog-per
 import { Artist } from '@catalogModule/persistence/entity/artist.entity';
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
 import { INestApplication, Injectable, Module } from '@nestjs/common';
+import { Query, Resolver } from '@nestjs/graphql';
 import { TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { Tables } from '@testInfra/enum/table.enum';
@@ -27,9 +28,22 @@ class TransactionProbe {
   }
 }
 
+// SPEC_DEVIATION: createNestApp() now always prepends the shared GraphqlModule
+// (T5), and Nest's code-first schema builder requires a Query root type. This
+// module has no real resolver, so a trivial one keeps schema generation valid
+// without pulling in CatalogModule (which would not re-export ArtistRepository
+// for DI here, since CatalogModule doesn't export it).
+@Resolver()
+class TransactionProbeResolver {
+  @Query(() => Boolean)
+  transactionProbeHealthCheck(): boolean {
+    return true;
+  }
+}
+
 @Module({
   imports: [CatalogPersistenceModule],
-  providers: [TransactionProbe],
+  providers: [TransactionProbe, TransactionProbeResolver],
 })
 class TransactionTestModule {}
 
