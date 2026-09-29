@@ -31,6 +31,7 @@
     },
     "removeComments": true,
     "resolveJsonModule": true,
+    "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
