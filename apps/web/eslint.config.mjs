@@ -59,6 +59,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // GraphQL types written by `pnpm codegen`
+    "src/types/__generated__/**",
   ]),
   ...storybook.configs["flat/recommended"]
 ]);
