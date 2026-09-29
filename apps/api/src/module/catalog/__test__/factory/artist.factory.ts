@@ -18,7 +18,5 @@ export const artistFactory = Factory.Sync.makeFactory<ArtistRow>({
   stage_name: Factory.each(() => faker.music.artist()),
   bio: Factory.each(() => faker.lorem.sentence()),
   cover_image_url: Factory.each(() => faker.image.url()),
-  genres: Factory.each(
-    () => `${faker.music.genre()},${faker.music.genre()}`,
-  ),
+  genres: Factory.each(() => `${faker.music.genre()},${faker.music.genre()}`),
 });

@@ -132,7 +132,7 @@ export class CatalogService {
     limit = 20,
     offset,
   }: FindEventsProps) {
-    let options: FindManyOptions<Event> = { take: limit + 1 };
+    const options: FindManyOptions<Event> = { take: limit + 1 };
 
     if (offset) {
       options.skip = offset;
