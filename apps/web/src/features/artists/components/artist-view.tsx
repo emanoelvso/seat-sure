@@ -1,80 +1,34 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { EventDateCard } from "@/features/artists/components/event-date-card";
 import { EventShowcase } from "@/components/event-showcase";
 import { FestivalBanner } from "@/features/artists/components/festival-banner";
 import { Header } from "@/components/layouts/header";
-import { PageMessage } from "@/components/layouts/page-message";
 import { LocationSelect } from "@/components/ui/location-select";
 import { VenueMapCard } from "@/features/artists/components/venue-map-card";
-import {
-  FIND_ARTIST_BY_SLUG,
-  FindArtistBySlugData,
-} from "@/features/artists/api/find-artist-by-slug";
+import { FindArtistBySlug } from "@/features/artists/api/find-artist-by-slug";
 import { cityKey, splitArtistEvents } from "@/features/artists/utils/artist-events";
 import { toCardProps } from "@/utils/card-props";
 import { formatVenueAddress } from "@/utils/event-format";
-import { useQuery } from "@apollo/client/react";
 import Image from "next/image";
-import Link from "next/link";
 import { useId, useState } from "react";
 
-export default function Artist({ slug }: { slug: string }) {
+export function ArtistView({
+  data,
+  now,
+}: {
+  data: FindArtistBySlug;
+  now: string;
+}) {
   const [selectedCity, setSelectedCity] = useState<string>();
   const datesHeadingId = useId();
   const elsewhereHeadingId = useId();
 
-  const { data, loading, error, refetch } = useQuery<FindArtistBySlugData>(
-    FIND_ARTIST_BY_SLUG,
-    {
-      variables: {
-        input: {
-          slug,
-        },
-      },
-    },
-  );
-
-  if (loading && !data) {
-    return (
-      <PageMessage>
-        <p role="status" className="text-lg text-neutral-200">
-          Loading artist…
-        </p>
-      </PageMessage>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageMessage>
-        <div role="alert" className="flex flex-col items-start gap-6">
-          <p className="text-2xl font-semibold">
-            We couldn&apos;t load this artist.
-          </p>
-          <Button onClick={() => refetch()}>Try again</Button>
-        </div>
-      </PageMessage>
-    );
-  }
-
-  const artist = data?.findArtistBySlug.artist;
-
-  if (!artist) {
-    return (
-      <PageMessage>
-        <h1 className="text-4xl font-bold">Artist not found</h1>
-        <Link href="/events" className="text-primary hover:text-tint-400">
-          Browse events
-        </Link>
-      </PageMessage>
-    );
-  }
-
-  const eventsByCity = data.findArtistBySlug.eventsByCity ?? [];
-  const nearbyEvents = data.findArtistBySlug.nearbyEvents ?? [];
-  const festival = data.findArtistBySlug.featuredFestival;
+  // The page already called notFound() when artist is null.
+  const artist = data.artist!;
+  const eventsByCity = data.eventsByCity ?? [];
+  const nearbyEvents = data.nearbyEvents ?? [];
+  const festival = data.featuredFestival;
 
   const cityKeys = eventsByCity.map(cityKey);
   const selectedKey =
@@ -84,7 +38,7 @@ export default function Artist({ slug }: { slug: string }) {
   const { selected, upcomingElsewhere } = splitArtistEvents(
     eventsByCity,
     selectedKey,
-    new Date(),
+    new Date(now),
   );
   const mapVenue = selected?.events?.[0];
 

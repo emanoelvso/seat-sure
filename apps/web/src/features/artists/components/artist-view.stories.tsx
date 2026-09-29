@@ -1,15 +1,10 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { TZDate } from "@date-fns/tz";
-import { MockedProvider } from "@apollo/client/testing/react";
-import type { MockLink } from "@apollo/client/testing";
 import { expect, fn, screen, within } from "storybook/test";
-import {
-  FIND_ARTIST_BY_SLUG,
-  FindArtistBySlug,
-} from "@/features/artists/api/find-artist-by-slug";
+import { FindArtistBySlug } from "@/features/artists/api/find-artist-by-slug";
 import { env } from "@/config/env";
 import { zonedIso } from "@/testing/dates";
-import Artist from "./Artist";
+import { ArtistView } from "./artist-view";
 
 const ARTIST_COVER = "/artists.png";
 
@@ -20,11 +15,6 @@ const imageSource = (img: Element | null) => {
 
 const BIO =
   "British singer-songwriter known for her powerhouse vocals and record-breaking albums.";
-
-const request = {
-  query: FIND_ARTIST_BY_SLUG,
-  variables: { input: { slug: "adele" } },
-};
 
 // `days` after today at `hour`, both in the configured time zone.
 const daysFromNow = (days: number, hour = 20) => {
@@ -38,7 +28,6 @@ const daysFromNow = (days: number, hour = 20) => {
 };
 
 const baseEvent = (id: string, city: string, country: string, venue: string, startAt: string) => ({
-  __typename: "Event",
   id,
   type: "concert",
   name: "Weekends with Adele",
@@ -63,104 +52,48 @@ const dateEvent = (
 ) => ({ ...baseEvent(id, city, country, venue, startAt), tags: ["Popular"] });
 
 const group = (city: string, country: string, events: object[]) => ({
-  __typename: "EventsByCity",
   city,
   country,
   events,
 });
 
-const payload = (overrides: Partial<Record<keyof FindArtistBySlug, unknown>> = {}) => ({
-  request,
-  result: {
-    data: {
-      findArtistBySlug: {
-        __typename: "FindArtist",
-        artist: {
-          __typename: "Artist",
-          name: "Adele",
-          cover: ARTIST_COVER,
-          bio: BIO,
-        },
-        eventsByCity: [
-          group("Las Vegas", "USA", [
-            dateEvent("lv1", "Las Vegas", "USA", "The Colosseum at Caesars Palace", daysFromNow(10)),
-          ]),
-        ],
-        nearbyEvents: [],
-        featuredFestival: null,
-        ...overrides,
-      },
+// The server passes the request time as `now`.
+const NOW = new Date().toISOString();
+
+const payload = (
+  overrides: Partial<Record<keyof FindArtistBySlug, unknown>> = {},
+): { data: FindArtistBySlug; now: string } => ({
+  data: {
+    artist: {
+      name: "Adele",
+      cover: ARTIST_COVER,
+      bio: BIO,
     },
-  },
+    eventsByCity: [
+      group("Las Vegas", "USA", [
+        dateEvent("lv1", "Las Vegas", "USA", "The Colosseum at Caesars Palace", daysFromNow(10)),
+      ]),
+    ],
+    nearbyEvents: [],
+    featuredFestival: null,
+    ...overrides,
+  } as FindArtistBySlug,
+  now: NOW,
 });
 
-const meta: Meta<typeof Artist> = {
+const meta: Meta<typeof ArtistView> = {
   title: "Pages/Artist",
-  component: Artist,
-  args: { slug: "adele" },
+  component: ArtistView,
+  args: payload(),
   parameters: { layout: "fullscreen" },
-  decorators: [
-    (Story, { parameters }) => (
-      <MockedProvider mocks={parameters.mocks as MockLink.MockedResponse[]}>
-        <Story />
-      </MockedProvider>
-    ),
-  ],
-} satisfies Meta<typeof Artist>;
+} satisfies Meta<typeof ArtistView>;
 
 export default meta;
 
-type Story = StoryObj<typeof Artist>;
-
-export const Loading: Story = {
-  parameters: { mocks: [{ request, delay: Infinity }] },
-  play: async ({ canvas }) => {
-    await expect(await canvas.findByRole("status")).toHaveTextContent(
-      "Loading artist…",
-    );
-  },
-};
-
-export const ErrorThenRetry: Story = {
-  parameters: {
-    mocks: [{ request, error: new Error("Network down") }, payload()],
-  },
-  play: async ({ canvas, userEvent }) => {
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "We couldn't load this artist.",
-    );
-
-    await userEvent.click(canvas.getByRole("button", { name: "Try again" }));
-
-    await expect(
-      await canvas.findByRole("heading", { level: 1, name: "Adele" }),
-    ).toBeVisible();
-  },
-};
-
-export const NotFound: Story = {
-  parameters: {
-    mocks: [
-      payload({
-        artist: null,
-        eventsByCity: [],
-        nearbyEvents: [],
-        featuredFestival: null,
-      }),
-    ],
-  },
-  play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "Artist not found" }),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole("link", { name: "Browse events" }),
-    ).toHaveAttribute("href", "/events");
-  },
-};
+type Story = StoryObj<typeof ArtistView>;
 
 export const NoUpcomingDates: Story = {
-  parameters: { mocks: [payload({ eventsByCity: [] })] },
+  args: payload({ eventsByCity: [] }),
   play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText("No upcoming dates")).toBeVisible();
     await expect(canvas.queryByRole("combobox", { name: "City" })).toBeNull();
@@ -172,7 +105,7 @@ export const NoUpcomingDates: Story = {
 };
 
 export const Loaded: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas, canvasElement }) => {
     const heading = await canvas.findByRole("heading", { level: 1 });
 
@@ -219,7 +152,7 @@ const region = (name: string) =>
   screen.getByRole("region", { name });
 
 export const DefaultCity: Story = {
-  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  args: payload({ eventsByCity: tour }),
   play: async ({ canvas }) => {
     await expect(
       await canvas.findByRole("combobox", { name: "City" }),
@@ -243,7 +176,7 @@ export const DefaultCity: Story = {
 };
 
 export const SwitchCity: Story = {
-  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  args: payload({ eventsByCity: tour }),
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole("combobox", { name: "City" }));
     await userEvent.click(
@@ -269,7 +202,7 @@ export const SwitchCity: Story = {
 };
 
 export const UntilSixMonths: Story = {
-  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  args: payload({ eventsByCity: tour }),
   play: async ({ canvas }) => {
     await canvas.findByRole("combobox", { name: "City" });
 
@@ -286,8 +219,22 @@ export const UntilSixMonths: Story = {
   },
 };
 
+// The horizon counts from the `now` prop, not the clock. 130 days ago, 6
+// months later falls between New York (in 40 days) and London (in 60 days),
+// so London drops out although UntilSixMonths lists it for today's clock.
+export const UntilSixMonthsFromNow: Story = {
+  args: { ...payload({ eventsByCity: tour }), now: daysFromNow(-130) },
+  play: async ({ canvas }) => {
+    await canvas.findByRole("combobox", { name: "City" });
+
+    await expect(cardLabels(region("Until 6 months"))).toEqual([
+      "Madison Square Garden - New York, USA",
+    ]);
+  },
+};
+
 export const SingleCity: Story = {
-  parameters: { mocks: [payload()] },
+  args: payload(),
   play: async ({ canvas }) => {
     await canvas.findByRole("combobox", { name: "City" });
 
@@ -298,18 +245,14 @@ export const SingleCity: Story = {
 };
 
 export const WithFestivalAndRecommendations: Story = {
-  parameters: {
-    mocks: [
-      payload({
-        eventsByCity: tour,
-        nearbyEvents: [
-          baseEvent("n1", "Miami", "USA", "Kaseya Center", daysFromNow(20)),
-          baseEvent("n2", "Chicago", "USA", "United Center", daysFromNow(25)),
-        ],
-        featuredFestival: festival,
-      }),
+  args: payload({
+    eventsByCity: tour,
+    nearbyEvents: [
+      baseEvent("n1", "Miami", "USA", "Kaseya Center", daysFromNow(20)),
+      baseEvent("n2", "Chicago", "USA", "United Center", daysFromNow(25)),
     ],
-  },
+    featuredFestival: festival,
+  }),
   play: async ({ canvas }) => {
     const banner = await canvas.findByRole("heading", {
       level: 2,
@@ -334,11 +277,7 @@ export const WithFestivalAndRecommendations: Story = {
 };
 
 export const WithoutFestivalOrRecommendations: Story = {
-  parameters: {
-    mocks: [
-      payload({ eventsByCity: tour, nearbyEvents: [], featuredFestival: null }),
-    ],
-  },
+  args: payload({ eventsByCity: tour, nearbyEvents: [], featuredFestival: null }),
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole("combobox", { name: "City" });
 
@@ -354,7 +293,7 @@ export const WithoutFestivalOrRecommendations: Story = {
 let share: ReturnType<typeof fn>;
 
 export const ShareFromCard: Story = {
-  parameters: { mocks: [payload({ eventsByCity: tour })] },
+  args: payload({ eventsByCity: tour }),
   beforeEach: () => {
     share = fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", {
