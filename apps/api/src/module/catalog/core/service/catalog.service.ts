@@ -13,10 +13,8 @@ import { ArtistRepository } from '@catalogModule/persistence/repository/artist.r
 import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
 import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
-import {
-  SeatMap,
-  TicketType,
-} from '@catalogModule/http/graphql/type/event-tickets.type';
+import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
+import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
 import { isUUID } from 'class-validator';
 
 export interface CreateEventDto {
@@ -278,7 +276,7 @@ export class CatalogService {
     };
   }
 
-  private mapSeatMap(seatMap: SeatMapEntity): SeatMap {
+  private mapSeatMap(seatMap: SeatMapEntity): SeatMapModel {
     const { layout } = seatMap;
 
     return {
@@ -311,7 +309,7 @@ export class CatalogService {
     };
   }
 
-  private mapTicketType(ticketType: TicketTypeEntity): TicketType {
+  private mapTicketType(ticketType: TicketTypeEntity): TicketTypeModel {
     return {
       id: ticketType.id,
       sectionKey: ticketType.sectionKey,

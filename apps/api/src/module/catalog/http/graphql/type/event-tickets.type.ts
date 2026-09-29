@@ -1,8 +1,16 @@
 import { Event } from '@catalogModule/http/graphql/type/events.type';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
+import {
+  SeatMapModel,
+  SeatMapSectionModel,
+  SeatMapSectionShapeModel,
+  SeatMapStageModel,
+  SeatMapStageShapeModel,
+} from '@catalogModule/core/model/seat-map.model';
+import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
 
 @ObjectType()
-export class SeatMapStageShape {
+export class SeatMapStageShape implements SeatMapStageShapeModel {
   @Field()
   path: string;
 
@@ -11,7 +19,7 @@ export class SeatMapStageShape {
 }
 
 @ObjectType()
-export class SeatMapStage {
+export class SeatMapStage implements SeatMapStageModel {
   @Field(() => String, { nullable: true })
   label: string | null;
 
@@ -26,7 +34,7 @@ export class SeatMapStage {
 }
 
 @ObjectType()
-export class SeatMapSectionShape {
+export class SeatMapSectionShape implements SeatMapSectionShapeModel {
   @Field()
   path: string;
 
@@ -41,7 +49,7 @@ export class SeatMapSectionShape {
 }
 
 @ObjectType()
-export class SeatMapSection {
+export class SeatMapSection implements SeatMapSectionModel {
   @Field()
   key: string;
 
@@ -56,7 +64,7 @@ export class SeatMapSection {
 }
 
 @ObjectType()
-export class SeatMap {
+export class SeatMap implements SeatMapModel {
   @Field()
   id: string;
 
@@ -83,7 +91,7 @@ export class SeatMap {
 }
 
 @ObjectType()
-export class TicketType {
+export class TicketType implements TicketTypeModel {
   @Field()
   id: string;
 
