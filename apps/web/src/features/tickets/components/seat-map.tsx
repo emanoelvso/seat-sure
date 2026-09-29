@@ -6,7 +6,7 @@ import {
   GqlSeatMap,
   GqlSeatMapSection,
   GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+} from "@/features/tickets/api/find-event-tickets";
 import { formatPrice } from "@/features/tickets/utils/price";
 
 interface SeatMapProps {

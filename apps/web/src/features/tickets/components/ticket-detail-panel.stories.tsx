@@ -5,7 +5,7 @@ import { zonedIso } from "@/testing/dates";
 import {
   GqlTicketsEvent,
   GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+} from "@/features/tickets/api/find-event-tickets";
 import { TicketDetailPanel } from "./ticket-detail-panel";
 
 // Distinct ids, so a link built from the wrong one can't pass.

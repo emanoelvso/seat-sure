@@ -17,7 +17,7 @@ import { formatPrice } from "@/features/tickets/utils/price";
 import {
   GqlTicketsEvent,
   GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+} from "@/features/tickets/api/find-event-tickets";
 
 interface TicketsHeroProps {
   event: GqlTicketsEvent;

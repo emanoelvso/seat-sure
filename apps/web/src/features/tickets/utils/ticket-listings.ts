@@ -1,4 +1,4 @@
-import { GqlTicketType } from "@/graphql/queries/find-event-tickets";
+import { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
 
 export interface PriceRange {
   min: number;

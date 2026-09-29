@@ -3,7 +3,7 @@ import { expect, fn } from "storybook/test";
 import {
   GqlTicketsEvent,
   GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+} from "@/features/tickets/api/find-event-tickets";
 import { zonedIso } from "@/testing/dates";
 import { TicketsHero } from "./tickets-hero";
 

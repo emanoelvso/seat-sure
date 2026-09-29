@@ -9,7 +9,7 @@ import { zonedIso } from "@/testing/dates";
 import {
   FIND_EVENT_TICKETS,
   FindEventTickets,
-} from "@/graphql/queries/find-event-tickets";
+} from "@/features/tickets/api/find-event-tickets";
 import EventTickets from "./EventTickets";
 
 const EVENT_ID = "3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c0d";

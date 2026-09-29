@@ -1,10 +1,14 @@
-import type { GqlSeatMap } from "@/graphql/queries/find-event-tickets";
-
 // The "Concentric Arena" layout seeded by
 // apps/api/src/module/catalog/persistence/migration/1790550000000-migration.ts
 // and moved to shape lists by 1790600000000-migration.ts, mapped to the
 // findEventTickets GraphQL shape.
-export const concentricSeatMap: GqlSeatMap = {
+//
+// SPEC_DEVIATION: no type annotation (was `GqlSeatMap`, imported from the
+// document file T13 moves into src/features/tickets/api/). A shared
+// `src/testing/` fixture can't import a feature type (import/no-restricted-paths).
+// Structural typing still catches a shape mismatch at each story's usage site.
+// Reason: T27 replaces this hand-written type with a generated one anyway.
+export const concentricSeatMap = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Concentric Arena",
   viewBoxWidth: 704,
@@ -80,7 +84,7 @@ export const concentricSeatMap: GqlSeatMap = {
 
 // A small stadium-like layout: VIP is drawn as two blocks with labels rotated
 // -90 and 90 degrees, and the stage (pitch plus a strip) has no label.
-export const multiShapeSeatMap: GqlSeatMap = {
+export const multiShapeSeatMap = {
   id: "22222222-2222-4222-8222-222222222222",
   name: "Mini Stadium",
   viewBoxWidth: 400,

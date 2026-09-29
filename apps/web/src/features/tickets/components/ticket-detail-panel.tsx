@@ -11,7 +11,7 @@ import {
   GqlSeatMap,
   GqlTicketsEvent,
   GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+} from "@/features/tickets/api/find-event-tickets";
 import {
   formatEventDate,
   formatEventTimeRange,

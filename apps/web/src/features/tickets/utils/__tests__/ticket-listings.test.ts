@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GqlTicketType } from "@/graphql/queries/find-event-tickets";
+import type { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
 import {
   defaultQuantity,
   filterListings,
