@@ -27,7 +27,7 @@ export function FestivalBanner({ event }: FestivalBannerProps) {
         aria-hidden="true"
         className="absolute inset-0 bg-[url(/artist/festival-banner/notes.svg)] bg-[length:200px_200px] bg-repeat-x"
       />
-      <div className="absolute inset-x-0 top-[147px] h-[53px] bg-[rgba(60,10,65,0.91)] blur-[69px]" />
+      <div className="absolute inset-x-0 top-[147px] h-[53px] bg-shade-overlay blur-[69px]" />
       {equalizers.map((equalizer, index) => (
         <div key={index} className={`absolute ${equalizer.className}`}>
           <Image src={equalizer.src} alt="" fill unoptimized />

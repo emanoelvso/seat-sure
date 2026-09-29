@@ -28,7 +28,7 @@ export function TopSingers({ concerts }: { concerts: EventSummary[] }) {
       className="flex flex-col items-center w-full mb-25"
     >
       <h2 className="font-medium text-2xl mb-2">Top Singers</h2>
-      <p className="text-[#999999] mb-8">
+      <p className="text-neutral-200 mb-8">
         Find the singers you&apos;re looking for quickly.{" "}
         <span className="text-tint-400">You can see more</span>.
       </p>

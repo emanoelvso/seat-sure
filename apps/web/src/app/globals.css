@@ -25,6 +25,7 @@
   --color-shade-300: #390e44;
   --color-shade-200: #551666;
   --color-shade-100: #721d88;
+  --color-shade-overlay: rgba(60, 10, 65, 0.91);
 
   /* State Colors */
   --color-error-500: #850d06;

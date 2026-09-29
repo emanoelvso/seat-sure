@@ -4,10 +4,10 @@ import { ReactNode } from "react";
 const tagPillVariant = cva("inline-flex items-center  rounded-xl", {
   variants: {
     variant: {
-      pending: "bg-[#FFBE5D]/8 text-warning-200",
-      success: "bg-[#6BBE6E]/8 text-success-300",
-      info: "bg-[#49A8F5]/8 text-info-300",
-      error: "bg-[#F66359]/8 text-error-300",
+      pending: "bg-warning-200/8 text-warning-200",
+      success: "bg-success-200/8 text-success-300",
+      info: "bg-info-200/8 text-info-300",
+      error: "bg-error-200/8 text-error-300",
     },
     size: {
       xs: "py-1 px-3 text-xs",

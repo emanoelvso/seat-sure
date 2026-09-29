@@ -98,7 +98,7 @@ export default async function Home() {
           <h2 className="font-medium text-2xl mt-49 mb-2">
             Loved by Thousands
           </h2>
-          <p className="text-[#999999] mb-8">
+          <p className="text-neutral-200 mb-8">
             Smooth easy ticket buying - hear it from our happy users.
           </p>
           <FeedbacksCarousel
