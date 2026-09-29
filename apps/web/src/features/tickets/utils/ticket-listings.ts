@@ -1,4 +1,5 @@
 import { GqlTicketType } from "@/features/tickets/api/find-event-tickets";
+import { TicketsSearchParams } from "@/features/tickets/utils/tickets-search-params";
 
 export interface PriceRange {
   min: number;
@@ -56,6 +57,26 @@ export function priceBounds(types: GqlTicketType[]): PriceRange | null {
   return {
     min: Math.floor(Math.min(...cents) / 100),
     max: Math.ceil(Math.max(...cents) / 100),
+  };
+}
+
+// The filters the URL asks for, or the defaults where a param is missing or
+// invalid for this event's ticket types (MIG-49, MIG-50).
+export function resolveTicketFilters(
+  { quantity, min, max }: Pick<TicketsSearchParams, "quantity" | "min" | "max">,
+  types: GqlTicketType[],
+): { quantity: number; price: PriceRange | null } {
+  const options = quantityOptions(types);
+
+  return {
+    quantity:
+      quantity !== null && options.includes(quantity)
+        ? quantity
+        : defaultQuantity(options),
+    price:
+      min !== null && max !== null && min <= max
+        ? { min, max }
+        : priceBounds(types),
   };
 }
 

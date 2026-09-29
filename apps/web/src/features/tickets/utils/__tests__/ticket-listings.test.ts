@@ -8,6 +8,7 @@ import {
   priceBounds,
   quantityLabel,
   quantityOptions,
+  resolveTicketFilters,
   sortListings,
 } from "@/features/tickets/utils/ticket-listings";
 
@@ -213,6 +214,55 @@ describe("priceBounds", () => {
 
   it("returns null when there are no types (SECT-24)", () => {
     expect(priceBounds([])).toBeNull();
+  });
+});
+
+describe("resolveTicketFilters", () => {
+  // Options 1..6 (default 2) and bounds $200-$450, so each kept value below
+  // differs from the fallback (L-001).
+  const types = [
+    ticketType({ sectionKey: "c", priceCents: 20000, maxPerOrder: 4 }),
+    ticketType({ sectionKey: "vip", priceCents: 45000, maxPerOrder: 6 }),
+  ];
+  const bounds = { min: 200, max: 450 };
+  const noParams = { quantity: null, min: null, max: null };
+
+  it.each([1, 6])("keeps quantity %i, one of the options (MIG-48)", (quantity) => {
+    expect(resolveTicketFilters({ ...noParams, quantity }, types).quantity).toBe(
+      quantity,
+    );
+  });
+
+  it.each([0, 7, null])(
+    "falls back to the default quantity for %s (MIG-49)",
+    (quantity) => {
+      expect(
+        resolveTicketFilters({ ...noParams, quantity }, types).quantity,
+      ).toBe(2);
+    },
+  );
+
+  it("keeps min and max inside the bounds (MIG-48)", () => {
+    expect(
+      resolveTicketFilters({ quantity: null, min: 250, max: 420 }, types).price,
+    ).toEqual({ min: 250, max: 420 });
+  });
+
+  it("keeps a range where min equals max (MIG-50)", () => {
+    expect(
+      resolveTicketFilters({ quantity: null, min: 300, max: 300 }, types).price,
+    ).toEqual({ min: 300, max: 300 });
+  });
+
+  it.each([
+    ["max is missing", { min: 250, max: null }],
+    ["min is missing", { min: null, max: 420 }],
+    ["min > max", { min: 420, max: 250 }],
+    ["both are missing", { min: null, max: null }],
+  ])("falls back to the price bounds when %s (MIG-50)", (_, range) => {
+    expect(
+      resolveTicketFilters({ quantity: null, ...range }, types).price,
+    ).toEqual(bounds);
   });
 });
 

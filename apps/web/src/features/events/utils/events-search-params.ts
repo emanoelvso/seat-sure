@@ -9,6 +9,7 @@ import {
   parseAsStringLiteral,
 } from "nuqs/server";
 import { env } from "@/config/env";
+import { parseAsStrictInteger } from "@/utils/search-params";
 
 // Shared by the server page (loader, serializer) and the client filters
 // (useQueryStates). `nuqs/server` has no "use client" directive, so both
@@ -51,12 +52,14 @@ const parseAsCalendarDay = createParser({
   serialize: (value: string) => value,
 });
 
-// SPEC_DEVIATION: the design uses nuqs's parseAsInteger for `page`.
-// Reason: it parses with parseInt, so "1.5" reads as 1, and MIG-45 treats a
-// page that isn't an integer as unset.
+// A strict integer (MIG-45, see the SPEC_DEVIATION in utils/search-params),
+// clamped to 1..50 (MIG-46).
 const parseAsPage = createParser({
-  parse: (value) => (/^-?\d+$/.test(value) ? clampPage(Number(value)) : null),
-  serialize: (page: number) => String(page),
+  parse(value) {
+    const page = parseAsStrictInteger.parse(value);
+    return page === null ? null : clampPage(page);
+  },
+  serialize: parseAsStrictInteger.serialize,
 });
 
 export const eventsParsers = {
