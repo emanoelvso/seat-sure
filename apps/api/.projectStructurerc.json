@@ -38,8 +38,11 @@
       "children": [
         { "name": "catalog", "ruleId": "domain_module_folder" },
         { "name": "billing", "ruleId": "domain_module_folder" },
-        { "name": "content", "ruleId": "sub_domain_module_folder" },
         { "name": "identity", "ruleId": "domain_module_folder" },
+        { "name": "ticketing", "ruleId": "domain_module_folder" },
+        { "name": "user-profile", "ruleId": "domain_module_folder" },
+        { "name": "social-proof", "ruleId": "domain_module_folder" },
+        { "name": "notifications", "ruleId": "domain_module_folder" },
         { "name": "shared", "ruleId": "shared_module_folder" }
       ]
     },
