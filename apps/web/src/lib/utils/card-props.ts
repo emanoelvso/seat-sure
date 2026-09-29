@@ -1,4 +1,5 @@
 import { MainCardProps } from "@/components/MainCard";
+import { env } from "@/config/env";
 import { GqlEvent } from "@/graphql/queries/home-sections";
 
 export function toCardProps(events: GqlEvent[]): MainCardProps[] {
@@ -9,6 +10,7 @@ export function toCardProps(events: GqlEvent[]): MainCardProps[] {
       month: "short",
       day: "numeric",
       year: "numeric",
+      timeZone: env.timeZone,
     }),
     location: event.city,
     price: event.price,

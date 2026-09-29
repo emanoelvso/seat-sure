@@ -20,7 +20,7 @@ import { DateRange } from "react-day-picker";
 import formatLabel from "@/lib/utils/formatDateLabel";
 import { FIND_EVENTS, FindEventsData } from "@/graphql/queries/find-events";
 import EventsBanner from "@/components/EventsBanner";
-import { format } from "date-fns";
+import { toCardProps } from "@/lib/utils/card-props";
 
 type EventType = "CONCERT" | "SHOW" | "SPORT" | "FESTIVAL";
 type PriceRange = "-100" | "100-300" | "300-500" | "+500";
@@ -176,15 +176,11 @@ export default function Events() {
         </div>
 
         <div className="px-27 grid grid-cols-4 gap-24 mb-40">
-          {events.map((event) => (
+          {toCardProps(events).map((card, index) => (
             <MainCard
               className="mt-28 w-full"
-              key={event.id}
-              avatarUrl={event.coverImage}
-              name={event.name}
-              date={format(event.date, "MMM d, yyyy")}
-              location={event.city}
-              price={event.price}
+              key={events[index].id}
+              {...card}
             />
           ))}
         </div>

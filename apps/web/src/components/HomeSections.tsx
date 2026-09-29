@@ -1,5 +1,6 @@
 "use client";
 
+import { TZDate } from "@date-fns/tz";
 import { useQuery } from "@apollo/client/react";
 import {
   GET_HOME_SECTIONS,
@@ -9,10 +10,11 @@ import {
 import EventShowcase from "./EventShowcase";
 import SingersCarousel, { Singer } from "./SingersCarousel";
 import { toCardProps } from "@/lib/utils/card-props";
+import { env } from "@/config/env";
 
 function toSingerProps(events: GqlEvent[]): Singer[] {
   return events.map((c) => {
-    const date = new Date(c.date);
+    const date = new TZDate(c.date, env.timeZone);
 
     return {
       name: c.name,
