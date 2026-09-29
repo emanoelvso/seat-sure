@@ -507,12 +507,18 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       ],
     };
 
+    // The migration's SQL names the table before the Catalog prefix, so a
+    // session-scoped view maps "SeatMap" to "CatalogSeatMap" while it runs.
     const runMigrationUp = async () => {
       const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
       const queryRunner = dataSource.createQueryRunner();
       try {
+        await queryRunner.query(
+          'CREATE OR REPLACE TEMP VIEW "SeatMap" AS SELECT * FROM "CatalogSeatMap"',
+        );
         await new Migration1790600000000().up(queryRunner);
       } finally {
+        await queryRunner.query('DROP VIEW IF EXISTS pg_temp."SeatMap"');
         await queryRunner.release();
       }
     };

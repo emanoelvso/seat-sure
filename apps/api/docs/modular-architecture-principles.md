@@ -401,8 +401,6 @@ No output means no duplicates.
 
 Class names can stay short (`export class Order`) because they never leave the module. Never use a bare generic table name like `User`, `Order`, or `Event`.
 
-Catalog's current entities (`Event`, `Artist`, `Venue`, `SeatMap`, `TicketType`, `EventArtist`) predate this rule. Renaming them is tracked in `todo.md`; don't rename them as a side effect of other work. New entities follow the rule.
-
 ### 9. Observability
 
 Each module gives individual visibility into its behavior.

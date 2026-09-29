@@ -66,10 +66,12 @@ describe('Catalog transactional DataSource (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await testDbClient(Tables.EventArtist).del();
     await testDbClient(Tables.Artist).del();
   });
 
   afterAll(async () => {
+    await testDbClient(Tables.EventArtist).del();
     await testDbClient(Tables.Artist).del();
     await testDbClient.destroy();
     const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));

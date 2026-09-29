@@ -6,7 +6,7 @@ import { EventArtist } from './event-artist.entity';
 import { SeatMap } from './seat-map.entity';
 import { TicketType } from './ticket-type.entity';
 
-@Entity('Event')
+@Entity('CatalogEvent')
 export class Event extends DefaultEntity<Event> {
   @Column({ type: 'enum', enum: EventType })
   type: EventType;

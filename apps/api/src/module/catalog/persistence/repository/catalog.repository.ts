@@ -63,7 +63,7 @@ export class EventRepository extends DefaultTypeOrmRepository<Event> {
       .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
       .andWhere('event.startAt >= :now', { now })
       .andWhere(
-        'NOT EXISTS (SELECT 1 FROM "EventArtist" ea WHERE ea."eventId" = "event"."id" AND ea."artistId" = :artistId)',
+        'NOT EXISTS (SELECT 1 FROM "CatalogEventArtist" ea WHERE ea."eventId" = "event"."id" AND ea."artistId" = :artistId)',
         { artistId },
       );
 
