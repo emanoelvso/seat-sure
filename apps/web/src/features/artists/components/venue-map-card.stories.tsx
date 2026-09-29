@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect } from "storybook/test";
-import VenueMapCard from "./VenueMapCard";
+import { VenueMapCard } from "./venue-map-card";
 
 const meta: Meta<typeof VenueMapCard> = {
   title: "Components/VenueMapCard",

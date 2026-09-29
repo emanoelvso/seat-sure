@@ -17,7 +17,7 @@ interface FestivalBannerProps {
   event: GqlEvent;
 }
 
-export default function FestivalBanner({ event }: FestivalBannerProps) {
+export function FestivalBanner({ event }: FestivalBannerProps) {
   return (
     <Link
       href={`/events/${event.id}/tickets`}

@@ -8,7 +8,9 @@ import {
   GqlEvent,
 } from "@/graphql/queries/home-sections";
 import { EventShowcase } from "./event-showcase";
-import SingersCarousel, { Singer } from "./SingersCarousel";
+// HomeSections is deleted in T19, when app/page.tsx composes TopSingers.
+// eslint-disable-next-line import/no-restricted-paths
+import { SingersCarousel, Singer } from "@/features/artists/components/singers-carousel";
 import { toCardProps } from "@/utils/card-props";
 import { env } from "@/config/env";
 

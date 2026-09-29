@@ -2,7 +2,7 @@ import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect } from "storybook/test";
 import { GqlEvent } from "@/graphql/queries/home-sections";
 import { zonedIso } from "@/testing/dates";
-import FestivalBanner from "./FestivalBanner";
+import { FestivalBanner } from "./festival-banner";
 
 const festival: GqlEvent = {
   id: "f1",

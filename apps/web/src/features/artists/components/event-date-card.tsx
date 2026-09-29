@@ -20,7 +20,7 @@ interface EventDateCardProps {
   shareTitle: string;
 }
 
-export default function EventDateCard({
+export function EventDateCard({
   event,
   shareTitle,
 }: EventDateCardProps) {

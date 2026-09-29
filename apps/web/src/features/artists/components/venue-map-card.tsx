@@ -5,7 +5,7 @@ interface VenueMapCardProps {
   address: string;
 }
 
-export default function VenueMapCard({ address }: VenueMapCardProps) {
+export function VenueMapCard({ address }: VenueMapCardProps) {
   return (
     <a
       href={googleMapsSearchUrl(address)}

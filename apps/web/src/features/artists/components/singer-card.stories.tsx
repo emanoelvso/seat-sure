@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import SingerCard from "./SingerCard";
+import { SingerCard } from "./singer-card";
 
 const meta: Meta<typeof SingerCard> = {
   title: "Components/SingerCard",

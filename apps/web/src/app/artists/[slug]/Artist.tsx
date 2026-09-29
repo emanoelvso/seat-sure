@@ -1,18 +1,18 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import EventDateCard from "@/components/EventDateCard";
+import { EventDateCard } from "@/features/artists/components/event-date-card";
 import { EventShowcase } from "@/components/event-showcase";
-import FestivalBanner from "@/components/FestivalBanner";
+import { FestivalBanner } from "@/features/artists/components/festival-banner";
 import { Header } from "@/components/layouts/header";
 import { PageMessage } from "@/components/layouts/page-message";
 import { LocationSelect } from "@/components/ui/location-select";
-import VenueMapCard from "@/components/VenueMapCard";
+import { VenueMapCard } from "@/features/artists/components/venue-map-card";
 import {
   FIND_ARTIST_BY_SLUG,
   FindArtistBySlugData,
 } from "@/graphql/queries/find-artist-by-slug";
-import { cityKey, splitArtistEvents } from "@/lib/utils/artist-events";
+import { cityKey, splitArtistEvents } from "@/features/artists/utils/artist-events";
 import { toCardProps } from "@/utils/card-props";
 import { formatVenueAddress } from "@/utils/event-format";
 import { useQuery } from "@apollo/client/react";

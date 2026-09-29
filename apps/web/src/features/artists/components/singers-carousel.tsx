@@ -1,5 +1,5 @@
 import { Carousel } from "@/components/ui/carousel";
-import SingerCard from "./SingerCard";
+import { SingerCard } from "./singer-card";
 
 export interface Singer {
   name: string;
@@ -13,7 +13,7 @@ export interface SingersCarouselProps {
   row2: Singer[];
 }
 
-export default function SingersCarousel({ row1, row2 }: SingersCarouselProps) {
+export function SingersCarousel({ row1, row2 }: SingersCarouselProps) {
   return (
     <Carousel
       row1={row1}

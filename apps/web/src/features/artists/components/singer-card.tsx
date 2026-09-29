@@ -7,7 +7,7 @@ interface SingerCardProps {
   imageUrl?: string;
 }
 
-export default function SingerCard({
+export function SingerCard({
   name = "Adele",
   date = "5 May",
   location = "New York",
