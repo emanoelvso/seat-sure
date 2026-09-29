@@ -4,7 +4,7 @@ import { PillSelect } from "@/components/ui/pill-select";
 import { PriceRangeFilter } from "@/features/tickets/components/price-range-filter";
 import { SeatListingCard } from "@/features/tickets/components/seat-listing-card";
 import { SeatMap } from "@/features/tickets/components/seat-map";
-import { SortSelect, SortOrder } from "@/components/ui/sort-select";
+import { SortSelect } from "@/components/ui/sort-select";
 import { TicketsHero } from "@/features/tickets/components/tickets-hero";
 import { TicketDetailPanel } from "@/features/tickets/components/ticket-detail-panel";
 import {
@@ -12,15 +12,16 @@ import {
   GqlTicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import {
-  defaultQuantity,
   filterListings,
   listingsLabel,
   narrowListings,
   PriceRange,
-  priceBounds,
   quantityOptions,
+  resolveTicketFilters,
   sortListings,
 } from "@/features/tickets/utils/ticket-listings";
+import { ticketsParsers } from "@/features/tickets/utils/tickets-search-params";
+import { useQueryStates } from "nuqs";
 import { useState } from "react";
 
 interface Filters {
@@ -37,9 +38,10 @@ export function EventTicketsView({
 }: {
   eventTickets: FindEventTickets;
 }) {
-  const [quantityChoice, setQuantityChoice] = useState<number>();
-  const [priceChoice, setPriceChoice] = useState<PriceRange>();
-  const [sort, setSort] = useState<SortOrder>("desc");
+  // Shallow: the filters are applied to props, with no server request (MIG-47).
+  const [urlFilters, setUrlFilters] = useQueryStates(ticketsParsers, {
+    history: "replace",
+  });
   const [pressedKey, setPressedKey] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
 
@@ -59,8 +61,8 @@ export function EventTicketsView({
   }
 
   const options = quantityOptions(ticketTypes);
-  const quantity = quantityChoice ?? defaultQuantity(options);
-  const price = priceChoice ?? priceBounds(ticketTypes);
+  const { quantity, price } = resolveTicketFilters(urlFilters, ticketTypes);
+  const { sort } = urlFilters;
 
   const qualifyingFor = (filters: Filters) =>
     filters.price
@@ -96,12 +98,12 @@ export function EventTicketsView({
 
   function changeQuantity(value: string) {
     const nextQuantity = Number(value);
-    setQuantityChoice(nextQuantity);
+    setUrlFilters({ quantity: nextQuantity });
     applyFilters({ quantity: nextQuantity, price });
   }
 
   function changePrice(range: PriceRange) {
-    setPriceChoice(range);
+    setUrlFilters({ min: range.min, max: range.max });
     applyFilters({ quantity, price: range });
   }
 
@@ -153,7 +155,10 @@ export function EventTicketsView({
             <>
               <div className="flex items-center justify-between gap-4 rounded-lg bg-neutral-800 px-4 py-2.5">
                 <span>{listingsLabel(listed.length)}</span>
-                <SortSelect value={sort} onChange={setSort} />
+                <SortSelect
+                  value={sort}
+                  onChange={(next) => setUrlFilters({ sort: next })}
+                />
               </div>
               {listed.length > 0 ? (
                 <ul aria-label="Listings" className="flex flex-col gap-4">

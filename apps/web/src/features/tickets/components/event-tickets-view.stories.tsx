@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { TZDate } from "@date-fns/tz";
-import { expect, screen, within } from "storybook/test";
+import type { OnUrlUpdateFunction } from "nuqs/adapters/testing";
+import { expect, fn, screen, waitFor, within } from "storybook/test";
 import { env } from "@/config/env";
 import { concentricSeatMap } from "@/testing/seat-map.fixture";
 import { zonedIso } from "@/testing/dates";
@@ -894,5 +895,112 @@ export const PanelFollowsQuantity: Story = {
     await expect(canvas.queryByText("2 tickets together")).toBeNull();
     await expect(heroValue(canvas, "hero-sec")).toBe("B");
     await expect(heroValue(canvas, "hero-price")).toBe("$300");
+  },
+};
+
+// URL state (MIG-47 to MIG-51). `parameters.nuqs` seeds the URL and spies on
+// its updates (see .storybook/preview.tsx).
+type UrlUpdates = ReturnType<typeof fn<OnUrlUpdateFunction>>;
+
+const urlState = (searchParams = "") => ({
+  nuqs: { searchParams, onUrlUpdate: fn<OnUrlUpdateFunction>() },
+});
+
+const urlUpdates = (parameters: Record<string, unknown>) =>
+  (parameters.nuqs as { onUrlUpdate: UrlUpdates }).onUrlUpdate;
+
+const lastUpdate = (parameters: Record<string, unknown>) =>
+  urlUpdates(parameters).mock.lastCall![0];
+
+const sortTrigger = (canvas: Canvas) =>
+  canvas.getByRole("combobox", { name: "Sort by" });
+
+// Every value differs from its default (2 tickets, $200 - $450, high to low).
+export const FiltersFromUrl: Story = {
+  args: payload(),
+  parameters: urlState("?quantity=3&min=250&max=420&sort=asc"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(
+      canvas.getByRole("combobox", { name: "Tickets" }),
+    ).toHaveTextContent(/^3 tickets$/);
+    await expect(
+      canvas.getByRole("button", { name: "$250 - $420" }),
+    ).toBeVisible();
+    await expect(sortTrigger(canvas)).toHaveTextContent("Price: low to high");
+    await expect(cardTitles(canvas)).toEqual(["Section B", "Section A"]);
+  },
+};
+
+export const InvalidUrlFiltersFallBack: Story = {
+  args: payload(),
+  parameters: urlState("?quantity=99&sort=price&min=300"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(
+      canvas.getByRole("combobox", { name: "Tickets" }),
+    ).toHaveTextContent(/^2 tickets$/);
+    await expect(sortTrigger(canvas)).toHaveTextContent("Price: high to low");
+    // `min` without `max` falls back to the price bounds (MIG-50).
+    await expect(
+      canvas.getByRole("button", { name: "$200 - $450" }),
+    ).toBeVisible();
+    await expect(cardTitles(canvas)).toEqual(ALL_CARDS);
+  },
+};
+
+export const QuantityUpdatesUrl: Story = {
+  args: payload(),
+  parameters: urlState(),
+  play: async (context) => {
+    const { canvas, parameters } = context;
+    await loaded(canvas);
+
+    await pickQuantity(context, "4 tickets");
+
+    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    const { searchParams, options } = lastUpdate(parameters);
+    await expect(searchParams.get("quantity")).toBe("4");
+    await expect(options.shallow).toBe(true);
+    await expect(options.history).toBe("replace");
+  },
+};
+
+export const PriceUpdatesUrl: Story = {
+  args: payload(),
+  parameters: urlState(),
+  play: async (context) => {
+    const { canvas, parameters } = context;
+    await loaded(canvas);
+
+    await applyPrice(context, "$200 - $450", "250", "420");
+
+    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    const { searchParams, options } = lastUpdate(parameters);
+    await expect(searchParams.get("min")).toBe("250");
+    await expect(searchParams.get("max")).toBe("420");
+    await expect(options.shallow).toBe(true);
+    await expect(options.history).toBe("replace");
+  },
+};
+
+export const SortUpdatesUrl: Story = {
+  args: payload(),
+  parameters: urlState(),
+  play: async ({ canvas, userEvent, parameters }) => {
+    await loaded(canvas);
+
+    await userEvent.click(sortTrigger(canvas));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Price: low to high" }),
+    );
+
+    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    const { searchParams, options } = lastUpdate(parameters);
+    await expect(searchParams.get("sort")).toBe("asc");
+    await expect(options.shallow).toBe(true);
+    await expect(options.history).toBe("replace");
   },
 };
