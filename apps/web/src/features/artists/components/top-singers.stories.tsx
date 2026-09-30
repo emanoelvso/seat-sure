@@ -149,10 +149,77 @@ export const LoopCopiesHidden: Story = {
     for (const direction of ["left", "right"] as const) {
       await expect(copyStates(section, direction)).toEqual([
         [false, false],
-        [true, true],
-        [true, true],
-        [true, true],
+        [true, false],
+        [true, false],
+        [true, false],
       ]);
+    }
+  },
+};
+
+const withHeadliners = [
+  {
+    ...concert("k1", "Eras Tour", "New York", "Madison Square Garden", 12),
+    headliner: headliner("t-swift-13", "Taylor Swift"),
+  },
+  {
+    ...concert("k2", "Music of the Spheres", "Chicago", "Soldier Field", 9),
+    headliner: headliner("cp-band", "Coldplay"),
+  },
+  {
+    ...concert("k3", "Future Nostalgia", "Seattle", "Climate Pledge", 18),
+    headliner: headliner("dl-official", "Dua Lipa"),
+  },
+  {
+    ...concert("k4", "24K Magic", "Miami", "Kaseya Center", 15),
+    headliner: headliner("bm-hooligans", "Bruno Mars"),
+  },
+];
+
+// Links in each loop copy of a row, copy by copy.
+const copyLinks = (section: HTMLElement, direction: "left" | "right") =>
+  [...row(section, direction).children].map((copy) => [
+    ...copy.querySelectorAll<HTMLAnchorElement>("a[href]"),
+  ]);
+
+// Loop copies fill most of the visible row, so their cards must take clicks:
+// the link is what the pointer hits at its center. They stay out of the tab
+// order, so the keyboard reaches each card once.
+export const LoopCopiesClickable: Story = {
+  args: { concerts: withHeadliners },
+  play: async ({ canvas }) => {
+    const section = canvas.getByRole("region", { name: "Top Singers" });
+
+    for (const direction of ["left", "right"] as const) {
+      const [first, ...copies] = copyLinks(section, direction);
+
+      await expect(first).toHaveLength(2);
+      for (const link of first) {
+        await expect(link).not.toHaveAttribute("tabindex");
+      }
+      for (const link of copies.flat()) {
+        await expect(link).toHaveAttribute("tabindex", "-1");
+      }
+
+      const onScreen = copies.flat().filter((link) => {
+        const { left, right, top, bottom } = link.getBoundingClientRect();
+        return (
+          left >= 0 &&
+          right <= window.innerWidth &&
+          top >= 0 &&
+          bottom <= window.innerHeight
+        );
+      });
+      await expect(onScreen.length).toBeGreaterThan(0);
+
+      for (const link of onScreen) {
+        const { left, top, width, height } = link.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          left + width / 2,
+          top + height / 2,
+        );
+        await expect(link.contains(hit)).toBe(true);
+      }
     }
   },
 };

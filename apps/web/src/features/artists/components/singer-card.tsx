@@ -7,6 +7,7 @@ interface SingerCardProps {
   location?: string;
   imageUrl?: string;
   href?: string;
+  tabIndex?: number;
 }
 
 const CARD_CLASS =
@@ -18,6 +19,7 @@ export function SingerCard({
   location = "New York",
   imageUrl = "https://sb.kaleidousercontent.com/67418/1920x1545/c5f15ac173/samuel-raita-ridxdghg7pw-unsplash.jpg",
   href,
+  tabIndex,
 }: SingerCardProps) {
   const content = (
     <>
@@ -38,7 +40,7 @@ export function SingerCard({
   );
 
   return href ? (
-    <Link href={href} className={CARD_CLASS}>
+    <Link href={href} className={CARD_CLASS} tabIndex={tabIndex}>
       {content}
     </Link>
   ) : (

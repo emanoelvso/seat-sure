@@ -19,7 +19,7 @@ export function SingersCarousel({ row1, row2 }: SingersCarouselProps) {
     <Carousel
       row1={row1}
       row2={row2}
-      renderItem={(singer, i) => (
+      renderItem={(singer, i, loopCopy) => (
         <SingerCard
           key={i}
           name={singer.name}
@@ -27,6 +27,7 @@ export function SingersCarousel({ row1, row2 }: SingersCarouselProps) {
           location={singer.location}
           imageUrl={singer.imageUrl}
           href={singer.href}
+          tabIndex={loopCopy ? -1 : undefined}
         />
       )}
     />
