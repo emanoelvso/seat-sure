@@ -25,6 +25,10 @@ export const GET_HOME_SECTIONS: TypedDocumentNode<
           status
           price
           category
+          headliner {
+            slug
+            name
+          }
         }
       }
       shows {

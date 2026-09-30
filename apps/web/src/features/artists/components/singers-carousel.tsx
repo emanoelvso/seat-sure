@@ -6,6 +6,7 @@ export interface Singer {
   date: string;
   location: string;
   imageUrl?: string;
+  href?: string;
 }
 
 export interface SingersCarouselProps {
@@ -25,6 +26,7 @@ export function SingersCarousel({ row1, row2 }: SingersCarouselProps) {
           date={singer.date}
           location={singer.location}
           imageUrl={singer.imageUrl}
+          href={singer.href}
         />
       )}
     />

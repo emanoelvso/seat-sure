@@ -32,6 +32,12 @@ const concerts = [
   concert("c5", "Dua Lipa", "Seattle", "Climate Pledge Arena", 18),
 ];
 
+const headliner = (slug: string, name: string) => ({
+  __typename: "EventHeadliner" as const,
+  slug,
+  name,
+});
+
 // Singer names in one carousel row. The carousel repeats each row to loop it.
 const rowNames = (section: HTMLElement, direction: "left" | "right") => [
   ...new Set(
@@ -148,5 +154,52 @@ export const LoopCopiesHidden: Story = {
         [true, true],
       ]);
     }
+  },
+};
+
+// Concerts named after their tours, so a slug derived from the card name can't
+// pass. The last one has no headliner.
+export const CardsLinkToHeadliners: Story = {
+  args: {
+    concerts: [
+      {
+        ...concert("h1", "Eras Tour", "New York", "Madison Square Garden", 12),
+        headliner: headliner("taylor-swift", "Taylor Swift"),
+      },
+      {
+        ...concert("h2", "Music of the Spheres", "Chicago", "Soldier Field", 9),
+        headliner: headliner("coldplay", "Coldplay"),
+      },
+      {
+        ...concert("h3", "Future Nostalgia", "Seattle", "Climate Pledge Arena", 18),
+        headliner: headliner("dua-lipa", "Dua Lipa"),
+      },
+      {
+        ...concert("h4", "Weekends with Adele", "Las Vegas", "The Colosseum", 6),
+        headliner: null,
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const section = within(
+      canvas.getByRole("region", { name: "Top Singers" }),
+    );
+    const cards: [RegExp, string][] = [
+      [/Eras Tour/, "/artists/taylor-swift"],
+      [/Music of the Spheres/, "/artists/coldplay"],
+      [/Future Nostalgia/, "/artists/dua-lipa"],
+    ];
+
+    for (const [name, href] of cards) {
+      await expect(section.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        href,
+      );
+    }
+
+    await expect(section.getAllByText("Weekends with Adele")[0]).toBeVisible();
+    await expect(
+      section.queryByRole("link", { name: /Weekends with Adele/ }),
+    ).toBeNull();
   },
 };

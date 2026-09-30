@@ -4,7 +4,8 @@ import type { Event } from "@/types/__generated__/schema";
 
 // SPEC_DEVIATION: the design picks only the first ten fields.
 // Reason: FestivalBanner reads `description` and EventDateCard reads `tags`,
-// which only the artist query selects, so they're optional here.
+// which only the artist query selects, and TopSingers reads `headliner`, which
+// only the home concerts select, so they're optional here.
 export type EventSummary = Pick<
   Event,
   | "id"
@@ -18,4 +19,4 @@ export type EventSummary = Pick<
   | "price"
   | "category"
 > &
-  Partial<Pick<Event, "description" | "tags">>;
+  Partial<Pick<Event, "description" | "tags" | "headliner">>;
