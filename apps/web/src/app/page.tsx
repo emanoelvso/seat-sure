@@ -1,14 +1,21 @@
-import HomeSections from "@/components/HomeSections";
-import FeedbacksCarousel from "@/components/FeedbacksCarousel";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
-import InvestimentIcon from "@/components/icons/InvestimentIcon";
-import SmartDealIcon from "@/components/icons/SmartDealIcon";
-import WatchIcon from "@/components/icons/WatchIcon";
-import SearchBox from "@/components/SearchBox";
-import Faq from "@/components/Faq";
+import { EventShowcase } from "@/components/event-showcase";
+import { FeedbacksCarousel } from "@/features/testimonials/components/feedbacks-carousel";
+import { Footer } from "@/components/layouts/footer";
+import { Header } from "@/components/layouts/header";
+import { InvestimentIcon } from "@/components/icons/investiment-icon";
+import { SmartDealIcon } from "@/components/icons/smart-deal-icon";
+import { WatchIcon } from "@/components/icons/watch-icon";
+import { SearchBox } from "@/features/events/components/search-box";
+import { Faq } from "@/features/faq/components/faq";
+import { getHomeSections } from "@/features/events/api/get-home-sections";
+import { TopSingers } from "@/features/artists/components/top-singers";
+import { toCardProps } from "@/utils/card-props";
 
-export default function Home() {
+export const revalidate = 60;
+
+export default async function Home() {
+  const { concerts, shows, sports, festivals } = await getHomeSections();
+
   return (
     <>
       <Header />
@@ -26,7 +33,27 @@ export default function Home() {
           <SearchBox />
         </section>
 
-        <HomeSections />
+        <EventShowcase
+          title="Concert"
+          subCategories={concerts?.categories}
+          events={toCardProps(concerts?.events ?? [])}
+        />
+        <EventShowcase
+          title="Show"
+          subCategories={shows?.categories}
+          events={toCardProps(shows?.events ?? [])}
+        />
+        <TopSingers concerts={concerts?.events ?? []} />
+        <EventShowcase
+          title="Sport"
+          subCategories={sports?.categories}
+          events={toCardProps(sports?.events ?? [])}
+        />
+        <EventShowcase
+          title="Festivals"
+          subCategories={festivals?.categories}
+          events={toCardProps(festivals?.events ?? [])}
+        />
 
         <section aria-label="Features" className="flex gap-6 mt-53">
           <div className="flex flex-col gap-6">
@@ -71,7 +98,7 @@ export default function Home() {
           <h2 className="font-medium text-2xl mt-49 mb-2">
             Loved by Thousands
           </h2>
-          <p className="text-[#999999] mb-8">
+          <p className="text-neutral-200 mb-8">
             Smooth easy ticket buying - hear it from our happy users.
           </p>
           <FeedbacksCarousel

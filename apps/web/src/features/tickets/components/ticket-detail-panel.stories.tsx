@@ -1,17 +1,19 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
 import { concentricSeatMap } from "@/testing/seat-map.fixture";
+import { zonedIso } from "@/testing/dates";
 import {
-  GqlTicketsEvent,
-  GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+  TicketsEvent,
+  TicketType,
+} from "@/features/tickets/api/find-event-tickets";
 import { TicketDetailPanel } from "./ticket-detail-panel";
 
 // Distinct ids, so a link built from the wrong one can't pass.
 const EVENT_ID = "3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c0d";
 const TICKET_TYPE_ID = "8e2d4b61-0a3c-4f5e-9d7b-1c2a3b4c5d6e";
 
-const event: GqlTicketsEvent = {
+const event: TicketsEvent = {
+  __typename: "Event",
   id: EVENT_ID,
   name: "Adele",
   type: "concert",
@@ -19,11 +21,12 @@ const event: GqlTicketsEvent = {
   venue: "The Colosseum at Caesars Palace",
   city: "Las Vegas",
   country: "USA",
-  startAt: new Date(2026, 2, 6, 20, 0).toISOString(),
-  endsAt: new Date(2026, 2, 6, 22, 30).toISOString(),
+  startAt: zonedIso(2026, 2, 6, 20, 0),
+  endsAt: zonedIso(2026, 2, 6, 22, 30),
 };
 
-const ticketType: GqlTicketType = {
+const ticketType: TicketType = {
+  __typename: "TicketType",
   id: TICKET_TYPE_ID,
   sectionKey: "b",
   name: "B",
@@ -92,8 +95,8 @@ export const DateFromStartAcrossMidnight: Story = {
   args: {
     event: {
       ...event,
-      startAt: new Date(2026, 2, 6, 23, 0).toISOString(),
-      endsAt: new Date(2026, 2, 7, 1, 30).toISOString(),
+      startAt: zonedIso(2026, 2, 6, 23, 0),
+      endsAt: zonedIso(2026, 2, 7, 1, 30),
     },
   },
   play: async ({ canvas }) => {

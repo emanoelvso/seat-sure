@@ -1,0 +1,181 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Artist {
+  bio: String!
+  cover: String!
+  name: String!
+}
+
+input DateRange {
+  from: DateTime!
+  to: DateTime
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Event {
+  category: String!
+  city: String!
+  country: String!
+  coverImage: String!
+  date: DateTime!
+  description: String
+  doorsOpen: DateTime!
+  endsAt: DateTime!
+  id: String!
+  name: String!
+  price: Float!
+  startAt: DateTime!
+  status: String!
+  tags: [String!]
+  type: String!
+  venue: String!
+}
+
+input EventInput {
+  category: String!
+  city: String!
+  country: String!
+  coverImage: String!
+  date: String!
+  description: String
+  doorsOpen: String!
+  endsAt: String!
+  name: String!
+  price: Float!
+  startAt: String!
+  status: String!
+  tags: [String!]
+  type: String!
+  venue: String!
+}
+
+type EventSection {
+  categories: [String!]
+  events: [Event!]
+}
+
+type EventTickets {
+  event: Event
+  seatMap: SeatMap
+  ticketTypes: [TicketType!]!
+}
+
+enum EventType {
+  CONCERT
+  FESTIVAL
+  SHOW
+  SPORT
+}
+
+type EventsByCity {
+  city: String!
+  country: String!
+  events: [Event!]
+}
+
+type FindArtist {
+  artist: Artist
+  eventsByCity: [EventsByCity!]
+  featuredFestival: Event
+  nearbyEvents: [Event!]
+}
+
+input FindArtistInput {
+  slug: String!
+}
+
+input FindEventTicketsInput {
+  eventId: String!
+}
+
+type FindEvents {
+  cities: [String!]
+  events: [Event!]
+  hasMore: Boolean!
+}
+
+input FindEventsInput {
+  city: String
+  dateRange: DateRange
+  limit: Float
+  offset: Float
+  priceRange: PriceRange
+  type: EventType
+}
+
+type HomeSections {
+  concerts: EventSection
+  festivals: EventSection
+  shows: EventSection
+  sports: EventSection
+}
+
+type Mutation {
+  createEvent(EventInput: EventInput!): Event!
+}
+
+input PriceRange {
+  max: Float
+  min: Float
+}
+
+type Query {
+  findArtistBySlug(FindArtistInput: FindArtistInput!): FindArtist!
+  findEventTickets(FindEventTicketsInput: FindEventTicketsInput!): EventTickets!
+  findEvents(FindEventsInput: FindEventsInput): FindEvents!
+  getHomeSections: HomeSections!
+}
+
+type SeatMap {
+  id: String!
+  labelSize: Float!
+  labelWeight: Int!
+  name: String!
+  sections: [SeatMapSection!]!
+  stage: SeatMapStage!
+  viewBoxHeight: Float!
+  viewBoxWidth: Float!
+}
+
+type SeatMapSection {
+  color: String!
+  key: String!
+  label: String!
+  shapes: [SeatMapSectionShape!]!
+}
+
+type SeatMapSectionShape {
+  labelRotation: Float!
+  labelX: Float!
+  labelY: Float!
+  path: String!
+}
+
+type SeatMapStage {
+  label: String
+  labelX: Float
+  labelY: Float
+  shapes: [SeatMapStageShape!]!
+}
+
+type SeatMapStageShape {
+  color: String!
+  path: String!
+}
+
+type TicketType {
+  currency: String!
+  id: String!
+  maxPerOrder: Int!
+  name: String!
+  priceCents: Int!
+  seatsAvailable: Int!
+  sectionKey: String!
+  tags: [String!]!
+}

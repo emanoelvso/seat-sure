@@ -3,7 +3,7 @@
 How the Seat Sure frontend is organized. Based on [Bulletproof React](https://github.com/alan2207/bulletproof-react), adapted to the Next.js 16 App Router and the stack in [ADR-004](../../../docs/adrs/004-frontend-technology-stack.md) (React 19, Tailwind v4, CVA, Radix UI, Storybook) and the data strategy in [ADR-001](../../../docs/adrs/001-graphql-primary-api-with-rest-for-specialized-endpoints.md) (GraphQL, Apollo Client, ISR).
 
 - All paths are relative to `apps/web/`.
-- Code marked **(existing code)** is real; everything else shows the target shape.
+- Code samples are condensed from the files they name.
 - For React and Next.js coding patterns, use the `vercel-react-best-practices` and `vercel-composition-patterns` skills. For Next.js 16 APIs, read the guides in `node_modules/next/dist/docs/` (see `AGENTS.md`).
 
 ## Rules at a Glance
@@ -31,7 +31,7 @@ apps/web/
 ├── public/
 └── src/
     ├── app/                # Next.js App Router: routes, layouts, route-level error/loading UI
-    │   ├── provider.tsx    # Global client providers (Apollo), used by the root layout
+    │   ├── provider.tsx    # Global client providers (nuqs, Apollo), used by the root layout
     │   └── globals.css     # Tailwind v4 entry + @theme tokens
     ├── components/         # Shared components
     │   ├── ui/             # Design-system primitives (button, input, select-box, ...)
@@ -42,11 +42,9 @@ apps/web/
     ├── hooks/              # Shared hooks
     ├── lib/                # Preconfigured libraries (Apollo client, server GraphQL fetcher)
     ├── testing/            # Test utilities, mocks, and fixtures
-    ├── types/              # Shared types (api.ts: entities used by several features)
-    └── utils/              # Shared pure functions (price, dates, share)
+    ├── types/              # Shared types (api.ts: entities used by several features; __generated__/: codegen output)
+    └── utils/              # Shared pure functions (dates, share, search-param parsers)
 ```
-
-`src/graphql/`, `src/providers/`, and `src/lib/utils/` predate this structure. Their migration is tracked in `todo.md`; don't add new files there.
 
 ### The `app/` Folder
 
@@ -72,6 +70,7 @@ export default async function EventTicketsPage({
 }) {
   const { id } = await params;
   const eventTickets = await getEventTickets(id);
+
   if (!eventTickets.event) notFound();
 
   return (
@@ -126,8 +125,8 @@ Add features as new product areas appear (checkout, auth, account). Features are
 | `hooks/`             | Hooks used by several features                                                 |
 | `lib/`               | Configured library instances: `apollo-client.ts`, `graphql-server.ts`          |
 | `config/`            | `env.ts` (the only place that reads `process.env`), `paths.ts`                  |
-| `types/`             | `api.ts` for entities shared across features                                   |
-| `utils/`             | Pure, framework-free functions (`price.ts`, `share.ts`)                         |
+| `types/`             | `api.ts` for entities shared across features, `__generated__/` for codegen output |
+| `utils/`             | Pure, framework-free functions (`event-format.ts`, `share.ts`, `search-params.ts`) |
 | `testing/`           | Test helpers, mocks, and fixtures (`seat-map.fixture.ts`)                       |
 
 Types that the API and the web app both need can go in the `@seat-sure/shared` workspace package (`packages/shared`).
@@ -161,53 +160,62 @@ Each GraphQL operation gets its own files in `features/<name>/api/`:
 
 | File                     | Contains                              | Imported by                    |
 | ------------------------ | ------------------------------------- | ------------------------------ |
-| `{operation}.ts`         | `gql` document + variable/result types | Both                           |
+| `{operation}.ts`         | Typed `gql` document + derived result types | Both                      |
 | `get-{resource}.ts`      | Server fetcher                        | Server Components only         |
 | `use-{resource}.ts`      | Apollo hook                           | Client Components only         |
 
 This split adapts Bulletproof's one-file-per-request pattern to Server Components: the document file is safe in both environments, while fetchers and hooks each stay on their side of the boundary. Create only the consumers you need.
 
 ```ts
-// src/features/tickets/api/find-event-tickets.ts
-import { gql } from "@apollo/client";
+// src/features/tickets/api/find-event-tickets.ts (condensed)
+import { gql, type TypedDocumentNode } from "@apollo/client";
+import type {
+  FindEventTicketsQuery,
+  FindEventTicketsQueryVariables,
+} from "@/types/__generated__/graphql";
 
-export const FIND_EVENT_TICKETS = gql`
+export const FIND_EVENT_TICKETS: TypedDocumentNode<
+  FindEventTicketsQuery,
+  FindEventTicketsQueryVariables
+> = gql`
   query FindEventTickets($input: FindEventTicketsInput!) {
     findEventTickets(FindEventTicketsInput: $input) {
-      event { id name coverImage venue city country startAt endsAt }
+      event { id name type coverImage venue city country startAt endsAt }
+      seatMap { ... }
       ticketTypes { id sectionKey name priceCents currency seatsAvailable maxPerOrder tags }
     }
   }
 `;
 
-// FindEventTickets and its nested types are declared here too
-export interface FindEventTicketsData {
-  findEventTickets: FindEventTickets;
-}
+// Operation-specific types derived from the generated ones
+export type FindEventTickets = FindEventTicketsQuery["findEventTickets"];
+export type TicketType = FindEventTickets["ticketTypes"][number];
 ```
 
 ```ts
 // src/features/tickets/api/get-event-tickets.ts
 import { graphqlServerFetch } from "@/lib/graphql-server";
-import { FIND_EVENT_TICKETS, FindEventTicketsData } from "./find-event-tickets";
+import { FIND_EVENT_TICKETS } from "@/features/tickets/api/find-event-tickets";
 
 export async function getEventTickets(eventId: string) {
-  const data = await graphqlServerFetch<FindEventTicketsData>(
+  const data = await graphqlServerFetch(
     FIND_EVENT_TICKETS,
     { input: { eventId } },
-    { revalidate: 60, tags: [`event:${eventId}`] },
+    { tags: [`event:${eventId}`] },
   );
+
   return data.findEventTickets;
 }
 ```
 
 ```ts
+// Shape of a client hook (no feature needs one yet)
 // src/features/tickets/api/use-event-tickets.ts
 import { useQuery } from "@apollo/client/react";
-import { FIND_EVENT_TICKETS, FindEventTicketsData } from "./find-event-tickets";
+import { FIND_EVENT_TICKETS } from "@/features/tickets/api/find-event-tickets";
 
 export function useEventTickets(eventId: string) {
-  return useQuery<FindEventTicketsData>(FIND_EVENT_TICKETS, {
+  return useQuery(FIND_EVENT_TICKETS, {
     variables: { input: { eventId } },
   });
 }
@@ -215,21 +223,16 @@ export function useEventTickets(eventId: string) {
 
 ### Server Fetcher
 
-`src/lib/graphql-server.ts` doesn't exist yet (tracked in `todo.md`). Target shape:
-
 ```ts
-// src/lib/graphql-server.ts
-import { print, type DocumentNode } from "graphql";
+// src/lib/graphql-server.ts (condensed)
+import "server-only";
+import type { TypedDocumentNode } from "@apollo/client";
+import { print } from "graphql";
 import { env } from "@/config/env";
 
-interface CacheOptions {
-  revalidate?: number | false;
-  tags?: string[];
-}
-
-export async function graphqlServerFetch<TData>(
-  document: DocumentNode,
-  variables: Record<string, unknown>,
+export async function graphqlServerFetch<TData, TVariables>(
+  document: TypedDocumentNode<TData, TVariables>,
+  variables: TVariables,
   { revalidate = 60, tags }: CacheOptions = {},
 ): Promise<TData> {
   const response = await fetch(`${env.apiUrl}/graphql`, {
@@ -239,18 +242,24 @@ export async function graphqlServerFetch<TData>(
     next: { revalidate, tags },
   });
 
-  const { data, errors } = await response.json();
-  if (errors?.length) throw new Error(errors[0].message);
-  return data as TData;
+  const body = await response.json().catch(() => ({}));
+  if (body.errors?.length) throw new Error(body.errors[0].message);
+  if (!response.ok) {
+    throw new Error(`GraphQL request failed with status ${response.status}`);
+  }
+  return body.data;
 }
 ```
 
-The project uses Next.js 16's previous caching model (`cacheComponents` is off), where `fetch` is uncached unless `cache` or `next.revalidate` is set. Next's docs don't say whether the Data Cache applies to POST requests. Confirm it when implementing the fetcher. If it doesn't, wrap the call in `unstable_cache` (see `node_modules/next/dist/docs/01-app/02-guides/caching-without-cache-components.md`).
+- `import "server-only"` makes `next build` fail if a Client Component imports the fetcher, directly or through a `get-*` file.
+- The project uses Next.js 16's previous caching model (`cacheComponents` is off), where `fetch` is uncached unless `cache` or `next.revalidate` is set. **POST requests with an explicit `next.revalidate` are cached**: in Next 16.2.10, `patch-fetch.js` only turns a POST into "auto no cache" when the fetch has no cache config, and the Data Cache key includes the request body (`incremental-cache/index.js`, `generateCacheKey`), so each query and its variables get their own entry.
 
 ### Types
 
-- GraphQL types are hand-written until GraphQL Code Generator (ADR-001) is adopted.
-- Operation-specific types live in the operation file; entities used by several features live in `src/types/api.ts`.
+- GraphQL types are generated by GraphQL Code Generator (`codegen.ts`) from `apps/api/schema.gql`, which the API writes on boot. After an API schema change, boot the API, then run `pnpm --filter web codegen`. Codegen fails on a field the schema doesn't have.
+- The output lives in `src/types/__generated__/` (lint-ignored, never edited by hand): `graphql.ts` holds the operation types (`FindEventTicketsQuery`, `…QueryVariables`), `schema.ts` the schema types (`Event`).
+- Each document is annotated as `TypedDocumentNode<…Query, …QueryVariables>`, so `graphqlServerFetch` and `useQuery` infer their types without generics.
+- Operation-specific types are derived in the operation file (`TicketType = FindEventTickets["ticketTypes"][number]`); entities used by several features live in `src/types/api.ts` (`EventSummary`, a `Pick` of the generated `Event`).
 
 ---
 
@@ -262,6 +271,7 @@ The project uses Next.js 16's previous caching model (`cacheComponents` is off),
 - ✅ **Serializable props.** Props passed from Server to Client Components must be plain data: no functions or class instances; dates as ISO strings.
 - ❌ Never import a `get-*` server fetcher into a Client Component, or a `use-*` hook into a Server Component.
 - ❌ Never read `process.env` outside `src/config/env.ts`. Only `NEXT_PUBLIC_*` variables reach the browser.
+- ✅ **Dates in one time zone.** Event dates and times are formatted in `env.timeZone` (`NEXT_PUBLIC_TIME_ZONE`, `UTC` when unset) with the helpers in `src/utils/event-format.ts`, so the server HTML and the browser's hydration render the same text. Never format an event date in the runtime's local zone. Values that depend on the current time (`now`, countdowns) come from the server as props or render only after mount.
 
 ---
 
@@ -275,12 +285,21 @@ Bulletproof splits state into five categories. Pick the category first, then the
 | Application state | Signed-in user, global modals              | React Context, only when prop drilling hurts. No global store library until one is needed. |
 | Server cache      | Events, artists, ticket types              | Next.js fetch cache (server), Apollo `InMemoryCache` (client)                               |
 | Form state        | Checkout, login                            | Bulletproof recommends React Hook Form + Zod. Not installed; decide with the first real form. |
-| URL state         | Filters, sort order, pagination, selected tab | `searchParams` + `useSearchParams` / `router.replace`                                     |
+| URL state         | Filters, sort order, pagination, selected tab | `nuqs` parsers shared by the server page and client leaves (see [URL State](#url-state))  |
 
 - ✅ Keep state as close as possible to where it's used.
 - ✅ Derive values instead of syncing them: compute filtered listings from data and filters on render, don't store them.
 - ✅ Put filters and pagination in the URL so results are shareable and survive a refresh.
 - ❌ Don't copy query results into `useState` or context; read them from the cache.
+
+### URL State
+
+URL state goes through [nuqs](https://nuqs.dev). `AppProvider` wraps the app in its `NuqsAdapter`.
+
+- Each feature declares its params once in `features/<name>/utils/{name}-search-params.ts` (`events-search-params.ts`, `tickets-search-params.ts`). These files import from `nuqs/server`, which has no `"use client"` directive, so server pages and client components can both use them.
+- Server pages read the params with the feature's loader (`loadEventsSearchParams(searchParams)`) and build links with its serializer.
+- Client leaves read and write them with `useQueryStates` from `nuqs`, with `history: "replace"`. Use `shallow: false` when the server must refetch (`EventsFilters`), and the default shallow update when the page filters data it already has (`EventTicketsView`).
+- An invalid param reads as unset, so the default applies. Integer params use `parseAsStrictInteger` from `src/utils/search-params.ts`: nuqs's `parseAsInteger` uses `parseInt` and reads `1.5` as `1`.
 
 ---
 
@@ -325,7 +344,7 @@ function TicketList() {
 - **CVA** for component variants:
 
 ```tsx
-// Condensed from src/components/Button.tsx (existing code)
+// Condensed from src/components/ui/button.tsx
 export const buttonVariants = cva(
   "inline-flex items-center justify-center rounded-lg gap-2 transition-colors",
   {
@@ -355,6 +374,7 @@ export const buttonVariants = cva(
 ## Error Handling
 
 - **Route level**: data-fetching route segments get an `error.tsx` and, where a resource can be missing, a `not-found.tsx`. Call `notFound()` when the API returns `null`.
+- **No `loading.tsx` on routes that can call `notFound()`** (`/artists/[slug]`, `/events/[id]/tickets`). A `loading.tsx` starts streaming a 200 response before the page runs, so `notFound()` could no longer answer 404. These pages wait for their (usually cached) data instead.
 - **Feature level**: Client Components handle Apollo's `error` with a fallback inside the feature, so one failing section doesn't blank the page.
 - **Server fetches**: `graphqlServerFetch` throws on GraphQL errors, which renders the nearest `error.tsx`.
 - **Future**: error tracking (e.g. Sentry) in production.
@@ -392,8 +412,9 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 
 - Run: `pnpm --filter web test` (all projects) or `pnpm --filter web exec vitest run --project unit`.
 - The `unit` project only matches `src/**/*.test.ts`. Component tests go through Storybook stories.
-- Unit tests live in a `__tests__` folder inside the folder they cover (e.g. `src/utils/__tests__/price.test.ts`), and import the code with `@/`.
+- Unit tests live in a `__tests__` folder inside the folder they cover (e.g. `src/utils/__tests__/share.test.ts`), and import the code with `@/`.
 - Fixtures, mocks, and test helpers live in `src/testing/` (e.g. `src/testing/seat-map.fixture.ts`), never next to components or utilities.
+- Every story renders inside nuqs's `NuqsTestingAdapter` (`.storybook/preview.tsx`). `parameters.nuqs.searchParams` seeds the URL and `parameters.nuqs.onUrlUpdate` receives each update, so a story can assert the params a control writes.
 - The testing roadmap is in `todo.md` under "Frontend Testing".
 
 ---
@@ -402,10 +423,10 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 
 - **TypeScript strict**.
 - **Absolute imports** with `@/` across folders; relative imports only within the same folder.
-- **kebab-case** for every file and folder (Bulletproof; enforced with `eslint-plugin-check-file` once the migration is done). The component `SeatMap` lives in `seat-map.tsx`.
-- **Named exports** everywhere, except where a default export is required: Next.js special files (`page.tsx`, `layout.tsx`, ...) and a story's `meta`.
+- **kebab-case** for every file and folder (Bulletproof; enforced with `eslint-plugin-check-file`). Route folders under `src/app/` follow Next.js segment names (`[slug]`), and `__tests__` / `__generated__` are exempt. The component `SeatMap` lives in `seat-map.tsx`.
+- **Named exports** everywhere, except where a default export is required: Next.js special files (`page.tsx`, `layout.tsx`, ...) and a story's `meta`. Enforced with `import/no-default-export`.
 - **No barrel files**: import `@/features/tickets/components/seat-map`, not `@/features/tickets`.
-- **Lint**: `pnpm --filter web lint` (Next.js, Storybook, and boundary rules).
+- **Lint**: `pnpm --filter web lint` (Next.js, Storybook, naming, and boundary rules).
 
 ### Naming Convention Reference
 
@@ -420,7 +441,8 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 | Client data hook    | `api/use-{resource}.ts`          | `api/use-event-tickets.ts`           |
 | Other hook          | `hooks/use-{name}.ts`            | `hooks/use-seat-selection.ts`        |
 | Store               | `stores/{name}-store.ts`         | `stores/checkout-store.ts`           |
-| Utility             | `{name}.ts`                      | `utils/price.ts`                     |
+| Utility             | `{name}.ts`                      | `utils/share.ts`                     |
+| URL params          | `utils/{name}-search-params.ts`  | `utils/tickets-search-params.ts`     |
 | Route files         | Next.js conventions              | `page.tsx`, `layout.tsx`, `error.tsx` |
 
 ---
@@ -440,7 +462,7 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 1. Create `src/app/{route}/page.tsx` (a Server Component).
 2. Fetch the first-render data with the features' `get-*` fetchers.
 3. Render features; handle a missing resource with `notFound()`.
-4. Add `error.tsx` (and `loading.tsx` if the page streams).
+4. Add `error.tsx` (and `not-found.tsx` if a resource can be missing). Add `loading.tsx` only on routes that never call `notFound()`.
 
 ### Promoting Code to Shared
 

@@ -4,25 +4,25 @@ import {
   TicketIcon,
 } from "@solar-icons/react/outline";
 import Link from "next/link";
-import Button, { buttonVariants } from "@/components/Button";
-import { SeatMapPreview } from "@/components/SeatMap";
-import TagPill from "@/components/TagPill";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { SeatMapPreview } from "@/features/tickets/components/seat-map";
+import { TagPill } from "@/components/ui/tag-pill";
 import {
-  GqlSeatMap,
-  GqlTicketsEvent,
-  GqlTicketType,
-} from "@/graphql/queries/find-event-tickets";
+  SeatMapLayout,
+  TicketsEvent,
+  TicketType,
+} from "@/features/tickets/api/find-event-tickets";
 import {
   formatEventDate,
   formatEventTimeRange,
-} from "@/lib/utils/event-format";
-import { formatPrice } from "@/lib/utils/price";
+} from "@/utils/event-format";
+import { formatPrice } from "@/features/tickets/utils/price";
 
 interface TicketDetailPanelProps {
-  event: GqlTicketsEvent;
-  ticketType: GqlTicketType;
+  event: TicketsEvent;
+  ticketType: TicketType;
   quantity: number;
-  seatMap: GqlSeatMap;
+  seatMap: SeatMapLayout;
   onBack: () => void;
 }
 
