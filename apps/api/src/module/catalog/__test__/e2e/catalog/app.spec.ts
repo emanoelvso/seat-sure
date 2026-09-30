@@ -3,14 +3,14 @@ import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { INestApplication } from '@nestjs/common';
-import { TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { AppModule } from '@src/app.module';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
-import { createNestApp } from '@testInfra/test-e2e.setup';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+import { initializeTransactionalContext } from 'typeorm-transactional';
 
 describe('AppModule (e2e)', () => {
   let app: INestApplication;
@@ -18,10 +18,14 @@ describe('AppModule (e2e)', () => {
   const venue = venueFactory.build();
 
   beforeAll(async () => {
-    const nestTestSetup = await createNestApp([AppModule]);
-
-    module = nestTestSetup.module;
-    app = nestTestSetup.app;
+    // Boots AppModule alone: createNestApp() always adds GraphqlModule, which
+    // would hide AppModule's own GraphQL wiring
+    initializeTransactionalContext();
+    module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = module.createNestApplication();
+    await app.init();
     await testDbClient.batchInsert(Tables.Venue, [venue]);
   });
 
