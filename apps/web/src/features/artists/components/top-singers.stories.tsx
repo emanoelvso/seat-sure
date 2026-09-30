@@ -72,6 +72,33 @@ export const TwoRows: Story = {
   },
 };
 
+// Dates 30 minutes from midnight in env.timeZone, so any other zone lands on a
+// different day (and month). `startAt` falls on another day, so the section
+// must read `date`. The day number is `getDay()` (weekday index), a known bug
+// kept out of scope: Sunday Nov 1 reads "0", Saturday Oct 31 reads "6".
+export const DateInConfiguredZone: Story = {
+  args: {
+    concerts: [
+      {
+        ...concert("z1", "Adele", "Boston", "TD Garden", 20),
+        date: zonedIso(2026, 10, 1, 0, 30),
+      },
+      {
+        ...concert("z2", "Coldplay", "Denver", "Ball Arena", 20),
+        date: zonedIso(2026, 9, 31, 23, 30),
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const section = within(
+      canvas.getByRole("region", { name: "Top Singers" }),
+    );
+
+    await expect(section.getAllByText("0 November, Boston")[0]).toBeVisible();
+    await expect(section.getAllByText("6 October, Denver")[0]).toBeVisible();
+  },
+};
+
 export const LocationFromCity: Story = {
   play: async ({ canvas }) => {
     const section = within(
