@@ -1,6 +1,7 @@
 // @ts-check
 {
   "$schema": "node_modules/eslint-plugin-project-structure/folderStructure.schema.json",
+  "projectRoot": "apps/api",
   "structureRoot": ".",
   "structure": [
     { "name": "src", "ruleId": "src_folder" },
@@ -37,8 +38,11 @@
       "children": [
         { "name": "catalog", "ruleId": "domain_module_folder" },
         { "name": "billing", "ruleId": "domain_module_folder" },
-        { "name": "content", "ruleId": "sub_domain_module_folder" },
         { "name": "identity", "ruleId": "domain_module_folder" },
+        { "name": "ticketing", "ruleId": "domain_module_folder" },
+        { "name": "user-profile", "ruleId": "domain_module_folder" },
+        { "name": "social-proof", "ruleId": "domain_module_folder" },
+        { "name": "notifications", "ruleId": "domain_module_folder" },
         { "name": "shared", "ruleId": "shared_module_folder" }
       ]
     },
@@ -51,19 +55,56 @@
         { "name": "http", "ruleId": "http_folder" },
         { "name": "persistence", "ruleId": "persistence_folder" },
         { "name": "queue", "ruleId": "queue_folder" },
+        { "name": "integration", "ruleId": "integration_folder" }
+      ]
+    },
+    "integration_folder": {
+      "name": "integration",
+      "children": [
         {
-          "name": "integration",
+          "name": "provider",
           "children": [
             {
-              "name": "provider",
-              "children": [
-                {
-                  "name": "{kebab-case}.provider.ts"
-                }
-              ]
+              "name": "{kebab-case}.provider.ts"
             }
           ]
         }
+      ]
+    },
+    "feature_domain_module_folder": {
+      "name": "{kebab-case}",
+      "children": [
+        { "name": "{kebab-case}.module.ts" },
+        { "name": "__test__", "ruleId": "test_folder" },
+        { "name": "shared", "ruleId": "module_shared_folder" },
+        { "name": "integration", "ruleId": "integration_folder" },
+        { "name": "{kebab-case}", "ruleId": "feature_folder" }
+      ]
+    },
+    "feature_folder": {
+      "name": "{kebab-case}",
+      "children": [
+        { "name": "__test__", "ruleId": "test_folder" },
+        { "name": "core", "ruleId": "core_folder" },
+        { "name": "http", "ruleId": "http_folder" },
+        { "name": "persistence", "ruleId": "persistence_folder" },
+        { "name": "queue", "ruleId": "queue_folder" }
+      ]
+    },
+    "module_shared_folder": {
+      "name": "shared",
+      "children": [
+        { "name": "persistence", "ruleId": "shared_persistence_folder" },
+        { "name": "core", "ruleId": "core_folder" }
+      ]
+    },
+    "shared_persistence_folder": {
+      "name": "persistence",
+      "children": [
+        { "name": "{kebab-case}-persistence.module.ts" },
+        { "name": "typeorm-datasource.ts" },
+        { "name": "typeorm-datasource.factory.ts" },
+        { "name": "migration", "children": [{ "name": "*-migration.ts" }] }
       ]
     },
     "sub_domain_module_folder": {

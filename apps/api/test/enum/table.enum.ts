@@ -1,8 +1,8 @@
 export enum Tables {
-  Event = 'Event',
-  Artist = 'Artist',
-  EventArtist = 'EventArtist',
-  Venue = 'Venue',
-  SeatMap = 'SeatMap',
-  TicketType = 'TicketType',
+  Event = 'CatalogEvent',
+  Artist = 'CatalogArtist',
+  EventArtist = 'CatalogEventArtist',
+  Venue = 'CatalogVenue',
+  SeatMap = 'CatalogSeatMap',
+  TicketType = 'CatalogTicketType',
 }

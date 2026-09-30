@@ -12,13 +12,12 @@ interface ArtistRow {
 
 export const artistFactory = Factory.Sync.makeFactory<ArtistRow>({
   id: Factory.each(() => faker.string.uuid()),
+  // `slug` is varchar(20)
   slug: Factory.each(() =>
-    faker.helpers.slugify(faker.music.artist()).toLowerCase(),
+    faker.helpers.slugify(faker.music.artist()).toLowerCase().slice(0, 20),
   ),
   stage_name: Factory.each(() => faker.music.artist()),
   bio: Factory.each(() => faker.lorem.sentence()),
   cover_image_url: Factory.each(() => faker.image.url()),
-  genres: Factory.each(
-    () => `${faker.music.genre()},${faker.music.genre()}`,
-  ),
+  genres: Factory.each(() => `${faker.music.genre()},${faker.music.genre()}`),
 });

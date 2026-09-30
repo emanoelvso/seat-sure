@@ -65,8 +65,12 @@ export default [
           project: './tsconfig.json',
         },
       },
-      'project-structure/folder-structure-config-path':
+      // The plugin resolves paths from the monorepo root (where pnpm keeps
+      // node_modules), so point it at this app's config explicitly
+      'project-structure/folder-structure-config-path': path.join(
+        __dirname,
         '.projectStructurerc.json',
+      ),
     },
 
     rules: {

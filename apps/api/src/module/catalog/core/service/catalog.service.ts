@@ -13,20 +13,20 @@ import { ArtistRepository } from '@catalogModule/persistence/repository/artist.r
 import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
 import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
-import {
-  SeatMap,
-  TicketType,
-} from '@catalogModule/http/graphql/type/event-tickets.type';
+import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
+import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
+import { EventModel } from '@catalogModule/core/model/event.model';
+import { VenueRepository } from '@catalogModule/persistence/repository/venue.repository';
+import { VenueNotFoundException } from '@catalogModule/core/exception/venue-not-found.exception';
 import { isUUID } from 'class-validator';
+import { Transactional } from 'typeorm-transactional';
 
 export interface CreateEventDto {
   type: EventType;
   name: string;
   description?: string;
   coverImage: string;
-  venue: string;
-  city: string;
-  country: string;
+  venueId: string;
   date: Date;
   startAt: Date;
   endsAt: Date;
@@ -61,12 +61,23 @@ export class CatalogService {
     private readonly eventRepository: EventRepository,
     private readonly artistRepository: ArtistRepository,
     private readonly ticketTypeRepository: TicketTypeRepository,
+    private readonly venueRepository: VenueRepository,
   ) {}
 
-  async createEvent(event: CreateEventDto): Promise<Event> {
-    const newEvent = new Event(event);
+  @Transactional({ connectionName: 'catalog' })
+  async createEvent({
+    venueId,
+    ...event
+  }: CreateEventDto): Promise<EventModel> {
+    const venue = await this.venueRepository.findOneById(venueId);
+
+    if (!venue) {
+      throw new VenueNotFoundException();
+    }
+
+    const newEvent = new Event({ ...event, venue });
     await this.eventRepository.save(newEvent);
-    return newEvent;
+    return this.toEventModel(newEvent);
   }
 
   async getHomeSections() {
@@ -89,7 +100,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: shows,
+        events: shows?.map((event) => this.toEventModel(event)),
       },
       concerts: {
         categories: [
@@ -99,7 +110,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: concerts,
+        events: concerts?.map((event) => this.toEventModel(event)),
       },
       sports: {
         categories: [
@@ -109,7 +120,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: sports,
+        events: sports?.map((event) => this.toEventModel(event)),
       },
       festivals: {
         categories: [
@@ -119,7 +130,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: festivals,
+        events: festivals?.map((event) => this.toEventModel(event)),
       },
     };
   }
@@ -132,7 +143,10 @@ export class CatalogService {
     limit = 20,
     offset,
   }: FindEventsProps) {
-    let options: FindManyOptions<Event> = { take: limit + 1 };
+    const options: FindManyOptions<Event> = {
+      relations: { venue: true },
+      take: limit + 1,
+    };
 
     if (offset) {
       options.skip = offset;
@@ -143,7 +157,7 @@ export class CatalogService {
     }
 
     if (city) {
-      options.where = { ...options.where, city };
+      options.where = { ...options.where, venue: { city } };
     }
 
     if (priceRange) {
@@ -176,11 +190,13 @@ export class CatalogService {
 
     const hasMore = (events?.length || 0) > limit;
 
-    const cities = [...new Set(events?.map((e) => e.city))].sort();
+    const cities = [...new Set(events?.map((e) => e.venue.city))].sort();
+
+    const page = hasMore ? events?.slice(0, limit) : events;
 
     return {
       cities,
-      events: hasMore ? events?.slice(0, limit) : events,
+      events: page?.map((event) => this.toEventModel(event)),
       hasMore,
     };
   }
@@ -221,17 +237,14 @@ export class CatalogService {
     const eventsByCity = Array.from(
       events
         .reduce((groups, event) => {
-          const key = `${event.city}|${event.country}`;
-          const group = groups.get(key) ?? {
-            city: event.city,
-            country: event.country,
-            events: [],
-          };
+          const { city, country } = event.venue;
+          const key = `${city}|${country}`;
+          const group = groups.get(key) ?? { city, country, events: [] };
 
-          group.events.push(event);
+          group.events.push(this.toEventModel(event));
           groups.set(key, group);
           return groups;
-        }, new Map<string, { city: string; country: string; events: typeof events }>())
+        }, new Map<string, { city: string; country: string; events: EventModel[] }>())
         .values(),
     );
 
@@ -242,8 +255,10 @@ export class CatalogService {
         cover: artist?.cover_image_url,
       },
       eventsByCity,
-      nearbyEvents,
-      featuredFestival,
+      nearbyEvents: nearbyEvents.map((event) => this.toEventModel(event)),
+      featuredFestival: featuredFestival
+        ? this.toEventModel(featuredFestival)
+        : null,
     };
   }
 
@@ -270,7 +285,7 @@ export class CatalogService {
     const ticketTypes = await this.ticketTypeRepository.findByEvent(event.id);
 
     return {
-      event,
+      event: this.toEventModel(event),
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
       ticketTypes: ticketTypes.map((ticketType) =>
         this.mapTicketType(ticketType),
@@ -278,7 +293,28 @@ export class CatalogService {
     };
   }
 
-  private mapSeatMap(seatMap: SeatMapEntity): SeatMap {
+  private toEventModel(event: Event): EventModel {
+    return {
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      type: event.type,
+      coverImage: event.coverImage,
+      venue: event.venue.name,
+      city: event.venue.city,
+      country: event.venue.country,
+      date: event.date,
+      startAt: event.startAt,
+      endsAt: event.endsAt,
+      doorsOpen: event.doorsOpen,
+      status: event.status,
+      category: event.category,
+      price: event.price,
+      tags: event.tags,
+    };
+  }
+
+  private mapSeatMap(seatMap: SeatMapEntity): SeatMapModel {
     const { layout } = seatMap;
 
     return {
@@ -311,7 +347,7 @@ export class CatalogService {
     };
   }
 
-  private mapTicketType(ticketType: TicketTypeEntity): TicketType {
+  private mapTicketType(ticketType: TicketTypeEntity): TicketTypeModel {
     return {
       id: ticketType.id,
       sectionKey: ticketType.sectionKey,

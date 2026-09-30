@@ -5,8 +5,9 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { EventArtist } from './event-artist.entity';
 import { SeatMap } from './seat-map.entity';
 import { TicketType } from './ticket-type.entity';
+import { Venue } from './venue.entity';
 
-@Entity('Event')
+@Entity('CatalogEvent')
 export class Event extends DefaultEntity<Event> {
   @Column({ type: 'enum', enum: EventType })
   type: EventType;
@@ -20,25 +21,20 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'varchar' })
   coverImage: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   date: Date;
 
-  @Column({ type: 'varchar' })
-  venue: string;
+  @ManyToOne(() => Venue, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'venueId' })
+  venue: Venue;
 
-  @Column({ type: 'varchar' })
-  city: string;
-
-  @Column({ type: 'varchar' })
-  country: string;
-
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   startAt: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   endsAt: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   doorsOpen: Date;
 
   @Column({ type: 'enum', enum: EventStatus })
