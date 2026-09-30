@@ -33,6 +33,7 @@ export type Event = {
   description: Maybe<Scalars['String']['output']>;
   doorsOpen: Scalars['DateTime']['output'];
   endsAt: Scalars['DateTime']['output'];
+  headliner: Maybe<EventHeadliner>;
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   price: Scalars['Float']['output'];
@@ -43,10 +44,14 @@ export type Event = {
   venue: Scalars['String']['output'];
 };
 
+export type EventHeadliner = {
+  __typename: 'EventHeadliner';
+  name: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+};
+
 export type EventInput = {
   category: Scalars['String']['input'];
-  city: Scalars['String']['input'];
-  country: Scalars['String']['input'];
   coverImage: Scalars['String']['input'];
   date: Scalars['String']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
@@ -58,7 +63,7 @@ export type EventInput = {
   status: Scalars['String']['input'];
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
   type: Scalars['String']['input'];
-  venue: Scalars['String']['input'];
+  venueId: Scalars['String']['input'];
 };
 
 export type EventSection = {
