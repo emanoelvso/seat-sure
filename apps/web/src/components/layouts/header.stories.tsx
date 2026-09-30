@@ -1,4 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, within } from "storybook/test";
 import { Header } from "./header";
 
 const meta: Meta<typeof Header> = {
@@ -21,3 +22,23 @@ export default meta;
 type Story = StoryObj<typeof Header>;
 
 export const Default: Story = {} satisfies Story;
+
+export const NavigationLinks: Story = {
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("link", { name: "SeatSure" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+
+    const navLinks = within(canvas.getByRole("navigation")).getAllByRole("link");
+    await expect(
+      navLinks.map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["Home", "/"],
+      ["Shows", "/events?type=SHOW"],
+      ["Concerts", "/events?type=CONCERT"],
+      ["Sports", "/events?type=SPORT"],
+      ["Festivals", "/events?type=FESTIVAL"],
+    ]);
+  },
+};
