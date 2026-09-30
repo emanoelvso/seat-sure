@@ -1,17 +1,18 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
+import { EventModel } from '@catalogModule/core/model/event.model';
 import { Field, Float, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
-export class Event {
+export class Event implements EventModel {
   @Field()
   id: string;
 
   @Field()
   name: string;
 
-  @Field({ nullable: true })
-  description?: string;
+  @Field(() => String, { nullable: true })
+  description?: string | null;
 
   @Field()
   type: EventType;
@@ -50,5 +51,5 @@ export class Event {
   price: number;
 
   @Field(() => [String], { nullable: true })
-  tags?: string[];
+  tags?: string[] | null;
 }

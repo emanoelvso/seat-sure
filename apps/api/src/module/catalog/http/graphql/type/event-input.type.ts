@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  IsUUID,
 } from 'class-validator';
 
 @InputType()
@@ -35,19 +36,9 @@ export class EventInput {
   coverImage: string;
 
   @IsNotEmpty()
-  @IsString()
+  @IsUUID()
   @Field()
-  venue: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @Field()
-  city: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @Field()
-  country: string;
+  venueId: string;
 
   @IsNotEmpty()
   @IsDateString()

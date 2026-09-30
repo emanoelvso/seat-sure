@@ -18,9 +18,7 @@ export const ticketTypeFactory = Factory.Sync.makeFactory<TicketTypeRow>({
   eventId: Factory.each(() => faker.string.uuid()),
   sectionKey: Factory.each(() => faker.string.alphanumeric(5).toLowerCase()),
   name: Factory.each(() => faker.string.alpha(3).toUpperCase()),
-  priceCents: Factory.each(() =>
-    faker.number.int({ min: 5000, max: 100000 }),
-  ),
+  priceCents: Factory.each(() => faker.number.int({ min: 5000, max: 100000 })),
   currency: 'USD',
   seatsAvailable: Factory.each(() => faker.number.int({ min: 1, max: 500 })),
   maxPerOrder: 8,

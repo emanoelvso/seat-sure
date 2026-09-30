@@ -4,16 +4,17 @@ import { Event } from '@catalogModule/persistence/entity/event.entity';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 
-export const eventFactory = Factory.Sync.makeFactory<Partial<Event>>({
+// A CatalogEvent row. The venue is referenced by id, so insert the venue first.
+type EventRow = Omit<Partial<Event>, 'venue'> & { venueId: string };
+
+export const eventFactory = Factory.Sync.makeFactory<EventRow>({
   id: Factory.each(() => faker.string.uuid()),
   type: Factory.each(() => faker.helpers.enumValue(EventType)),
   name: Factory.each(() => faker.music.artist()),
   description: Factory.each(() => faker.lorem.sentence()),
   coverImage: Factory.each(() => faker.image.url()),
   date: Factory.each(() => faker.date.future()),
-  venue: Factory.each(() => faker.company.name()),
-  city: Factory.each(() => faker.location.city()),
-  country: Factory.each(() => faker.location.country()),
+  venueId: Factory.each(() => faker.string.uuid()),
   startAt: Factory.each(() => faker.date.future()),
   endsAt: Factory.each(() => faker.date.future()),
   doorsOpen: Factory.each(() => faker.date.future()),

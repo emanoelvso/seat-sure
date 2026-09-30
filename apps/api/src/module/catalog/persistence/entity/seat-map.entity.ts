@@ -30,7 +30,7 @@ export type SeatMapLayout = {
   sections: SeatMapSection[];
 };
 
-@Entity('SeatMap')
+@Entity('CatalogSeatMap')
 export class SeatMap extends DefaultEntity<SeatMap> {
   @ManyToOne(() => Venue, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'venueId' })

@@ -2,7 +2,7 @@ import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default
 import { Check, Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { Event } from './event.entity';
 
-@Entity('TicketType')
+@Entity('CatalogTicketType')
 @Unique(['event', 'sectionKey'])
 @Check(`"priceCents" >= 0`)
 @Check(`"seatsAvailable" >= 0`)

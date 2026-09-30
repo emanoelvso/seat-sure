@@ -1,7 +1,8 @@
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { Module } from '@nestjs/common';
+import { GraphqlModule } from '@sharedModules/graphql/graphql.module';
 
 @Module({
-  imports: [CatalogModule],
+  imports: [GraphqlModule, CatalogModule],
 })
 export class AppModule {}

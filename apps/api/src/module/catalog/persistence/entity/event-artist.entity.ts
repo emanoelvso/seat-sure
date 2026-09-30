@@ -3,7 +3,7 @@ import { Event } from './event.entity';
 import { Artist } from './artist.entity';
 import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
 
-@Entity('EventArtist')
+@Entity('CatalogEventArtist')
 export class EventArtist extends DefaultEntity<EventArtist> {
   @ManyToOne(() => Event, (event) => event.eventArtists, {
     onDelete: 'CASCADE',

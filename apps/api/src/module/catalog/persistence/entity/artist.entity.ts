@@ -2,7 +2,7 @@ import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default
 import { Column, Entity, OneToMany } from 'typeorm';
 import { EventArtist } from './event-artist.entity';
 
-@Entity('Artist')
+@Entity('CatalogArtist')
 export class Artist extends DefaultEntity<Artist> {
   @Column({ type: 'varchar', length: 20, unique: true })
   slug: string;

@@ -108,7 +108,7 @@ Don't split a module until it has a real reason to; start with a standard domain
 
 When a domain module grows to about five services or use cases, organize it by business feature instead: `catalog/event/`, `catalog/artist/`, each with its own `core/`, `http/`, and `persistence/` layers, all registered in the single `{module}.module.ts`. Features are folders, never NestJS modules. See [feature-folders-guidelines.md](./feature-folders-guidelines.md).
 
-No module uses feature folders yet, and `.projectStructurerc.json` doesn't accept them yet (tracked in `todo.md`).
+`.projectStructurerc.json` has a `feature_domain_module_folder` rule for this shape, but no module uses feature folders yet, so no module entry points at it.
 
 ---
 
@@ -368,7 +368,7 @@ shared/
 5. Add `{name}:db:generate`, `{name}:db:migrate`, and `{name}:db:drop` scripts to `package.json`, and include them in the `db:*:all` scripts and `test:db:reset`.
 6. Import the module in `src/app.module.ts`.
 7. Add the module's tables to `test/enum/table.enum.ts`.
-8. If the module has resolvers: `GraphQLModule.forRoot` is currently registered inside `CatalogModule`. It must move to a shared place before a second module registers resolvers.
+8. If the module has resolvers: `GraphQLModule.forRoot` is already registered once, in `src/module/shared/module/graphql/graphql.module.ts` (`GraphqlModule`), imported by `AppModule` and prepended by `createNestApp()`. Domain modules don't import `GraphQLModule` themselves.
 
 ### Adding a GraphQL Query or Mutation
 
