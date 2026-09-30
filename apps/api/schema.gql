@@ -39,8 +39,6 @@ type Event {
 
 input EventInput {
   category: String!
-  city: String!
-  country: String!
   coverImage: String!
   date: String!
   description: String
@@ -52,7 +50,7 @@ input EventInput {
   status: String!
   tags: [String!]
   type: String!
-  venue: String!
+  venueId: String!
 }
 
 type EventSection {
