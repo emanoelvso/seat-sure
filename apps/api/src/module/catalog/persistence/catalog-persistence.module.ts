@@ -7,6 +7,7 @@ import { addTransactionalDataSource } from 'typeorm-transactional';
 import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { EventRepository } from '@catalogModule/persistence/repository/catalog.repository';
 import { ArtistRepository } from './repository/artist.repository';
+import { EventArtistRepository } from './repository/event-artist.repository';
 import { TicketTypeRepository } from './repository/ticket-type.repository';
 import { VenueRepository } from './repository/venue.repository';
 
@@ -38,12 +39,14 @@ import { VenueRepository } from './repository/venue.repository';
     ArtistRepository,
     TicketTypeRepository,
     VenueRepository,
+    EventArtistRepository,
   ],
   exports: [
     EventRepository,
     ArtistRepository,
     TicketTypeRepository,
     VenueRepository,
+    EventArtistRepository,
   ],
 })
 export class CatalogPersistenceModule {}

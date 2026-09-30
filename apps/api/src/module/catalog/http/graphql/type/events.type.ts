@@ -1,7 +1,19 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
-import { EventModel } from '@catalogModule/core/model/event.model';
+import {
+  EventHeadlinerModel,
+  EventModel,
+} from '@catalogModule/core/model/event.model';
 import { Field, Float, ObjectType } from '@nestjs/graphql';
+
+@ObjectType()
+export class EventHeadliner implements EventHeadlinerModel {
+  @Field()
+  slug: string;
+
+  @Field()
+  name: string;
+}
 
 @ObjectType()
 export class Event implements EventModel {
@@ -52,4 +64,7 @@ export class Event implements EventModel {
 
   @Field(() => [String], { nullable: true })
   tags?: string[] | null;
+
+  @Field(() => EventHeadliner, { nullable: true })
+  headliner: EventHeadliner | null;
 }

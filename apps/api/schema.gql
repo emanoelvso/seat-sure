@@ -27,6 +27,7 @@ type Event {
   description: String
   doorsOpen: DateTime!
   endsAt: DateTime!
+  headliner: EventHeadliner
   id: String!
   name: String!
   price: Float!
@@ -35,6 +36,11 @@ type Event {
   tags: [String!]
   type: String!
   venue: String!
+}
+
+type EventHeadliner {
+  name: String!
+  slug: String!
 }
 
 input EventInput {

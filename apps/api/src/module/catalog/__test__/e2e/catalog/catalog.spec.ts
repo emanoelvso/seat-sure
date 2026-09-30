@@ -80,6 +80,17 @@ describe('CatalogResolver (e2e)', () => {
     country: venue.country,
   });
 
+  // A CatalogEventArtist row: a headliner with performance_order 1 unless
+  // overridden.
+  const lineupRow = (
+    event: { id?: string },
+    artist: { id: string },
+    overrides: { headliner?: boolean; performance_order?: number | null } = {},
+  ) => ({
+    ...eventArtistFactory.build({ eventId: event.id, artistId: artist.id }),
+    ...overrides,
+  });
+
   beforeAll(async () => {
     const nestTestSetup = await createNestApp([CatalogModule]);
 
@@ -493,6 +504,107 @@ describe('CatalogResolver (e2e)', () => {
         },
       });
     });
+
+    it('returns each event with its own headliner in every section (NAV-17)', async () => {
+      const anitta = artistFactory.build({
+        slug: 'girl-from-rio',
+        stage_name: 'Anitta',
+      });
+      const ludmilla = artistFactory.build({
+        slug: 'numanice',
+        stage_name: 'Ludmilla',
+      });
+      const whindersson = artistFactory.build({
+        slug: 'piauiense',
+        stage_name: 'Whindersson Nunes',
+      });
+      const fooFighters = artistFactory.build({
+        slug: 'everlong',
+        stage_name: 'Foo Fighters',
+      });
+      const anittaConcert = buildEvent({
+        type: EventType.CONCERT,
+        status: EventStatus.PUBLISHED,
+      });
+      const ludmillaConcert = buildEvent({
+        type: EventType.CONCERT,
+        status: EventStatus.PUBLISHED,
+      });
+      const comedyShow = buildEvent({
+        type: EventType.SHOW,
+        status: EventStatus.PUBLISHED,
+      });
+      const derby = buildEvent({
+        type: EventType.SPORT,
+        status: EventStatus.PUBLISHED,
+      });
+      const festival = buildEvent({
+        type: EventType.FESTIVAL,
+        status: EventStatus.PUBLISHED,
+      });
+
+      await testDbClient.batchInsert(Tables.Artist, [
+        anitta,
+        ludmilla,
+        whindersson,
+        fooFighters,
+      ]);
+      await testDbClient.batchInsert(Tables.Event, [
+        anittaConcert,
+        ludmillaConcert,
+        comedyShow,
+        derby,
+        festival,
+      ]);
+      await testDbClient.batchInsert(Tables.EventArtist, [
+        lineupRow(anittaConcert, anitta),
+        lineupRow(ludmillaConcert, ludmilla),
+        lineupRow(comedyShow, whindersson),
+        lineupRow(festival, fooFighters),
+      ]);
+
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query {
+              getHomeSections {
+                concerts { events { id headliner { slug name } } }
+                shows { events { id headliner { slug name } } }
+                sports { events { id headliner { slug name } } }
+                festivals { events { id headliner { slug name } } }
+              }
+            }
+          `,
+        });
+
+      expect(response.body.errors).toBeUndefined();
+      const { concerts, shows, sports, festivals } =
+        response.body.data.getHomeSections;
+      expect(byId(concerts.events)).toEqual({
+        [anittaConcert.id!]: {
+          id: anittaConcert.id,
+          headliner: { slug: 'girl-from-rio', name: 'Anitta' },
+        },
+        [ludmillaConcert.id!]: {
+          id: ludmillaConcert.id,
+          headliner: { slug: 'numanice', name: 'Ludmilla' },
+        },
+      });
+      expect(shows.events).toEqual([
+        {
+          id: comedyShow.id,
+          headliner: { slug: 'piauiense', name: 'Whindersson Nunes' },
+        },
+      ]);
+      expect(sports.events).toEqual([{ id: derby.id, headliner: null }]);
+      expect(festivals.events).toEqual([
+        {
+          id: festival.id,
+          headliner: { slug: 'everlong', name: 'Foo Fighters' },
+        },
+      ]);
+    });
   });
 
   describe('Catalog - Query findEvents ', () => {
@@ -694,6 +806,214 @@ describe('CatalogResolver (e2e)', () => {
         .expect(400);
 
       expect(response.body.errors[0].message).toContain('EventType');
+    });
+
+    describe('headliner', () => {
+      const headlinersById = async () => {
+        const response = await request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `
+              query {
+                findEvents {
+                  events {
+                    id
+                    headliner {
+                      slug
+                      name
+                    }
+                  }
+                }
+              }
+            `,
+          });
+
+        expect(response.body.errors).toBeUndefined();
+        return byId(response.body.data.findEvents.events);
+      };
+
+      it('returns the slug and stage name of the only headliner, not a support act (NAV-14, NAV-17)', async () => {
+        const weeknd = artistFactory.build({
+          slug: 'xo-abel',
+          stage_name: 'The Weeknd',
+        });
+        const adele = artistFactory.build({
+          slug: 'hello-adkins',
+          stage_name: 'Adele',
+        });
+        const supportAct = artistFactory.build({
+          slug: 'aa-opener',
+          stage_name: 'Opening Act',
+        });
+        const weekndConcert = buildEvent({
+          name: 'After Hours Til Dawn',
+          status: EventStatus.PUBLISHED,
+        });
+        const adeleConcert = buildEvent({
+          name: 'Adele Live',
+          status: EventStatus.PUBLISHED,
+        });
+
+        await testDbClient.batchInsert(Tables.Artist, [
+          weeknd,
+          adele,
+          supportAct,
+        ]);
+        await testDbClient.batchInsert(Tables.Event, [
+          weekndConcert,
+          adeleConcert,
+        ]);
+        await testDbClient.batchInsert(Tables.EventArtist, [
+          lineupRow(weekndConcert, weeknd),
+          lineupRow(adeleConcert, supportAct, {
+            headliner: false,
+            performance_order: 1,
+          }),
+          lineupRow(adeleConcert, adele, { performance_order: 2 }),
+        ]);
+
+        expect(await headlinersById()).toEqual({
+          [weekndConcert.id!]: {
+            id: weekndConcert.id,
+            headliner: { slug: 'xo-abel', name: 'The Weeknd' },
+          },
+          [adeleConcert.id!]: {
+            id: adeleConcert.id,
+            headliner: { slug: 'hello-adkins', name: 'Adele' },
+          },
+        });
+      });
+
+      it('picks the headliner with the lowest performance_order, nulls last, then the lowest slug (NAV-15)', async () => {
+        // In each event the other headliner is the pick of a plausible wrong
+        // rule: slug before order, order descending, insertion order, stage
+        // name instead of slug, or nulls first.
+        const orderTwoLowerSlug = artistFactory.build({
+          slug: 'aa-second',
+          stage_name: 'Zara Larsson',
+        });
+        const orderOneHigherSlug = artistFactory.build({
+          slug: 'zz-first',
+          stage_name: 'Anitta',
+        });
+        const tieHigherSlug = artistFactory.build({
+          slug: 'yy-tie',
+          stage_name: 'Bad Bunny',
+        });
+        const tieLowerSlug = artistFactory.build({
+          slug: 'bb-tie',
+          stage_name: 'Yungblud',
+        });
+        const noOrderLowerSlug = artistFactory.build({
+          slug: 'cc-no-order',
+          stage_name: 'Xamã',
+        });
+        const orderThreeHigherSlug = artistFactory.build({
+          slug: 'xx-third',
+          stage_name: 'Coldplay',
+        });
+        const byOrder = buildEvent({ status: EventStatus.PUBLISHED });
+        const bySlug = buildEvent({ status: EventStatus.PUBLISHED });
+        const byNullsLast = buildEvent({ status: EventStatus.PUBLISHED });
+
+        await testDbClient.batchInsert(Tables.Artist, [
+          orderTwoLowerSlug,
+          orderOneHigherSlug,
+          tieHigherSlug,
+          tieLowerSlug,
+          noOrderLowerSlug,
+          orderThreeHigherSlug,
+        ]);
+        await testDbClient.batchInsert(Tables.Event, [
+          byOrder,
+          bySlug,
+          byNullsLast,
+        ]);
+        await testDbClient.batchInsert(Tables.EventArtist, [
+          lineupRow(byOrder, orderTwoLowerSlug, { performance_order: 2 }),
+          lineupRow(byOrder, orderOneHigherSlug, { performance_order: 1 }),
+          lineupRow(bySlug, tieHigherSlug, { performance_order: 1 }),
+          lineupRow(bySlug, tieLowerSlug, { performance_order: 1 }),
+          lineupRow(byNullsLast, noOrderLowerSlug, {
+            performance_order: null,
+          }),
+          lineupRow(byNullsLast, orderThreeHigherSlug, {
+            performance_order: 3,
+          }),
+        ]);
+
+        expect(await headlinersById()).toEqual({
+          [byOrder.id!]: {
+            id: byOrder.id,
+            headliner: { slug: 'zz-first', name: 'Anitta' },
+          },
+          [bySlug.id!]: {
+            id: bySlug.id,
+            headliner: { slug: 'bb-tie', name: 'Yungblud' },
+          },
+          [byNullsLast.id!]: {
+            id: byNullsLast.id,
+            headliner: { slug: 'xx-third', name: 'Coldplay' },
+          },
+        });
+      });
+
+      it('returns null when no artist of the event is a headliner or the event has no artists (NAV-16)', async () => {
+        const supportAct = artistFactory.build({
+          slug: 'warm-up-band',
+          stage_name: 'Opening Act',
+        });
+        const coldplay = artistFactory.build({
+          slug: 'viva-chris',
+          stage_name: 'Coldplay',
+        });
+        const supportOnly = buildEvent({ status: EventStatus.PUBLISHED });
+        const noArtists = buildEvent({ status: EventStatus.PUBLISHED });
+        const withHeadliner = buildEvent({ status: EventStatus.PUBLISHED });
+
+        await testDbClient.batchInsert(Tables.Artist, [supportAct, coldplay]);
+        await testDbClient.batchInsert(Tables.Event, [
+          supportOnly,
+          noArtists,
+          withHeadliner,
+        ]);
+        await testDbClient.batchInsert(Tables.EventArtist, [
+          lineupRow(supportOnly, supportAct, { headliner: false }),
+          lineupRow(withHeadliner, coldplay),
+        ]);
+
+        expect(await headlinersById()).toEqual({
+          [supportOnly.id!]: { id: supportOnly.id, headliner: null },
+          [noArtists.id!]: { id: noArtists.id, headliner: null },
+          [withHeadliner.id!]: {
+            id: withHeadliner.id,
+            headliner: { slug: 'viva-chris', name: 'Coldplay' },
+          },
+        });
+      });
+
+      it('runs no event artist query when no event is returned', async () => {
+        const dataSource = module.get<DataSource>(
+          getDataSourceToken('catalog'),
+        );
+        const logQuery = jest.spyOn(dataSource.logger, 'logQuery');
+
+        try {
+          const response = await findEvents();
+
+          expect(response.body.errors).toBeUndefined();
+          expect(response.body.data.findEvents.events).toEqual([]);
+          const queries = logQuery.mock.calls.map(([query]) => query);
+          expect(
+            queries.some((query) => query.includes('"CatalogEvent"')),
+          ).toBe(true);
+          expect(
+            queries.filter((query) => query.includes('"CatalogEventArtist"')),
+          ).toEqual([]);
+        } finally {
+          logQuery.mockRestore();
+        }
+      });
     });
   });
 
@@ -962,6 +1282,126 @@ describe('CatalogResolver (e2e)', () => {
       expect(featuredFestival).toEqual({
         id: festivalAtTheO2Arena.id,
         ...venueFields(theO2Arena),
+      });
+    });
+
+    it('returns the headliner of each event in eventsByCity, nearbyEvents and featuredFestival (NAV-17)', async () => {
+      const adele = artistFactory.build({
+        slug: 'hello-adkins',
+        stage_name: 'Adele',
+        genres: 'soul',
+      });
+      const samSmith = artistFactory.build({
+        slug: 'unholy-sam',
+        stage_name: 'Sam Smith',
+      });
+      const coldplay = artistFactory.build({
+        slug: 'viva-chris',
+        stage_name: 'Coldplay',
+      });
+      const killers = artistFactory.build({
+        slug: 'mr-brightside',
+        stage_name: 'The Killers',
+      });
+      const fooFighters = artistFactory.build({
+        slug: 'everlong',
+        stage_name: 'Foo Fighters',
+      });
+      const concert = (venueId: string, hours: number) =>
+        buildEvent({
+          type: EventType.CONCERT,
+          status: EventStatus.PUBLISHED,
+          category: 'Rock',
+          venueId,
+          startAt: hoursFromNow(hours),
+        });
+      const adeleHeadlines = concert(allianzParque.id, 24);
+      // Adele plays here too, but Sam Smith is the headliner.
+      const adeleSupports = concert(theO2Arena.id, 48);
+      const coldplayConcert = concert(theO2Arena.id, 12);
+      const killersConcert = concert(allianzParque.id, 36);
+      const festival = buildEvent({
+        type: EventType.FESTIVAL,
+        status: EventStatus.PUBLISHED,
+        venueId: theO2Arena.id,
+        startAt: hoursFromNow(72),
+      });
+
+      await testDbClient.batchInsert(Tables.Artist, [
+        adele,
+        samSmith,
+        coldplay,
+        killers,
+        fooFighters,
+      ]);
+      await testDbClient.batchInsert(Tables.Event, [
+        adeleHeadlines,
+        adeleSupports,
+        coldplayConcert,
+        killersConcert,
+        festival,
+      ]);
+      await testDbClient.batchInsert(Tables.EventArtist, [
+        lineupRow(adeleHeadlines, adele),
+        lineupRow(adeleSupports, adele, {
+          headliner: false,
+          performance_order: 1,
+        }),
+        lineupRow(adeleSupports, samSmith, { performance_order: 2 }),
+        lineupRow(coldplayConcert, coldplay),
+        lineupRow(killersConcert, killers),
+        lineupRow(festival, fooFighters),
+      ]);
+
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query FindArtistBySlug($FindArtistInput: FindArtistInput!) {
+              findArtistBySlug(FindArtistInput: $FindArtistInput) {
+                eventsByCity { events { id headliner { slug name } } }
+                nearbyEvents { id headliner { slug name } }
+                featuredFestival { id headliner { slug name } }
+              }
+            }
+          `,
+          variables: { FindArtistInput: { slug: 'hello-adkins' } },
+        });
+
+      expect(response.body.errors).toBeUndefined();
+      const { eventsByCity, nearbyEvents, featuredFestival } =
+        response.body.data.findArtistBySlug;
+      expect(eventsByCity).toEqual([
+        {
+          events: [
+            {
+              id: adeleHeadlines.id,
+              headliner: { slug: 'hello-adkins', name: 'Adele' },
+            },
+          ],
+        },
+        {
+          events: [
+            {
+              id: adeleSupports.id,
+              headliner: { slug: 'unholy-sam', name: 'Sam Smith' },
+            },
+          ],
+        },
+      ]);
+      expect(nearbyEvents).toEqual([
+        {
+          id: coldplayConcert.id,
+          headliner: { slug: 'viva-chris', name: 'Coldplay' },
+        },
+        {
+          id: killersConcert.id,
+          headliner: { slug: 'mr-brightside', name: 'The Killers' },
+        },
+      ]);
+      expect(featuredFestival).toEqual({
+        id: festival.id,
+        headliner: { slug: 'everlong', name: 'Foo Fighters' },
       });
     });
 

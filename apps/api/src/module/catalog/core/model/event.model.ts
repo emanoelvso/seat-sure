@@ -1,6 +1,11 @@
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 
+export interface EventHeadlinerModel {
+  slug: string;
+  name: string; // Artist.stage_name
+}
+
 export interface EventModel {
   id: string;
   name: string;
@@ -18,4 +23,5 @@ export interface EventModel {
   category: string;
   price: number;
   tags?: string[] | null;
+  headliner: EventHeadlinerModel | null;
 }

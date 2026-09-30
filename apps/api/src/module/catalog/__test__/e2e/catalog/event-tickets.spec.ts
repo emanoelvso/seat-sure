@@ -1,3 +1,5 @@
+import { artistFactory } from '@catalogModule/__test__/factory/artist.factory';
+import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist.factory';
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
@@ -211,6 +213,87 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
     expect(response.body.data.findEventTickets.event.startAt).toBe(
       instant.toISOString(),
     );
+  });
+
+  it('returns the headliner of the requested event, or null without one (NAV-17)', async () => {
+    const adele = artistFactory.build({
+      slug: 'hello-adkins',
+      stage_name: 'Adele',
+    });
+    const coldplay = artistFactory.build({
+      slug: 'viva-chris',
+      stage_name: 'Coldplay',
+    });
+    const adeleConcert = buildEvent({
+      name: 'Adele Live',
+      status: EventStatus.PUBLISHED,
+      startAt: hoursFromNow(24),
+    });
+    const coldplayConcert = buildEvent({
+      name: 'Music of the Spheres',
+      status: EventStatus.PUBLISHED,
+      startAt: hoursFromNow(48),
+    });
+    const match = buildEvent({
+      type: EventType.SPORT,
+      status: EventStatus.PUBLISHED,
+      startAt: hoursFromNow(72),
+    });
+
+    await testDbClient.batchInsert(Tables.Artist, [adele, coldplay]);
+    await testDbClient.batchInsert(Tables.Event, [
+      adeleConcert,
+      coldplayConcert,
+      match,
+    ]);
+    await testDbClient.batchInsert(Tables.EventArtist, [
+      eventArtistFactory.build({
+        eventId: adeleConcert.id,
+        artistId: adele.id,
+      }),
+      eventArtistFactory.build({
+        eventId: coldplayConcert.id,
+        artistId: coldplay.id,
+      }),
+    ]);
+
+    const findEvent = async (eventId: string) => {
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query FindEventTickets($FindEventTicketsInput: FindEventTicketsInput!) {
+              findEventTickets(FindEventTicketsInput: $FindEventTicketsInput) {
+                event {
+                  id
+                  headliner {
+                    slug
+                    name
+                  }
+                }
+              }
+            }
+          `,
+          variables: { FindEventTicketsInput: { eventId } },
+        })
+        .expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      return response.body.data.findEventTickets.event;
+    };
+
+    expect(await findEvent(adeleConcert.id!)).toEqual({
+      id: adeleConcert.id,
+      headliner: { slug: 'hello-adkins', name: 'Adele' },
+    });
+    expect(await findEvent(coldplayConcert.id!)).toEqual({
+      id: coldplayConcert.id,
+      headliner: { slug: 'viva-chris', name: 'Coldplay' },
+    });
+    expect(await findEvent(match.id!)).toEqual({
+      id: match.id,
+      headliner: null,
+    });
   });
 
   it('returns a published event starting 1h from now (edge: later today)', async () => {
