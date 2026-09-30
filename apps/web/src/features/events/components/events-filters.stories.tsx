@@ -67,6 +67,25 @@ export const LoadedFromUrl: Story = {
   },
 };
 
+export const ChipsShowCloseIcon: Story = {
+  parameters: urlState(ALL_FILTERS),
+  play: async ({ canvas }) => {
+    const chips = pillsRow(canvas).getAllByRole("button");
+
+    await expect(
+      chips.map((chip) => [
+        chip.textContent,
+        within(chip).queryAllByTestId("close-icon").length,
+      ]),
+    ).toEqual([
+      ["Shows", 1],
+      ["Oct 1 - Oct 5, 2026", 1],
+      ["Paris", 1],
+      ["$100-300$", 1],
+    ]);
+  },
+};
+
 export const NoFilters: Story = {
   play: async ({ canvas }) => {
     await expect(control(canvas, "When").getByRole("button")).toHaveTextContent(

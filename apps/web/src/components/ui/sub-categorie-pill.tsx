@@ -26,12 +26,14 @@ interface SubCategoriePillProps extends VariantProps<
 > {
   children: ReactNode;
   onClick?: () => void;
+  removable?: boolean;
 }
 
 export function SubCategoriePill({
   children,
   variant,
   onClick,
+  removable = false,
 }: SubCategoriePillProps) {
   return (
     <button
@@ -40,7 +42,9 @@ export function SubCategoriePill({
       onClick={onClick}
     >
       <span>{children}</span>
-      <CloseIcon size={12} />
+      {removable && (
+        <CloseIcon size={12} aria-hidden data-testid="close-icon" />
+      )}
     </button>
   );
 }
