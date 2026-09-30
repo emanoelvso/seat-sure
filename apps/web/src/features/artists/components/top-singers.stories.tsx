@@ -43,6 +43,22 @@ const rowNames = (section: HTMLElement, direction: "left" | "right") => [
   ),
 ];
 
+const row = (section: HTMLElement, direction: "left" | "right") =>
+  section.querySelector<HTMLElement>(`.animate-scroll-${direction}`)!;
+
+// Singer names a role query finds in a row, without deduplication.
+const accessibleNames = (section: HTMLElement, direction: "left" | "right") =>
+  within(row(section, direction))
+    .getAllByRole("img")
+    .map((img) => img.getAttribute("alt")!.replace(/ avatar$/, ""));
+
+// [hidden from assistive tech, inert] for each loop copy of a row.
+const copyStates = (section: HTMLElement, direction: "left" | "right") =>
+  [...row(section, direction).children].map((copy) => [
+    copy.getAttribute("aria-hidden") === "true",
+    copy.hasAttribute("inert"),
+  ]);
+
 const meta: Meta<typeof TopSingers> = {
   title: "Components/TopSingers",
   component: TopSingers,
@@ -107,5 +123,30 @@ export const LocationFromCity: Story = {
 
     await expect(section.getAllByText(/, Las Vegas$/)[0]).toBeVisible();
     await expect(section.queryAllByText(/Caesars Palace/)).toEqual([]);
+  },
+};
+
+export const LoopCopiesHidden: Story = {
+  play: async ({ canvas }) => {
+    const section = canvas.getByRole("region", { name: "Top Singers" });
+
+    await expect(accessibleNames(section, "left")).toEqual([
+      "Adele",
+      "Coldplay",
+      "Taylor Swift",
+    ]);
+    await expect(accessibleNames(section, "right")).toEqual([
+      "Bruno Mars",
+      "Dua Lipa",
+    ]);
+
+    for (const direction of ["left", "right"] as const) {
+      await expect(copyStates(section, direction)).toEqual([
+        [false, false],
+        [true, true],
+        [true, true],
+        [true, true],
+      ]);
+    }
   },
 };

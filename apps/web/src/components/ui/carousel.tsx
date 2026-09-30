@@ -20,8 +20,15 @@ function CarouselRow<T>({
           direction === "left" ? "animate-scroll-left" : "animate-scroll-right"
         }`}
       >
+        {/* Copies 2-4 only fill the loop, so assistive tech and the keyboard
+            reach each item once. */}
         {[0, 1, 2, 3].map((setIndex) => (
-          <div key={setIndex} className="flex gap-4 pr-4">
+          <div
+            key={setIndex}
+            className="flex gap-4 pr-4"
+            aria-hidden={setIndex > 0 || undefined}
+            inert={setIndex > 0}
+          >
             {items.map((item, i) => renderItem(item, i))}
           </div>
         ))}
