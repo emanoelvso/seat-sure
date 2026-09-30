@@ -140,6 +140,7 @@ export function ArtistView({
       {nearbyEvents.length > 0 && (
         <EventShowcase
           title="Concert near you"
+          type="CONCERT"
           events={toCardProps(nearbyEvents)}
         />
       )}

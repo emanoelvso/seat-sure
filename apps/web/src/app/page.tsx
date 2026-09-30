@@ -35,22 +35,26 @@ export default async function Home() {
 
         <EventShowcase
           title="Concert"
+          type="CONCERT"
           subCategories={concerts?.categories}
           events={toCardProps(concerts?.events ?? [])}
         />
         <EventShowcase
           title="Show"
+          type="SHOW"
           subCategories={shows?.categories}
           events={toCardProps(shows?.events ?? [])}
         />
         <TopSingers concerts={concerts?.events ?? []} />
         <EventShowcase
           title="Sport"
+          type="SPORT"
           subCategories={sports?.categories}
           events={toCardProps(sports?.events ?? [])}
         />
         <EventShowcase
           title="Festivals"
+          type="FESTIVAL"
           subCategories={festivals?.categories}
           events={toCardProps(festivals?.events ?? [])}
         />

@@ -3,16 +3,20 @@
 import Link from "next/link";
 import { MainCard, MainCardProps } from "./main-card";
 import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
+import { paths } from "@/config/paths";
+import { EventType } from "@/utils/event-types";
 import { useState } from "react";
 
 interface EventShowcaseProps {
   title: string;
+  type: EventType;
   subCategories?: string[] | null;
   events: MainCardProps[];
 }
 
 export function EventShowcase({
   title,
+  type,
   subCategories,
   events,
 }: EventShowcaseProps) {
@@ -27,7 +31,7 @@ export function EventShowcase({
       <div className="flex items-center justify-between py-5">
         <h2 className="text-3xl font-semibold">{title}</h2>
         <Link
-          href="/events"
+          href={paths.events.getHref(type)}
           className="text-neutral-200 hover:text-white transition"
         >
           See all
@@ -51,10 +55,10 @@ export function EventShowcase({
       )}
 
       <div className="flex gap-6 overflow-x-auto pb-20 [&::-webkit-scrollbar]:hidden">
-        {filteredEvents.map((event, index) => (
+        {filteredEvents.map((event) => (
           <MainCard
             className="mt-6"
-            key={index}
+            key={event.href}
             avatarUrl={event.avatarUrl}
             timeToEnd={event.timeToEnd}
             name={event.name}
