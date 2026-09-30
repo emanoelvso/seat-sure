@@ -9,24 +9,16 @@ import {
   parseAsStringLiteral,
 } from "nuqs/server";
 import { env } from "@/config/env";
+import { EVENT_TYPES } from "@/utils/event-types";
 import { parseAsStrictInteger } from "@/utils/search-params";
 
 // Shared by the server page (loader, serializer) and the client filters
 // (useQueryStates). `nuqs/server` has no "use client" directive, so both
 // sides can import it.
 
-export const EVENT_TYPES = ["CONCERT", "SHOW", "SPORT", "FESTIVAL"] as const;
 export const PRICE_RANGES = ["-100", "100-300", "300-500", "+500"] as const;
 
-export type EventType = (typeof EVENT_TYPES)[number];
 export type PriceRange = (typeof PRICE_RANGES)[number];
-
-export const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  CONCERT: "Concerts",
-  SHOW: "Shows",
-  SPORT: "Sports",
-  FESTIVAL: "Festivals",
-};
 
 export const PRICE_LABELS: Record<PriceRange, string> = {
   "-100": "Under $100",

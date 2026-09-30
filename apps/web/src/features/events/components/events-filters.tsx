@@ -5,13 +5,12 @@ import { DatePickerBox } from "@/components/ui/date-picker-box";
 import { SelectBox } from "@/components/ui/select-box";
 import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
 import {
-  EVENT_TYPE_LABELS,
   EventsSearchParams,
-  EventType,
   PRICE_LABELS,
   PriceRange,
   eventsParsers,
 } from "@/features/events/utils/events-search-params";
+import { EVENT_TYPE_LABELS, EventType } from "@/utils/event-types";
 import { formatDateLabel } from "@/utils/format-date-label";
 import { WidgetOutlineIcon } from "@solar-icons/react";
 import {
