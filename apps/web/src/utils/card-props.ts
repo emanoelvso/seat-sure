@@ -1,5 +1,6 @@
 import { MainCardProps } from "@/components/main-card";
 import { env } from "@/config/env";
+import { paths } from "@/config/paths";
 import { EventSummary } from "@/types/api";
 
 export function toCardProps(events: EventSummary[]): MainCardProps[] {
@@ -15,5 +16,6 @@ export function toCardProps(events: EventSummary[]): MainCardProps[] {
     location: event.city,
     price: event.price,
     category: event.category,
+    href: paths.eventTickets.getHref(event.id),
   }));
 }

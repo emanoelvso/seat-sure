@@ -61,6 +61,7 @@ export function EventShowcase({
             date={event.date}
             location={event.location}
             price={event.price}
+            href={event.href}
           />
         ))}
       </div>

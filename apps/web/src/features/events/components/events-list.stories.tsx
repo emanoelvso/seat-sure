@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect } from "storybook/test";
+import { expect, within } from "storybook/test";
 import { EventSummary } from "@/types/api";
 import { zonedIso } from "@/testing/dates";
 import { EventsList } from "./events-list";
@@ -31,6 +31,20 @@ const events = [
 
 const NEXT_PAGE = "/events?type=SHOW&page=2";
 
+type Canvas = ReturnType<typeof within>;
+
+// Each card is one link to its event's tickets page.
+const CARD_HREFS = [
+  "/events/e1/tickets",
+  "/events/e2/tickets",
+  "/events/e3/tickets",
+];
+
+const linkHrefs = (canvas: Canvas) =>
+  canvas
+    .queryAllByRole("link")
+    .map((link: HTMLElement) => link.getAttribute("href"));
+
 const meta: Meta<typeof EventsList> = {
   title: "Features/Events/EventsList",
   component: EventsList,
@@ -43,7 +57,7 @@ type Story = StoryObj<typeof EventsList>;
 
 export const WithMore: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getAllByRole("img", { name: "Avatar" })).toHaveLength(3);
+    await expect(linkHrefs(canvas)).toEqual([...CARD_HREFS, NEXT_PAGE]);
     for (const name of ["Adele", "Coldplay", "Dua Lipa"]) {
       await expect(canvas.getByText(name)).toBeVisible();
     }
@@ -57,7 +71,7 @@ export const WithMore: Story = {
 export const LastPage: Story = {
   args: { hasMore: false },
   play: async ({ canvas }) => {
-    await expect(canvas.getAllByRole("img", { name: "Avatar" })).toHaveLength(3);
+    await expect(linkHrefs(canvas)).toEqual(CARD_HREFS);
     await expect(
       canvas.queryByRole("link", { name: "View more Events" }),
     ).toBeNull();
@@ -69,9 +83,26 @@ export const Empty: Story = {
   args: { events: [], hasMore: true },
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No Events")).toBeVisible();
-    await expect(canvas.queryAllByRole("img", { name: "Avatar" })).toEqual([]);
+    await expect(linkHrefs(canvas)).toEqual([]);
     await expect(
       canvas.queryByRole("link", { name: "View more Events" }),
     ).toBeNull();
+  },
+};
+
+export const CardsLinkToTheirEvents: Story = {
+  play: async ({ canvas }) => {
+    const cards: [RegExp, string][] = [
+      [/Adele/, "/events/e1/tickets"],
+      [/Coldplay/, "/events/e2/tickets"],
+      [/Dua Lipa/, "/events/e3/tickets"],
+    ];
+
+    for (const [name, href] of cards) {
+      await expect(canvas.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        href,
+      );
+    }
   },
 };
