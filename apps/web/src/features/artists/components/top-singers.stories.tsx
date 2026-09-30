@@ -224,22 +224,23 @@ export const LoopCopiesClickable: Story = {
   },
 };
 
-// Concerts named after their tours, so a slug derived from the card name can't
-// pass. The last one has no headliner.
+// Concerts named after their tours, with slugs that aren't the headliner names
+// slugified, so a slug derived from either name can't pass. The last one has
+// no headliner.
 export const CardsLinkToHeadliners: Story = {
   args: {
     concerts: [
       {
         ...concert("h1", "Eras Tour", "New York", "Madison Square Garden", 12),
-        headliner: headliner("taylor-swift", "Taylor Swift"),
+        headliner: headliner("swiftie-13", "Taylor Swift"),
       },
       {
         ...concert("h2", "Music of the Spheres", "Chicago", "Soldier Field", 9),
-        headliner: headliner("coldplay", "Coldplay"),
+        headliner: headliner("chris-martin-band", "Coldplay"),
       },
       {
         ...concert("h3", "Future Nostalgia", "Seattle", "Climate Pledge Arena", 18),
-        headliner: headliner("dua-lipa", "Dua Lipa"),
+        headliner: headliner("dua-lipa-uk", "Dua Lipa"),
       },
       {
         ...concert("h4", "Weekends with Adele", "Las Vegas", "The Colosseum", 6),
@@ -252,9 +253,9 @@ export const CardsLinkToHeadliners: Story = {
       canvas.getByRole("region", { name: "Top Singers" }),
     );
     const cards: [RegExp, string][] = [
-      [/Eras Tour/, "/artists/taylor-swift"],
-      [/Music of the Spheres/, "/artists/coldplay"],
-      [/Future Nostalgia/, "/artists/dua-lipa"],
+      [/Eras Tour/, "/artists/swiftie-13"],
+      [/Music of the Spheres/, "/artists/chris-martin-band"],
+      [/Future Nostalgia/, "/artists/dua-lipa-uk"],
     ];
 
     for (const [name, href] of cards) {

@@ -145,8 +145,9 @@ export const FestivalTitleKeepsStoredCasing: Story = {
   },
 };
 
-// The event name differs from the headliner's, so a link built from the event
-// name, or showing the headliner's name, can't pass.
+// The event name differs from the headliner's, and the slug isn't either name
+// slugified, so a link built from a name, or showing the headliner's name,
+// can't pass.
 export const TitleLinksToHeadliner: Story = {
   args: {
     event: {
@@ -154,7 +155,7 @@ export const TitleLinksToHeadliner: Story = {
       name: "Adele Live",
       headliner: {
         __typename: "EventHeadliner",
-        slug: "adele",
+        slug: "adele-adkins",
         name: "Adele",
       },
     },
@@ -164,7 +165,7 @@ export const TitleLinksToHeadliner: Story = {
     const link = within(title).getByRole("link");
 
     await expect(title).toHaveTextContent(/^Adele Live$/);
-    await expect(link).toHaveAttribute("href", "/artists/adele");
+    await expect(link).toHaveAttribute("href", "/artists/adele-adkins");
     await expect(link).toHaveTextContent(/^Adele Live$/);
   },
 };
