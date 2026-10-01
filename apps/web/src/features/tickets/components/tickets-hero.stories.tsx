@@ -84,6 +84,36 @@ export const WithSelection: Story = {
   },
 };
 
+// The seat page's section: its name and price differ from section B's, and
+// the picked seat's row differs from its number (L-006).
+const vip: TicketType = {
+  ...sectionB,
+  id: "tt-vip",
+  sectionKey: "vip",
+  name: "VIP",
+  priceCents: 45000,
+};
+
+export const PickedSeat: Story = {
+  args: { selected: vip, seat: { row: "4", number: "09" } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-sec")).toHaveTextContent(/^VIP$/);
+    await expect(canvas.getByTestId("hero-price")).toHaveTextContent(/^\$450$/);
+    await expect(canvas.getByTestId("hero-row")).toHaveTextContent(/^4$/);
+    await expect(canvas.getByTestId("hero-seat")).toHaveTextContent(/^09$/);
+  },
+};
+
+export const NoPickedSeat: Story = {
+  args: { selected: vip },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-sec")).toHaveTextContent(/^VIP$/);
+    await expect(canvas.getByTestId("hero-price")).toHaveTextContent(/^\$450$/);
+    await expect(canvas.getByTestId("hero-row")).toHaveTextContent(/^—$/);
+    await expect(canvas.getByTestId("hero-seat")).toHaveTextContent(/^—$/);
+  },
+};
+
 let share: ReturnType<typeof fn>;
 
 export const ShareAndHeart: Story = {

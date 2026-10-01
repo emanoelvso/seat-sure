@@ -24,6 +24,8 @@ import {
 interface TicketsHeroProps {
   event: TicketsEvent;
   selected?: TicketType;
+  /** The seat page's latest pick, shown as ROW and SEAT. */
+  seat?: { row: string; number: string };
 }
 
 const PLACEHOLDER = "—";
@@ -47,7 +49,7 @@ function SeatDetail({
   );
 }
 
-export function TicketsHero({ event, selected }: TicketsHeroProps) {
+export function TicketsHero({ event, selected, seat }: TicketsHeroProps) {
   return (
     <section
       aria-label={`${event.name} tickets`}
@@ -125,9 +127,17 @@ export function TicketsHero({ event, selected }: TicketsHeroProps) {
             testId="hero-sec"
           />
           <span aria-hidden="true" className="h-[50px] w-px bg-neutral-500" />
-          <SeatDetail label="ROW" value={PLACEHOLDER} testId="hero-row" />
+          <SeatDetail
+            label="ROW"
+            value={seat?.row ?? PLACEHOLDER}
+            testId="hero-row"
+          />
           <span aria-hidden="true" className="h-[50px] w-px bg-neutral-500" />
-          <SeatDetail label="SEAT" value={PLACEHOLDER} testId="hero-seat" />
+          <SeatDetail
+            label="SEAT"
+            value={seat?.number ?? PLACEHOLDER}
+            testId="hero-seat"
+          />
         </div>
       </div>
     </section>
