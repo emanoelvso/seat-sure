@@ -7,7 +7,8 @@ export const SEAT_SIZE = 28;
 // The band above the top seat box where the chart draws the stage arc.
 export const STAGE_HEIGHT = 64;
 
-// From a row's rightmost seat center to the start of its label (frame 12).
+// From the chart's rightmost seat center to the start of the row labels'
+// column (frame 12).
 const ROW_LABEL_OFFSET = 40;
 
 // From the bottom row's lowest seat center to the column labels' line.
@@ -46,17 +47,15 @@ function meanY(row: Seat[]): number {
   return row.reduce((sum, seat) => sum + seat.y, 0) / row.length;
 }
 
-// Row labels are anchored at the start of their text, at the y of the row's
-// rightmost seat.
+// Row labels are anchored at the start of their text, in one column right of
+// the chart's rightmost seat, each at the y of its row's rightmost seat.
 export function rowLabels(seats: Seat[]): RowLabel[] {
+  const x = Math.max(...seats.map((seat) => seat.x)) + ROW_LABEL_OFFSET;
+
   return groupByRow(seats).map((row) => {
     const rightmost = row.reduce((a, b) => (b.x > a.x ? b : a));
 
-    return {
-      row: rightmost.row,
-      x: rightmost.x + ROW_LABEL_OFFSET,
-      y: rightmost.y,
-    };
+    return { row: rightmost.row, x, y: rightmost.y };
   });
 }
 

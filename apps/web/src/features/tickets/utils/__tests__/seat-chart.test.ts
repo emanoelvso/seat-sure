@@ -71,21 +71,25 @@ describe("chartFrame", () => {
 });
 
 describe("rowLabels", () => {
-  // Row 1's rightmost seat (283) isn't the chart's rightmost (742), so a
-  // label placed from the chart's right edge gives row 1 another offset.
-  it("puts one label per row, at the same offset right of that row's rightmost seat and at its y (SEAT-17)", () => {
+  // Frame 12 aligns every row label in one column. Row 1's rightmost seat
+  // (283) isn't the chart's rightmost (742), so a label placed from its own
+  // row's rightmost seat leaves that column.
+  it("puts one label per row, in one column right of the chart's rightmost seat, at the y of the row's rightmost seat (SEAT-17)", () => {
     const labels = rowLabels(seats);
-    const offset = labels.find(({ row }) => row === "1")!.x - 283;
+    const offset = labels[0].x - 742;
 
     expect(offset).toBeGreaterThan(half);
     expect(labels).toHaveLength(3);
     expect(labels).toEqual(
       expect.arrayContaining([
-        { row: "1", x: 283 + offset, y: 48 },
+        { row: "1", x: 742 + offset, y: 48 },
         { row: "7", x: 742 + offset, y: 361 },
         { row: "12", x: 742 + offset, y: 577 },
       ]),
     );
+    // The column follows the chart: with row 1 alone, it sits the same
+    // offset right of seat 283.
+    expect(rowLabels(row1)).toEqual([{ row: "1", x: 283 + offset, y: 48 }]);
   });
 });
 
