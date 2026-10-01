@@ -39,9 +39,8 @@ The full rules are in `apps/api/docs/`.
 ### Challenges
 
 - A transaction can't span modules. Cross-context consistency, such as "payment succeeded → issue tickets", is eventual and needs idempotent consumers.
-- ADR-002's seat reservation assumed `SELECT ... FOR UPDATE` across seats and orders. With seats in Catalog and holds in Ticketing, that needs a redesign, which is tracked in `todo.md`.
+- ADR-002's seat reservation assumed `SELECT ... FOR UPDATE` across seats and orders. With seats in Catalog and holds in Ticketing, that needed a redesign, recorded in [ADR-015](./015-seat-holds-owned-by-ticketing.md).
 - Replicated fields (e.g. `Order.eventName`) can drift from the source and need a refresh strategy.
-- Existing Catalog tables (`Event`, `Artist`, `TicketType`, …) predate the prefix rule and must be renamed (tracked in `todo.md`).
 
 ### Trade-offs
 

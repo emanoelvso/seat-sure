@@ -1,9 +1,11 @@
 # ADR-002: PostgreSQL and Redis as the Database Stack
 
 - **Date**: 2026-09-10
-- **Status**: Accepted
+- **Status**: Accepted. Superseded in part by [ADR-015](./015-seat-holds-owned-by-ticketing.md): its `SELECT ... FOR UPDATE` seat reservation, described below, is replaced by a hold table unique on (`eventId`, `seatId`) scoped to Ticketing alone.
 - **Deciders**: emanoelvso
 - **Tags**: architecture, database, postgresql, redis, caching
+- **Links**:
+  - [ADR-015: Seat Holds Owned Entirely by Ticketing](./015-seat-holds-owned-by-ticketing.md)
 
 ## Context
 
