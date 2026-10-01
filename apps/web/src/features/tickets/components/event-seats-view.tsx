@@ -1,12 +1,13 @@
 "use client";
 
 import { useQueryStates } from "nuqs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PillSelect } from "@/components/ui/pill-select";
 import type {
   FindTicketTypeSeats,
   Seat,
 } from "@/features/tickets/api/find-ticket-type-seats";
+import { ReviewSeatsDialog } from "@/features/tickets/components/review-seats-dialog";
 import { SeatChart } from "@/features/tickets/components/seat-chart";
 import { SeatLegend } from "@/features/tickets/components/seat-legend";
 import { SeatMapPreview } from "@/features/tickets/components/seat-map";
@@ -40,6 +41,8 @@ export function EventSeatsView({
   // Seat ids in pick order, earliest first. Picks hold no seat, so they stay
   // out of the URL.
   const [picks, setPicks] = useState<string[]>([]);
+  const [reviewing, setReviewing] = useState(false);
+  const continueRef = useRef<HTMLButtonElement>(null);
 
   // The page already called notFound() when event is null, and the API only
   // returns an event with its ticket type.
@@ -80,6 +83,13 @@ export function EventSeatsView({
     const nextQuantity = Number(value);
     setUrlState({ quantity: nextQuantity });
     setPicks((current) => trimPicks(current, nextQuantity));
+  }
+
+  // Focus goes back to Continue explicitly, whatever element the browser
+  // restores when the dialog closes (SEAT-46).
+  function closeReview() {
+    setReviewing(false);
+    continueRef.current?.focus();
   }
 
   return (
@@ -126,7 +136,8 @@ export function EventSeatsView({
             ticketType={ticketType}
             quantity={quantity}
             pickedSeats={pickedSeats}
-            onContinue={() => {}}
+            onContinue={() => setReviewing(true)}
+            continueRef={continueRef}
           />
           <div className="rounded-2xl bg-neutral-800 p-4">
             <SeatMapPreview
@@ -136,6 +147,14 @@ export function EventSeatsView({
           </div>
         </div>
       </div>
+
+      <ReviewSeatsDialog
+        open={reviewing}
+        onClose={closeReview}
+        event={event}
+        ticketType={ticketType}
+        pickedSeats={pickedSeats}
+      />
     </>
   );
 }

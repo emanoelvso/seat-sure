@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { OnUrlUpdateFunction } from "nuqs/adapters/testing";
-import { expect, fn, screen, waitFor, within } from "storybook/test";
+import { expect, fireEvent, fn, screen, waitFor, within } from "storybook/test";
 import type { FindTicketTypeSeats } from "@/features/tickets/api/find-ticket-type-seats";
 import { zonedIso } from "@/testing/dates";
 import {
@@ -423,5 +423,92 @@ export const EnoughFreeSeatsInARow: Story = {
       canvas,
       "No row has 4 free seats together. Pick fewer tickets.",
     );
+  },
+};
+
+// Review dialog (SEAT-41, SEAT-45, SEAT-46).
+const reviewDialog = (canvas: Canvas) =>
+  canvas.queryByRole("dialog", { name: "Ticket Information" });
+
+const pickTwoInRow4 = async ({ canvas, userEvent }: PlayContext) => {
+  await loaded(canvas);
+  await userEvent.click(seatButton(canvas, "4", "10"));
+  await userEvent.click(seatButton(canvas, "4", "09"));
+};
+
+// A click that doesn't focus the button, as in Safari. Focus stays on the last
+// picked seat, so the browser's own focus restoration would return there.
+const openReviewWithoutFocus = async (canvas: Canvas) => {
+  const button = continueButton(canvas);
+  fireEvent.click(button);
+  await waitFor(() => expect(reviewDialog(canvas)).not.toBeNull());
+  await expect(document.activeElement).not.toBe(button);
+  return button;
+};
+
+const expectReviewClosed = async (
+  canvas: Canvas,
+  dialog: HTMLElement,
+  continueAtOpen: HTMLElement,
+) => {
+  await waitFor(() => expect(reviewDialog(canvas)).toBeNull());
+  await expect((dialog as HTMLDialogElement).open).toBe(false);
+  await expect(pressed(canvas, "4", "10")).toBe("true");
+  await expect(pressed(canvas, "4", "09")).toBe("true");
+  await expect(document.activeElement).toBe(continueAtOpen);
+};
+
+export const ContinueOpensReview: Story = {
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await pickTwoInRow4(context);
+    await expect(reviewDialog(canvas)).toBeNull();
+
+    await userEvent.click(continueButton(canvas));
+
+    const dialog = reviewDialog(canvas)!;
+    await expect((dialog as HTMLDialogElement).open).toBe(true);
+    await expect(
+      within(dialog)
+        .getAllByRole("term")
+        .map((term) => term.textContent),
+    ).toEqual(["ROW", "Seat 09", "Seat 10", "Total"]);
+    await expect(
+      within(dialog)
+        .getAllByRole("definition")
+        .map((value) => value.textContent),
+    ).toEqual(["4", "$450", "$450", "$900"]);
+  },
+};
+
+export const ChangeSeatKeepsPicks: Story = {
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await pickTwoInRow4(context);
+    const continueAtOpen = await openReviewWithoutFocus(canvas);
+    const dialog = reviewDialog(canvas)!;
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Change Seat" }),
+    );
+
+    await expectReviewClosed(canvas, dialog, continueAtOpen);
+
+    // Continue opens it again (SEAT-41).
+    await userEvent.click(continueAtOpen);
+    await waitFor(() => expect(reviewDialog(canvas)).not.toBeNull());
+  },
+};
+
+export const EscapeKeepsPicks: Story = {
+  play: async (context) => {
+    const { canvas, userEvent } = context;
+    await pickTwoInRow4(context);
+    const continueAtOpen = await openReviewWithoutFocus(canvas);
+    const dialog = reviewDialog(canvas)!;
+
+    await userEvent.keyboard("{Escape}");
+
+    await expectReviewClosed(canvas, dialog, continueAtOpen);
   },
 };
