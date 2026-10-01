@@ -124,6 +124,15 @@ export type FindEventsInput = {
   type?: InputMaybe<EventType>;
 };
 
+export type FindTicketTypeSeatsInput = {
+  eventId: Scalars['String']['input'];
+  ticketTypeId: Scalars['String']['input'];
+};
+
+export type FindUnavailableSeatsInput = {
+  eventId: Scalars['String']['input'];
+};
+
 export type HomeSections = {
   __typename: 'HomeSections';
   concerts: Maybe<EventSection>;
@@ -152,6 +161,8 @@ export type Query = {
   findArtistBySlug: FindArtist;
   findEventTickets: EventTickets;
   findEvents: FindEvents;
+  findTicketTypeSeats: TicketTypeSeats;
+  findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
 };
 
@@ -168,6 +179,25 @@ export type QueryFindEventTicketsArgs = {
 
 export type QueryFindEventsArgs = {
   FindEventsInput?: InputMaybe<FindEventsInput>;
+};
+
+
+export type QueryFindTicketTypeSeatsArgs = {
+  FindTicketTypeSeatsInput: FindTicketTypeSeatsInput;
+};
+
+
+export type QueryFindUnavailableSeatsArgs = {
+  FindUnavailableSeatsInput: FindUnavailableSeatsInput;
+};
+
+export type Seat = {
+  __typename: 'Seat';
+  id: Scalars['String']['output'];
+  number: Scalars['String']['output'];
+  row: Scalars['String']['output'];
+  x: Scalars['Float']['output'];
+  y: Scalars['Float']['output'];
 };
 
 export type SeatMap = {
@@ -222,4 +252,17 @@ export type TicketType = {
   seatsAvailable: Scalars['Int']['output'];
   sectionKey: Scalars['String']['output'];
   tags: Array<Scalars['String']['output']>;
+};
+
+export type TicketTypeSeats = {
+  __typename: 'TicketTypeSeats';
+  event: Maybe<Event>;
+  seatMap: Maybe<SeatMap>;
+  seats: Array<Seat>;
+  ticketType: Maybe<TicketType>;
+};
+
+export type UnavailableSeats = {
+  __typename: 'UnavailableSeats';
+  seatIds: Array<Scalars['String']['output']>;
 };
