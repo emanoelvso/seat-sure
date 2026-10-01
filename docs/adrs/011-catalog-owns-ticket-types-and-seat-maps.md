@@ -35,7 +35,6 @@ We did not create a Ticketing module now to own `TicketType`. That would need it
 
 - `seatsAvailable` lives in Catalog while sales will happen in Ticketing. Decrementing it needs a cross-module flow, either a public API call or an event, and becomes eventually consistent.
 - If Ticketing later needs to own inventory, the entity, its migration history and its data must move modules. That's a planned refactor, not a free one.
-- The `TicketType` table predates the module-prefix rule and will be renamed to `CatalogTicketType` with the other Catalog tables (tracked in `todo.md`).
 
 ### Trade-offs
 
