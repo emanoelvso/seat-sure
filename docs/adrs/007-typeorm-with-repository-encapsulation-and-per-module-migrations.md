@@ -42,8 +42,7 @@ We chose it over Prisma for two reasons. First, Prisma centers on one schema and
 
 - Query-builder strings and raw SQL (`'event.startAt >= :now'`, `"EventArtist"`) are not type-checked, so typos surface only at runtime. The e2e tests against a real database are the safety net (ADR-010).
 - Every generated migration must be reviewed for unrelated diffs, which appear when the dev database is behind the migrations.
-- `typeorm-transactional` needs each DataSource registered with `addTransactionalDataSource`. Catalog doesn't do this yet (tracked in `todo.md`).
-- Current `Event` timestamps are `timestamp without time zone` holding Node-local wall time, so queries must pass `now` from the application instead of SQL `NOW()`.
+- `Event` timestamps are `timestamptz`, but queries still pass `now` from the application instead of SQL `NOW()`, because the tests control time by injecting it.
 
 ### Trade-offs
 

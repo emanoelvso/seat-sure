@@ -31,7 +31,8 @@ We will keep everything in **one repository**, managed with **pnpm workspaces** 
 ### Challenges
 
 - `apps/web` has its own `pnpm-workspace.yaml`, so Vite needs `server.fs.allow` pointed at the monorepo root to serve hoisted dependencies (`apps/web/vitest.config.ts`).
-- `apps/api` has no `lint` script, so `turbo run lint` skips it, and its husky pre-commit hook still calls `yarn` (tracked in `todo.md`).
+- `eslint-plugin-project-structure` resolves paths from the monorepo root (where pnpm keeps `node_modules/.pnpm`), so `apps/api` sets `projectRoot` in `.projectStructurerc.json` and passes an absolute config path in `eslint.config.mjs`.
+- Git hooks live at the monorepo root (`.husky/`). lint-staged picks the `.lintstagedrc.json` closest to each staged file, so each app lints with its own ESLint config.
 - `@seat-sure/shared` holds only a placeholder `User` type today. GraphQL types are hand-written on the web side until GraphQL Code Generator is adopted (ADR-001).
 
 ### Trade-offs

@@ -30,8 +30,8 @@ graph TB
     classDef generic fill:#f3f4f6,stroke:#6b7280,color:#1f2937
 
     class TKT,CAT core
-    class IA,UP,BIL supporting
-    class SP,NOT generic
+    class UP,BIL supporting
+    class SP,NOT,IA generic
 ```
 
 Amber = core domain (what the business sells), indigo = supporting, gray = generic. Dashed arrows are event / reference flows across contexts, not shared tables.
@@ -63,8 +63,8 @@ Amber = core domain (what the business sells), indigo = supporting, gray = gener
 
 | # | Context | Owns | Why it exists |
 |---|---|---|---|
-| 1 | **Identity & Access** | Sign-up, login, credentials, sessions, roles | Auth is a supporting domain; isolate it so you can swap providers (Auth0, Cognito) later. |
-| 2 | **User Profile** | Personal info, language/config, preferences | The user *account* (auth) and the user *profile* (name, avatar, preferences) change for different reasons and by different actors. |
+| 1 | **Identity & Access** | Sign-up, login, credentials, sessions, roles | Generic subdomain: no competitive advantage and no business-specific knowledge, so isolate it and you can swap providers (Auth0, Cognito) later. |
+| 2 | **User Profile** | Personal info, language/config, preferences | Supporting subdomain: no competitive advantage on its own, but `document_id` and `notification_channels` need business-specific knowledge of the ticket-buying journey. The user *account* (auth) and the user *profile* (name, avatar, preferences) also change for different reasons and by different actors. |
 | 3 | **Catalog** | Events, Artists, Venues, Seat Maps | Read-heavy. All "consultation" flows read from here. Includes geolocation. |
 | 4 | **Ticketing** | Seat reservation, ticket issuance, ticket status, PDF/QR | Core domain — this is what the business sells. |
 | 5 | **Billing** | Payment methods, charges, refunds, invoices | Sensitive/regulated; belongs behind its own boundary (often a gateway like Stripe). |
@@ -79,7 +79,67 @@ Amber = core domain (what the business sells), indigo = supporting, gray = gener
 
 ---
 
+## Ubiquitous Language
+
+One glossary per context, key terms only. The same term can mean something different in each context; see [`ddd-strategic-design-theory.md`](../../apps/api/docs/ddd-strategic-design-theory.md#ubiquitous-language) for why that's expected, not a bug.
+
+### 1. Identity & Access
+
+- **user**: the login identity: email, password hash, and status. Table `users_auth`.
+- **session**: one active login, tied to a refresh token, with its own expiry and revocation.
+- **role**: a permission grant (`admin`, `customer`, ...) assigned to a user.
+
+### 2. User Profile
+
+- **user**: the person behind an account: display name, avatar, phone, and birth date. Table `users`, a separate row from `users_auth` (Identity & Access) because it changes for different reasons and by a different actor.
+- **preferences**: language, timezone, and notification channel choices, stored per user.
+- **address**: a saved, labeled address, one of which can be the default.
+
+### 3. Catalog
+
+- **event**: a show at one venue at one time: a concert, sports match, or festival. Owned here as `events`. Not an async message; see Notifications below.
+- **artist**: a performer, with a bio and genres, who can appear in many events.
+- **venue**: a real place with an address and coordinates. One venue can host several seat map configurations.
+- **seat map**: a venue's layout for one configuration, drawn as sections with a stage and a view box.
+- **seat**: a fixed position on a seat map: section, row, number, category, and coordinates. It carries no availability state; that's Ticketing's language.
+- **ticket type**: a price tier for one event's section (name, price, currency), not the ticket itself.
+
+### 4. Ticketing
+
+- **event**: not owned here. A plain reference to Catalog's event, kept with a name and start-time snapshot so an order still reads correctly if the Catalog event changes later.
+- **user**: the buyer: whoever holds seats, places the order, and owns the resulting tickets. A plain reference to User Profile.
+- **seat**: availability for one event, not a position: free, held, or sold. The same seat (Catalog's `seat_id`) means something different at each stage of the purchase.
+- **seat hold**: a temporary claim on one seat for one event, released automatically once it expires ([ADR-015](../adrs/015-seat-holds-owned-by-ticketing.md)).
+- **order**: a purchase intent, from cart to paid, failed, cancelled, or refunded.
+- **ticket**: the artifact issued after payment, identified by its code, checked at the door.
+
+### 5. Billing
+
+- **user**: the account being charged. A plain reference to User Profile.
+- **order**: not owned here. A plain reference to Ticketing's order being paid.
+- **payment method**: a stored way to charge a user (card, wallet), through a provider.
+- **payment**: one charge attempt against an order, with a status independent of the order's own status.
+- **refund**: money returned against a completed payment.
+
+### 6. Social Proof
+
+- **user**: the author of a testimonial. A plain reference to User Profile.
+- **event**: the subject of a testimonial, or none for a site-wide one. A plain reference to Catalog's event.
+- **testimonial**: a rating and/or written review, moderated before it's shown.
+
+### 7. Notifications
+
+- **user**: the recipient of a notification. A plain reference to User Profile.
+- **seat**: not a reference to Catalog or Ticketing data, just text copied into a message payload (for example, "Section B, row 4, seat 12").
+- **event**: not a term used here. A `template_key` names the fact that happened (`order.paid`, `ticket.issued`), so it isn't confused with Catalog's event (a show).
+- **notification**: one delivery attempt on one channel (email, in-app, push), tracked from queued to sent, read, or failed.
+- **template**: the reusable content for a `template_key`, one per channel and language.
+
+---
+
 ## Tables
+
+Legend: `fk` is a foreign key inside the same context. `ref, no FK` is a plain ID column pointing at another context's table (ADR-006); the target context is named next to it.
 
 ### 1. Identity & Access
 
@@ -108,7 +168,7 @@ roles                              role_assignments
 
 ```
 users
-  id (uuid, pk)                 -- 1:1 with users_auth.id
+  id (uuid, pk)                 -- 1:1 with users_auth.id (ref Identity & Access, no FK)
   display_name
   full_name
   avatar_url
@@ -159,7 +219,7 @@ events
   doors_open_at
   status (draft|published|cancelled|sold_out|finished)
   latitude, longitude              -- denormalized from venue for fast geo queries
-  created_by (user_id)
+  created_by (user_id, ref User Profile, no FK)
   created_at, updated_at
   INDEX geo (latitude, longitude) or PostGIS geography column
 
@@ -174,24 +234,37 @@ ticket_types                       -- price tiers per event
 
 ```
 orders                             -- purchase intent / cart
-  id, user_id, event_id
+  id
+  user_id (ref User Profile, no FK)
+  event_id (ref Catalog, no FK)
+  event_name, event_starts_at      -- replicated from Catalog, snapshot at order creation
   status (pending|paid|failed|cancelled|refunded)
   subtotal_cents, fee_cents, total_cents, currency
-  payment_id (fk billing.payments, nullable)
+  payment_id (ref Billing, no FK, nullable)
   created_at, paid_at
 
 order_items
-  id, order_id, ticket_type_id, seat_id (nullable), unit_price_cents, quantity
+  id, order_id
+  ticket_type_id (ref Catalog, no FK)
+  ticket_type_name                 -- replicated from Catalog, snapshot
+  seat_id (ref Catalog, no FK, nullable)
+  unit_price_cents                 -- snapshot at purchase time, not a live Catalog price
+  quantity
 
 seat_holds                         -- temporary lock during checkout
-  id, event_id, seat_id, user_id, expires_at
+  id
+  event_id (ref Catalog, no FK)
+  seat_id (ref Catalog, no FK)
+  user_id (ref User Profile, no FK)
+  expires_at
   UNIQUE(event_id, seat_id)
 
 tickets                            -- issued after payment
   id (uuid, pk)
   order_item_id (fk)
-  event_id, user_id
-  seat_id (nullable for GA)
+  event_id (ref Catalog, no FK), user_id (ref User Profile, no FK)
+  seat_id (ref Catalog, no FK, nullable for GA)
+  seat_label                       -- replicated from Catalog, snapshot for the printed ticket
   code (unique, opaque)            -- for QR
   status (issued|used|cancelled|refunded|transferred)
   issued_at, used_at
@@ -202,14 +275,17 @@ tickets                            -- issued after payment
 
 ```
 payment_methods
-  id, user_id
+  id
+  user_id (ref User Profile, no FK)
   provider (stripe|mercadopago|...)
   provider_customer_id
   brand, last4, exp_month, exp_year
   is_default, created_at
 
 payments
-  id, user_id, order_id
+  id
+  user_id (ref User Profile, no FK)
+  order_id (ref Ticketing, no FK)
   provider, provider_payment_id
   amount_cents, currency
   status (requires_action|processing|succeeded|failed|refunded)
@@ -224,12 +300,13 @@ refunds
 
 ```
 testimonials
-  id, user_id
-  event_id (nullable)              -- allow site-wide OR event-specific
+  id
+  user_id (ref User Profile, no FK)
+  event_id (ref Catalog, no FK, nullable)  -- allow site-wide OR event-specific
   rating (1–5, nullable)
   title, body
   status (pending|approved|rejected)
-  approved_by, approved_at
+  approved_by (ref User Profile, no FK), approved_at
   created_at, updated_at
 ```
 
@@ -237,7 +314,8 @@ testimonials
 
 ```
 notifications
-  id, user_id
+  id
+  user_id (ref User Profile, no FK)
   channel (email|in_app|push)
   template_key (order.paid, ticket.issued, event.reminder, ...)
   payload (jsonb)
@@ -263,11 +341,13 @@ notification_templates
 
 Focused on the transactional path (what powers the event detail + seat selection + checkout). Identity & Access, Social Proof and Notifications are omitted here — their tables are described above.
 
+Legend: solid lines are in-context FKs; dotted lines (`..`) are cross-context references, and their attributes read `ref, no FK` instead of `FK`.
+
 ```mermaid
 erDiagram
-    USER ||--o{ ORDER : places
-    USER ||--o{ PAYMENT_METHOD : owns
-    USER ||--o{ TICKET : holds
+    USER ||..o{ ORDER : "places (ref, no FK)"
+    USER ||..o{ PAYMENT_METHOD : "owns (ref, no FK)"
+    USER ||..o{ TICKET : "holds (ref, no FK)"
 
     VENUE ||--o{ SEAT_MAP : "has configurations"
     SEAT_MAP ||--o{ SEAT : contains
@@ -280,18 +360,18 @@ erDiagram
     EVENT ||--o{ TICKET_TYPE : "sells as"
     TICKET_TYPE }o--o{ SEAT : "priced for (by category)"
 
-    EVENT ||--o{ ORDER : "purchased for"
+    EVENT ||..o{ ORDER : "purchased for (ref, no FK)"
     ORDER ||--|{ ORDER_ITEM : contains
-    TICKET_TYPE ||--o{ ORDER_ITEM : "picked as"
-    SEAT ||--o{ ORDER_ITEM : "reserves (nullable for GA)"
+    TICKET_TYPE ||..o{ ORDER_ITEM : "picked as (ref, no FK)"
+    SEAT ||..o{ ORDER_ITEM : "reserves (ref, no FK; nullable for GA)"
 
-    EVENT ||--o{ SEAT_HOLD : "locks during checkout"
-    SEAT ||--o{ SEAT_HOLD : "temporarily held"
-    USER ||--o{ SEAT_HOLD : "held by"
+    EVENT ||..o{ SEAT_HOLD : "locks during checkout (ref, no FK)"
+    SEAT ||..o{ SEAT_HOLD : "temporarily held (ref, no FK)"
+    USER ||..o{ SEAT_HOLD : "held by (ref, no FK)"
 
     ORDER_ITEM ||--o| TICKET : "issued as"
     PAYMENT_METHOD ||--o{ PAYMENT : "used for"
-    ORDER ||--o| PAYMENT : "paid by"
+    ORDER ||..o| PAYMENT : "paid by (ref, no FK)"
     PAYMENT ||--o{ REFUND : "refunded via"
 
     VENUE {
@@ -354,42 +434,46 @@ erDiagram
     }
     ORDER {
         uuid id PK
-        uuid userId FK
-        uuid eventId FK
+        uuid userId "ref, no FK"
+        uuid eventId "ref, no FK"
+        string eventName "snapshot"
+        timestamp eventStartsAt "snapshot"
         enum status
         int totalCents
     }
     ORDER_ITEM {
         uuid id PK
         uuid orderId FK
-        uuid ticketTypeId FK
-        uuid seatId FK "nullable"
-        int unitPriceCents
+        uuid ticketTypeId "ref, no FK"
+        string ticketTypeName "snapshot"
+        uuid seatId "ref, no FK; nullable"
+        int unitPriceCents "snapshot"
     }
     SEAT_HOLD {
         uuid id PK
-        uuid eventId FK
-        uuid seatId FK
-        uuid userId FK
+        uuid eventId "ref, no FK"
+        uuid seatId "ref, no FK"
+        uuid userId "ref, no FK"
         timestamp expiresAt
     }
     TICKET {
         uuid id PK
         uuid orderItemId FK
-        uuid eventId FK
-        uuid userId FK
-        uuid seatId FK "nullable"
+        uuid eventId "ref, no FK"
+        uuid userId "ref, no FK"
+        uuid seatId "ref, no FK; nullable"
+        string seatLabel "snapshot, nullable for GA"
         string code UK
         enum status
     }
     PAYMENT_METHOD {
         uuid id PK
-        uuid userId FK
+        uuid userId "ref, no FK"
         string provider
     }
     PAYMENT {
         uuid id PK
-        uuid orderId FK
+        uuid orderId "ref, no FK"
         uuid paymentMethodId FK
         int amountCents
         enum status
