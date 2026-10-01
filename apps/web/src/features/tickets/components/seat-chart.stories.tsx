@@ -1,5 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within } from "storybook/test";
+import type { TicketType } from "@/features/tickets/api/find-event-tickets";
 import type { Seat } from "@/features/tickets/api/find-ticket-type-seats";
 import {
   findSeat,
@@ -32,6 +33,36 @@ const center = (box: DOMRect) => ({
   y: box.top + box.height / 2,
 });
 
+// The section the seats belong to: the tooltip reads its name and price.
+const vip: TicketType = {
+  __typename: "TicketType",
+  id: "tt-vip",
+  sectionKey: "vip",
+  name: "VIP",
+  priceCents: 45000,
+  currency: "USD",
+  seatsAvailable: 150,
+  maxPerOrder: 8,
+  tags: [],
+};
+
+// Matches the one element whose whole text is `text`, across child elements.
+const wholeText = (text: string) => (_: string, element: Element | null) =>
+  element?.textContent === text;
+
+const expectSeatTooltip = async (
+  tooltip: HTMLElement,
+  row: string,
+  number: string,
+) => {
+  const inTooltip = within(tooltip);
+
+  await expect(inTooltip.getByText("VIP seat")).toBeVisible();
+  await expect(inTooltip.getByText("$450")).toBeVisible();
+  await expect(inTooltip.getByText(wholeText(`Row ${row}`))).toBeVisible();
+  await expect(inTooltip.getByText(wholeText(`Seat ${number}`))).toBeVisible();
+};
+
 const meta: Meta<typeof SeatChart> = {
   title: "Features/Tickets/SeatChart",
   component: SeatChart,
@@ -39,6 +70,7 @@ const meta: Meta<typeof SeatChart> = {
     seats: frame12Seats,
     unavailableIds: frame12UnavailableIds,
     pickedIds: [],
+    ticketType: vip,
     onPick: fn(),
   },
   decorators: [
@@ -230,5 +262,65 @@ export const RowAndColumnLabels: Story = {
       await expect(label.top).toBeGreaterThan(lowest);
       await expect(Math.abs(center(label).x - center(seat).x)).toBeLessThan(2);
     }
+  },
+};
+
+// Row 7 ≠ seat 10, so a tooltip that swaps them can't pass.
+export const HoverShowsSeatTooltip: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const seat = seatButton(canvas, "7", "10");
+
+    await userEvent.hover(seat);
+
+    const tooltip = await canvas.findByRole("tooltip");
+    await expect(canvas.getAllByRole("tooltip")).toHaveLength(1);
+    await expectSeatTooltip(tooltip, "7", "10");
+
+    // Anchored under the hovered seat.
+    const seatBox = seat.getBoundingClientRect();
+    const tooltipBox = tooltip.getBoundingClientRect();
+    await expect(tooltipBox.top).toBeGreaterThanOrEqual(seatBox.bottom);
+    await expect(
+      Math.abs(center(tooltipBox).x - center(seatBox).x),
+    ).toBeLessThan(1);
+
+    await userEvent.unhover(seat);
+
+    await expect(canvas.queryByRole("tooltip")).toBeNull();
+  },
+};
+
+export const FocusShowsSeatTooltip: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const seat = seatButton(canvas, "7", "10");
+
+    // Seat 09 is taken. Tab moves on to seat 10.
+    (seatButton(canvas, "7", "09") as unknown as HTMLElement).focus();
+    await expect(canvas.queryByRole("tooltip")).toBeNull();
+    await userEvent.tab();
+    await expect(seat).toHaveFocus();
+
+    const tooltip = await canvas.findByRole("tooltip");
+    await expectSeatTooltip(tooltip, "7", "10");
+    await expect(tooltip.id).not.toBe("");
+    await expect(seat).toHaveAttribute("aria-describedby", tooltip.id);
+
+    await userEvent.tab();
+
+    await expect(canvas.queryByRole("tooltip")).toBeNull();
+    await expect(seat).not.toHaveAttribute("aria-describedby");
+  },
+};
+
+export const UnavailableSeatHasNoTooltip: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.hover(seatButton(canvas, "7", "09"));
+
+    await expect(canvas.queryByRole("tooltip")).toBeNull();
+
+    // The same pointer path over its free neighbor does show one.
+    await userEvent.hover(seatButton(canvas, "7", "08"));
+
+    await expectSeatTooltip(await canvas.findByRole("tooltip"), "7", "08");
   },
 };
