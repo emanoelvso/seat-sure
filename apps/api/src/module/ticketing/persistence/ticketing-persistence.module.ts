@@ -5,6 +5,8 @@ import { TypeOrmPersistenceModule } from '@sharedModules/persistence/typeorm/typ
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
+import { SeatHoldRepository } from './repository/seat-hold.repository';
+import { TicketRepository } from './repository/ticket.repository';
 
 @Module({
   imports: [
@@ -29,5 +31,7 @@ import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
       },
     }),
   ],
+  providers: [SeatHoldRepository, TicketRepository],
+  exports: [SeatHoldRepository, TicketRepository],
 })
 export class TicketingPersistenceModule {}
