@@ -1,0 +1,18 @@
+import { EventModel } from '@catalogModule/core/model/event.model';
+import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
+import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
+
+export interface SeatModel {
+  id: string;
+  row: string;
+  number: string;
+  x: number;
+  y: number;
+}
+
+export interface TicketTypeSeatsModel {
+  event: EventModel | null;
+  ticketType: TicketTypeModel | null;
+  seatMap: SeatMapModel | null;
+  seats: SeatModel[];
+}
