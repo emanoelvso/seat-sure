@@ -5,13 +5,12 @@ import { DatePickerBox } from "@/components/ui/date-picker-box";
 import { SelectBox } from "@/components/ui/select-box";
 import { SubCategoriePill } from "@/components/ui/sub-categorie-pill";
 import {
-  EVENT_TYPE_LABELS,
   EventsSearchParams,
-  EventType,
   PRICE_LABELS,
   PriceRange,
   eventsParsers,
 } from "@/features/events/utils/events-search-params";
+import { EVENT_TYPE_LABELS, EventType } from "@/utils/event-types";
 import { formatDateLabel } from "@/utils/format-date-label";
 import { WidgetOutlineIcon } from "@solar-icons/react";
 import {
@@ -103,24 +102,34 @@ export function EventsFilters({ cities }: { cities: string[] }) {
       <div className="flex items-center gap-4">
         <p className="font-xl text-white">your search:</p>
         {type && (
-          <SubCategoriePill onClick={() => setFilters({ type: null })}>
+          <SubCategoriePill
+            removable
+            onClick={() => setFilters({ type: null })}
+          >
             {EVENT_TYPE_LABELS[type]}
           </SubCategoriePill>
         )}
         {when?.from && (
           <SubCategoriePill
+            removable
             onClick={() => setFilters({ from: null, to: null })}
           >
             {formatDateLabel(when)}
           </SubCategoriePill>
         )}
         {city && (
-          <SubCategoriePill onClick={() => setFilters({ city: null })}>
+          <SubCategoriePill
+            removable
+            onClick={() => setFilters({ city: null })}
+          >
             {city}
           </SubCategoriePill>
         )}
         {price && (
-          <SubCategoriePill onClick={() => setFilters({ price: null })}>
+          <SubCategoriePill
+            removable
+            onClick={() => setFilters({ price: null })}
+          >
             {PRICE_LABELS[price]}
           </SubCategoriePill>
         )}

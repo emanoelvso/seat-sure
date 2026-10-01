@@ -44,7 +44,17 @@ describe("toCardProps", () => {
         location: "Las Vegas",
         price: 449.99,
         category: "Pop",
+        href: "/events/e1/tickets",
       },
+    ]);
+  });
+
+  it("links each card to its own event's tickets page", () => {
+    const coldplay: EventSummary = { ...event, id: "e2", name: "Coldplay" };
+
+    expect(toCardProps([event, coldplay]).map((card) => card.href)).toEqual([
+      "/events/e1/tickets",
+      "/events/e2/tickets",
     ]);
   });
 });

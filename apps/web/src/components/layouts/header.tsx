@@ -5,10 +5,22 @@ import { UsaIcon } from "@/components/icons/usa-icon";
 import { AltArrowDownIcon, BellIcon } from "@solar-icons/react/outline";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
+import { paths } from "@/config/paths";
+import { EVENT_TYPE_LABELS, type EventType } from "@/utils/event-types";
 const lobster = Lobster({
   weight: "400",
   subsets: ["latin"],
 });
+
+const NAV_EVENT_TYPES: EventType[] = ["SHOW", "CONCERT", "SPORT", "FESTIVAL"];
+
+const NAV_ITEMS = [
+  { label: "Home", href: paths.home.getHref() },
+  ...NAV_EVENT_TYPES.map((type) => ({
+    label: EVENT_TYPE_LABELS[type],
+    href: paths.events.getHref(type),
+  })),
+];
 
 interface HeaderProps {
   avatarUrl?: string;
@@ -32,7 +44,7 @@ export function Header({
       ) : (
         <>
           <Link
-            href=""
+            href={paths.home.getHref()}
             className={`${lobster.className} text-[2.5rem] text-primary`}
           >
             SeatSure
@@ -40,56 +52,18 @@ export function Header({
 
           <nav>
             <ul className="flex gap-10">
-              <li>
-                <Link
-                  href="/"
-                  className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
-                >
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/events"
-                  className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
-                >
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  Shows
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/events"
-                  className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
-                >
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  Concerts
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/events"
-                  className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
-                >
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  Sports
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/events"
-                  className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
-                >
-                  <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
-                  Festivals
-                </Link>
-              </li>
+              {NAV_ITEMS.map(({ label, href }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="text-neutral-200 hover:text-white transition duration-700 px-4 py-1.5 rounded-full relative group isolate"
+                  >
+                    <div className="absolute -bottom-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2  duration-700 w-8 h-6 blur-[12px] bg-zinc-700 opacity-0 group-hover:opacity-100 transition -z-10"></div>
+                    {label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
         </>

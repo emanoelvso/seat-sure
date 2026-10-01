@@ -6,6 +6,7 @@ export interface Singer {
   date: string;
   location: string;
   imageUrl?: string;
+  href?: string;
 }
 
 export interface SingersCarouselProps {
@@ -18,13 +19,15 @@ export function SingersCarousel({ row1, row2 }: SingersCarouselProps) {
     <Carousel
       row1={row1}
       row2={row2}
-      renderItem={(singer, i) => (
+      renderItem={(singer, i, loopCopy) => (
         <SingerCard
           key={i}
           name={singer.name}
           date={singer.date}
           location={singer.location}
           imageUrl={singer.imageUrl}
+          href={singer.href}
+          tabIndex={loopCopy ? -1 : undefined}
         />
       )}
     />

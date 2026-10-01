@@ -23,6 +23,7 @@ const event: TicketsEvent = {
   country: "USA",
   startAt: zonedIso(2026, 2, 6, 20, 0),
   endsAt: zonedIso(2026, 2, 6, 22, 30),
+  headliner: null,
 };
 
 const ticketType: TicketType = {

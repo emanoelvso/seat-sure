@@ -15,8 +15,12 @@ import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
 import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
 import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
-import { EventModel } from '@catalogModule/core/model/event.model';
+import {
+  EventHeadlinerModel,
+  EventModel,
+} from '@catalogModule/core/model/event.model';
 import { VenueRepository } from '@catalogModule/persistence/repository/venue.repository';
+import { EventArtistRepository } from '@catalogModule/persistence/repository/event-artist.repository';
 import { VenueNotFoundException } from '@catalogModule/core/exception/venue-not-found.exception';
 import { isUUID } from 'class-validator';
 import { Transactional } from 'typeorm-transactional';
@@ -62,6 +66,7 @@ export class CatalogService {
     private readonly artistRepository: ArtistRepository,
     private readonly ticketTypeRepository: TicketTypeRepository,
     private readonly venueRepository: VenueRepository,
+    private readonly eventArtistRepository: EventArtistRepository,
   ) {}
 
   @Transactional({ connectionName: 'catalog' })
@@ -77,7 +82,8 @@ export class CatalogService {
 
     const newEvent = new Event({ ...event, venue });
     await this.eventRepository.save(newEvent);
-    return this.toEventModel(newEvent);
+    const [eventModel] = await this.toEventModels([newEvent]);
+    return eventModel;
   }
 
   async getHomeSections() {
@@ -91,6 +97,16 @@ export class CatalogService {
       ),
     ]);
 
+    // One headliner lookup for the four sections.
+    const eventModels = await this.toEventModels(
+      [concerts, shows, sports, festivals].flatMap((events) => events ?? []),
+    );
+    const eventModelById = new Map(
+      eventModels.map((eventModel) => [eventModel.id, eventModel]),
+    );
+    const toSectionEvents = (events: Event[] | null) =>
+      events?.map((event) => eventModelById.get(event.id)!);
+
     return {
       shows: {
         categories: [
@@ -100,7 +116,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: shows?.map((event) => this.toEventModel(event)),
+        events: toSectionEvents(shows),
       },
       concerts: {
         categories: [
@@ -110,7 +126,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: concerts?.map((event) => this.toEventModel(event)),
+        events: toSectionEvents(concerts),
       },
       sports: {
         categories: [
@@ -120,7 +136,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: sports?.map((event) => this.toEventModel(event)),
+        events: toSectionEvents(sports),
       },
       festivals: {
         categories: [
@@ -130,7 +146,7 @@ export class CatalogService {
               .map((event) => event.category),
           ),
         ],
-        events: festivals?.map((event) => this.toEventModel(event)),
+        events: toSectionEvents(festivals),
       },
     };
   }
@@ -196,7 +212,7 @@ export class CatalogService {
 
     return {
       cities,
-      events: page?.map((event) => this.toEventModel(event)),
+      events: page && (await this.toEventModels(page)),
       hasMore,
     };
   }
@@ -234,6 +250,17 @@ export class CatalogService {
       this.eventRepository.findNextFestival({ now }),
     ]);
 
+    // One headliner lookup for the artist's events, nearby events and the
+    // featured festival.
+    const eventModels = await this.toEventModels([
+      ...events,
+      ...nearbyEvents,
+      ...(featuredFestival ? [featuredFestival] : []),
+    ]);
+    const eventModelById = new Map(
+      eventModels.map((eventModel) => [eventModel.id, eventModel]),
+    );
+
     const eventsByCity = Array.from(
       events
         .reduce((groups, event) => {
@@ -241,7 +268,7 @@ export class CatalogService {
           const key = `${city}|${country}`;
           const group = groups.get(key) ?? { city, country, events: [] };
 
-          group.events.push(this.toEventModel(event));
+          group.events.push(eventModelById.get(event.id)!);
           groups.set(key, group);
           return groups;
         }, new Map<string, { city: string; country: string; events: EventModel[] }>())
@@ -255,9 +282,9 @@ export class CatalogService {
         cover: artist?.cover_image_url,
       },
       eventsByCity,
-      nearbyEvents: nearbyEvents.map((event) => this.toEventModel(event)),
+      nearbyEvents: nearbyEvents.map((event) => eventModelById.get(event.id)!),
       featuredFestival: featuredFestival
-        ? this.toEventModel(featuredFestival)
+        ? eventModelById.get(featuredFestival.id)!
         : null,
     };
   }
@@ -283,9 +310,10 @@ export class CatalogService {
     }
 
     const ticketTypes = await this.ticketTypeRepository.findByEvent(event.id);
+    const [eventModel] = await this.toEventModels([event]);
 
     return {
-      event: this.toEventModel(event),
+      event: eventModel,
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
       ticketTypes: ticketTypes.map((ticketType) =>
         this.mapTicketType(ticketType),
@@ -293,7 +321,33 @@ export class CatalogService {
     };
   }
 
-  private toEventModel(event: Event): EventModel {
+  // Maps events with their headliner, read in one query. The rows come ordered
+  // by pick, so the first row of each event is its headliner.
+  private async toEventModels(events: Event[]): Promise<EventModel[]> {
+    const headliners =
+      await this.eventArtistRepository.findHeadlinersByEventIds(
+        events.map((event) => event.id),
+      );
+    const headlinerByEventId = new Map<string, EventHeadlinerModel>();
+
+    for (const { event, artist } of headliners) {
+      if (!headlinerByEventId.has(event.id)) {
+        headlinerByEventId.set(event.id, {
+          slug: artist.slug,
+          name: artist.stage_name,
+        });
+      }
+    }
+
+    return events.map((event) =>
+      this.toEventModel(event, headlinerByEventId.get(event.id) ?? null),
+    );
+  }
+
+  private toEventModel(
+    event: Event,
+    headliner: EventHeadlinerModel | null,
+  ): EventModel {
     return {
       id: event.id,
       name: event.name,
@@ -311,6 +365,7 @@ export class CatalogService {
       category: event.category,
       price: event.price,
       tags: event.tags,
+      headliner,
     };
   }
 

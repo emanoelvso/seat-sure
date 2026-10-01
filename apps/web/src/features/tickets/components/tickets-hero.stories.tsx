@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 import {
   TicketsEvent,
   TicketType,
@@ -26,6 +26,7 @@ const event: TicketsEvent = {
   country: "USA",
   startAt: zonedIso(2026, 2, 6, 20, 0),
   endsAt: zonedIso(2026, 2, 6, 22, 30),
+  headliner: null,
 };
 
 const sectionB: TicketType = {
@@ -141,5 +142,39 @@ export const FestivalTitleKeepsStoredCasing: Story = {
 
     await expect(getComputedStyle(title).textTransform).toBe("none");
     await expect(title).toHaveTextContent(/^Rock in Rio$/);
+  },
+};
+
+// The event name differs from the headliner's, and the slug isn't either name
+// slugified, so a link built from a name, or showing the headliner's name,
+// can't pass.
+export const TitleLinksToHeadliner: Story = {
+  args: {
+    event: {
+      ...event,
+      name: "Adele Live",
+      headliner: {
+        __typename: "EventHeadliner",
+        slug: "adele-adkins",
+        name: "Adele",
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+    const link = within(title).getByRole("link");
+
+    await expect(title).toHaveTextContent(/^Adele Live$/);
+    await expect(link).toHaveAttribute("href", "/artists/adele-adkins");
+    await expect(link).toHaveTextContent(/^Adele Live$/);
+  },
+};
+
+export const TitleWithoutHeadliner: Story = {
+  play: async ({ canvas }) => {
+    const title = canvas.getByRole("heading", { level: 1 });
+
+    await expect(title).toHaveTextContent(/^Adele$/);
+    await expect(within(title).queryByRole("link")).toBeNull();
   },
 };

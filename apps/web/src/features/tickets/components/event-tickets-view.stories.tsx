@@ -32,6 +32,7 @@ const event = {
   country: "USA",
   startAt: daysFromNow(10, 20),
   endsAt: daysFromNow(10, 22, 30),
+  headliner: null,
 };
 
 const seatMap = concentricSeatMap;

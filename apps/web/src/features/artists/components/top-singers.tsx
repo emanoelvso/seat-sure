@@ -1,5 +1,6 @@
 import { TZDate } from "@date-fns/tz";
 import { env } from "@/config/env";
+import { paths } from "@/config/paths";
 import {
   SingersCarousel,
   Singer,
@@ -15,6 +16,7 @@ function toSingerProps(events: EventSummary[]): Singer[] {
       date: `${date.getDay()} ${date.toLocaleString("en-US", { month: "long" })}`,
       location: c.city,
       imageUrl: c.coverImage,
+      href: c.headliner ? paths.artist.getHref(c.headliner.slug) : undefined,
     };
   });
 }

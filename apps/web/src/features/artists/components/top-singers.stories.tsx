@@ -32,6 +32,12 @@ const concerts = [
   concert("c5", "Dua Lipa", "Seattle", "Climate Pledge Arena", 18),
 ];
 
+const headliner = (slug: string, name: string) => ({
+  __typename: "EventHeadliner" as const,
+  slug,
+  name,
+});
+
 // Singer names in one carousel row. The carousel repeats each row to loop it.
 const rowNames = (section: HTMLElement, direction: "left" | "right") => [
   ...new Set(
@@ -42,6 +48,22 @@ const rowNames = (section: HTMLElement, direction: "left" | "right") => [
       .map((img) => img.getAttribute("alt")!.replace(/ avatar$/, "")),
   ),
 ];
+
+const row = (section: HTMLElement, direction: "left" | "right") =>
+  section.querySelector<HTMLElement>(`.animate-scroll-${direction}`)!;
+
+// Singer names a role query finds in a row, without deduplication.
+const accessibleNames = (section: HTMLElement, direction: "left" | "right") =>
+  within(row(section, direction))
+    .getAllByRole("img")
+    .map((img) => img.getAttribute("alt")!.replace(/ avatar$/, ""));
+
+// [hidden from assistive tech, inert] for each loop copy of a row.
+const copyStates = (section: HTMLElement, direction: "left" | "right") =>
+  [...row(section, direction).children].map((copy) => [
+    copy.getAttribute("aria-hidden") === "true",
+    copy.hasAttribute("inert"),
+  ]);
 
 const meta: Meta<typeof TopSingers> = {
   title: "Components/TopSingers",
@@ -107,5 +129,145 @@ export const LocationFromCity: Story = {
 
     await expect(section.getAllByText(/, Las Vegas$/)[0]).toBeVisible();
     await expect(section.queryAllByText(/Caesars Palace/)).toEqual([]);
+  },
+};
+
+export const LoopCopiesHidden: Story = {
+  play: async ({ canvas }) => {
+    const section = canvas.getByRole("region", { name: "Top Singers" });
+
+    await expect(accessibleNames(section, "left")).toEqual([
+      "Adele",
+      "Coldplay",
+      "Taylor Swift",
+    ]);
+    await expect(accessibleNames(section, "right")).toEqual([
+      "Bruno Mars",
+      "Dua Lipa",
+    ]);
+
+    for (const direction of ["left", "right"] as const) {
+      await expect(copyStates(section, direction)).toEqual([
+        [false, false],
+        [true, false],
+        [true, false],
+        [true, false],
+      ]);
+    }
+  },
+};
+
+const withHeadliners = [
+  {
+    ...concert("k1", "Eras Tour", "New York", "Madison Square Garden", 12),
+    headliner: headliner("t-swift-13", "Taylor Swift"),
+  },
+  {
+    ...concert("k2", "Music of the Spheres", "Chicago", "Soldier Field", 9),
+    headliner: headliner("cp-band", "Coldplay"),
+  },
+  {
+    ...concert("k3", "Future Nostalgia", "Seattle", "Climate Pledge", 18),
+    headliner: headliner("dl-official", "Dua Lipa"),
+  },
+  {
+    ...concert("k4", "24K Magic", "Miami", "Kaseya Center", 15),
+    headliner: headliner("bm-hooligans", "Bruno Mars"),
+  },
+];
+
+// Links in each loop copy of a row, copy by copy.
+const copyLinks = (section: HTMLElement, direction: "left" | "right") =>
+  [...row(section, direction).children].map((copy) => [
+    ...copy.querySelectorAll<HTMLAnchorElement>("a[href]"),
+  ]);
+
+// Loop copies fill most of the visible row, so their cards must take clicks:
+// the link is what the pointer hits at its center. They stay out of the tab
+// order, so the keyboard reaches each card once.
+export const LoopCopiesClickable: Story = {
+  args: { concerts: withHeadliners },
+  play: async ({ canvas }) => {
+    const section = canvas.getByRole("region", { name: "Top Singers" });
+
+    for (const direction of ["left", "right"] as const) {
+      const [first, ...copies] = copyLinks(section, direction);
+
+      await expect(first).toHaveLength(2);
+      for (const link of first) {
+        await expect(link).not.toHaveAttribute("tabindex");
+      }
+      for (const link of copies.flat()) {
+        await expect(link).toHaveAttribute("tabindex", "-1");
+      }
+
+      const onScreen = copies.flat().filter((link) => {
+        const { left, right, top, bottom } = link.getBoundingClientRect();
+        return (
+          left >= 0 &&
+          right <= window.innerWidth &&
+          top >= 0 &&
+          bottom <= window.innerHeight
+        );
+      });
+      await expect(onScreen.length).toBeGreaterThan(0);
+
+      for (const link of onScreen) {
+        const { left, top, width, height } = link.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          left + width / 2,
+          top + height / 2,
+        );
+        await expect(link.contains(hit)).toBe(true);
+      }
+    }
+  },
+};
+
+// Concerts named after their tours, with slugs that aren't the headliner names
+// slugified, so a slug derived from either name can't pass. The last one has
+// no headliner.
+export const CardsLinkToHeadliners: Story = {
+  args: {
+    concerts: [
+      {
+        ...concert("h1", "Eras Tour", "New York", "Madison Square Garden", 12),
+        headliner: headliner("swiftie-13", "Taylor Swift"),
+      },
+      {
+        ...concert("h2", "Music of the Spheres", "Chicago", "Soldier Field", 9),
+        headliner: headliner("chris-martin-band", "Coldplay"),
+      },
+      {
+        ...concert("h3", "Future Nostalgia", "Seattle", "Climate Pledge Arena", 18),
+        headliner: headliner("dua-lipa-uk", "Dua Lipa"),
+      },
+      {
+        ...concert("h4", "Weekends with Adele", "Las Vegas", "The Colosseum", 6),
+        headliner: null,
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const section = within(
+      canvas.getByRole("region", { name: "Top Singers" }),
+    );
+    const cards: [RegExp, string][] = [
+      [/Eras Tour/, "/artists/swiftie-13"],
+      [/Music of the Spheres/, "/artists/chris-martin-band"],
+      [/Future Nostalgia/, "/artists/dua-lipa-uk"],
+    ];
+
+    for (const [name, href] of cards) {
+      await expect(section.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        href,
+      );
+    }
+
+    await expect(section.getAllByText("Weekends with Adele")[0]).toBeVisible();
+    await expect(
+      section.queryByRole("link", { name: /Weekends with Adele/ }),
+    ).toBeNull();
   },
 };

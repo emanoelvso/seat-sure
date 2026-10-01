@@ -6,8 +6,10 @@ import {
   TicketIcon,
 } from "@solar-icons/react/outline";
 import Image from "next/image";
+import Link from "next/link";
 import { Header } from "@/components/layouts/header";
 import { ShareButton } from "@/components/ui/share-button";
+import { paths } from "@/config/paths";
 import {
   formatEventDate,
   formatEventLocation,
@@ -67,7 +69,13 @@ export function TicketsHero({ event, selected }: TicketsHeroProps) {
           <h1
             className={`text-5xl font-bold ${event.type === "concert" ? "uppercase tracking-[0.34em]" : ""}`}
           >
-            {event.name}
+            {event.headliner ? (
+              <Link href={paths.artist.getHref(event.headliner.slug)}>
+                {event.name}
+              </Link>
+            ) : (
+              event.name
+            )}
           </h1>
           <div className="flex shrink-0 items-center gap-4">
             <span aria-hidden="true" data-testid="heart-icon" className="flex">

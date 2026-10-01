@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  EVENT_TYPES,
   PRICE_RANGES,
   loadEventsSearchParams,
   serializeEventsSearchParams,
   toFindEventsInput,
 } from "@/features/events/utils/events-search-params";
+import { EVENT_TYPES } from "@/utils/event-types";
 
 const unset = {
   type: null,

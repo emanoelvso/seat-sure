@@ -1,5 +1,6 @@
 import { CalendarIcon, MapPointIcon } from "@solar-icons/react/outline";
 import Image from "next/image";
+import Link from "next/link";
 import { CountdownBadge } from "@/components/ui/countdown-badge";
 
 export interface MainCardProps {
@@ -11,6 +12,7 @@ export interface MainCardProps {
   location: string;
   price?: number;
   category?: string | null;
+  href: string;
 }
 
 export function MainCard({
@@ -20,14 +22,15 @@ export function MainCard({
   date,
   location,
   price,
+  href,
 }: MainCardProps) {
   return (
-    <div className={`relative w-2xs shrink-0 ${className}`}>
+    <Link href={href} className={`block relative w-2xs shrink-0 ${className}`}>
       <div className="w-full h-[336px] rounded-2xl overflow-hidden">
         <Image
           className="object-cover w-full h-full"
           src={avatarUrl}
-          alt="Avatar"
+          alt=""
           width={400}
           height={336}
         />
@@ -54,6 +57,6 @@ export function MainCard({
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

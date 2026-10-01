@@ -20,6 +20,10 @@ export const FIND_EVENT_TICKETS: TypedDocumentNode<
         country
         startAt
         endsAt
+        headliner {
+          slug
+          name
+        }
       }
       seatMap {
         id
