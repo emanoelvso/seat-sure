@@ -5,6 +5,7 @@ import {
 } from "@solar-icons/react/outline";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { paths } from "@/config/paths";
 import { SeatMapPreview } from "@/features/tickets/components/seat-map";
 import { TagPill } from "@/components/ui/tag-pill";
 import {
@@ -93,7 +94,7 @@ export function TicketDetailPanel({
 
         <div className="flex flex-col gap-3">
           <Link
-            href={`/events/${event.id}/tickets/${ticketType.id}?quantity=${quantity}`}
+            href={paths.eventSeats.getHref(event.id, ticketType.id, quantity)}
             className={buttonVariants({ size: "lg" })}
           >
             Get a Ticket
