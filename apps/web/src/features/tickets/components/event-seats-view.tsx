@@ -2,6 +2,7 @@
 
 import { useQueryStates } from "nuqs";
 import { useState } from "react";
+import { PillSelect } from "@/components/ui/pill-select";
 import type {
   FindTicketTypeSeats,
   Seat,
@@ -15,8 +16,14 @@ import {
   latestPick,
   pickSeat,
   resolveSeatQuantity,
+  seatNotice,
+  trimPicks,
 } from "@/features/tickets/utils/seat-picks";
 import { seatsParsers } from "@/features/tickets/utils/seats-search-params";
+
+function ticketsOptionLabel(quantity: number) {
+  return quantity === 1 ? "1 ticket" : `${quantity} tickets`;
+}
 
 interface EventSeatsViewProps {
   ticketTypeSeats: FindTicketTypeSeats;
@@ -27,7 +34,9 @@ export function EventSeatsView({
   ticketTypeSeats,
   unavailableSeatIds,
 }: EventSeatsViewProps) {
-  const [urlState] = useQueryStates(seatsParsers, { history: "replace" });
+  const [urlState, setUrlState] = useQueryStates(seatsParsers, {
+    history: "replace",
+  });
   // Seat ids in pick order, earliest first. Picks hold no seat, so they stay
   // out of the URL.
   const [picks, setPicks] = useState<string[]>([]);
@@ -53,11 +62,24 @@ export function EventSeatsView({
     urlState.quantity,
     ticketType.maxPerOrder,
   );
+  const options = Array.from(
+    { length: ticketType.maxPerOrder },
+    (_, index) => index + 1,
+  );
   const unavailableIds = new Set(unavailableSeatIds);
+  const notice = seatNotice(seats, unavailableIds, quantity);
   const pickedSeats = seats.filter((seat) => picks.includes(seat.id));
 
   function pick(seat: Seat) {
     setPicks((current) => pickSeat(current, seat, seats, quantity));
+  }
+
+  // The picks are trimmed in the same handler, so they never exceed the new
+  // quantity (SEAT-38).
+  function changeQuantity(value: string) {
+    const nextQuantity = Number(value);
+    setUrlState({ quantity: nextQuantity });
+    setPicks((current) => trimPicks(current, nextQuantity));
   }
 
   return (
@@ -71,13 +93,28 @@ export function EventSeatsView({
       <div className="flex flex-col gap-6 px-27 pb-25 pt-10 lg:flex-row">
         <div className="flex min-w-0 flex-col gap-6 lg:w-[808px] lg:shrink-0">
           <h2 className="border-b border-neutral-700 pb-4 text-xl">Filters</h2>
-          <SeatChart
-            seats={seats}
-            unavailableIds={unavailableIds}
-            pickedIds={picks}
-            ticketType={ticketType}
-            onPick={pick}
-          />
+          <div className="flex flex-wrap gap-2">
+            <PillSelect
+              label="Tickets"
+              variant="active"
+              value={String(quantity)}
+              options={options.map((option) => ({
+                value: String(option),
+                label: ticketsOptionLabel(option),
+              }))}
+              onChange={changeQuantity}
+            />
+          </div>
+          {notice && <p className="text-lg text-neutral-200">{notice}</p>}
+          <div className="mt-18">
+            <SeatChart
+              seats={seats}
+              unavailableIds={unavailableIds}
+              pickedIds={picks}
+              ticketType={ticketType}
+              onPick={pick}
+            />
+          </div>
           <div className="mt-9 w-full max-w-[700px] lg:ml-5">
             <SeatLegend />
           </div>

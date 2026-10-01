@@ -1,5 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import type { OnUrlUpdateFunction } from "nuqs/adapters/testing";
+import { expect, fn, screen, waitFor, within } from "storybook/test";
 import type { FindTicketTypeSeats } from "@/features/tickets/api/find-ticket-type-seats";
 import { zonedIso } from "@/testing/dates";
 import {
@@ -256,4 +257,171 @@ export const NoSeatMap: Story = {
 export const NoSeats: Story = {
   args: payload({ seats: [] }),
   play: async ({ canvas }) => expectNoSeatSelection(canvas),
+};
+
+// Ticket count (SEAT-35 to SEAT-40). VIP sells up to 6 per order.
+const quantityPill = (canvas: Canvas) =>
+  canvas.getByRole("combobox", { name: "Tickets" });
+
+type PlayContext = Parameters<NonNullable<Story["play"]>>[0];
+
+const pickQuantity = async (
+  { canvas, userEvent }: PlayContext,
+  label: string,
+) => {
+  await userEvent.click(quantityPill(canvas));
+  await userEvent.click(await screen.findByRole("option", { name: label }));
+};
+
+type UrlUpdates = ReturnType<typeof fn<OnUrlUpdateFunction>>;
+
+const spiedUrlState = (searchParams: string) => ({
+  nuqs: { searchParams, onUrlUpdate: fn<OnUrlUpdateFunction>() },
+});
+
+const urlUpdates = (parameters: Record<string, unknown>) =>
+  (parameters.nuqs as { onUrlUpdate: UrlUpdates }).onUrlUpdate;
+
+export const QuantityFromUrl: Story = {
+  parameters: urlState("?quantity=3"),
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    await expect(quantityPill(canvas)).toHaveTextContent(/^3 tickets$/);
+
+    await userEvent.click(quantityPill(canvas));
+    const options = await screen.findAllByRole("option");
+    await expect(options.map((option) => option.textContent)).toEqual([
+      "1 ticket",
+      "2 tickets",
+      "3 tickets",
+      "4 tickets",
+      "5 tickets",
+      "6 tickets",
+    ]);
+  },
+};
+
+const expectDefaultQuantity = async (canvas: Canvas) => {
+  await loaded(canvas);
+  await expect(quantityPill(canvas)).toHaveTextContent(/^2 tickets$/);
+};
+
+export const QuantityBelowOneFallsBack: Story = {
+  parameters: urlState("?quantity=0"),
+  play: async ({ canvas }) => expectDefaultQuantity(canvas),
+};
+
+export const QuantityAboveMaxFallsBack: Story = {
+  parameters: urlState("?quantity=7"),
+  play: async ({ canvas }) => expectDefaultQuantity(canvas),
+};
+
+export const QuantityNotANumberFallsBack: Story = {
+  parameters: urlState("?quantity=abc"),
+  play: async ({ canvas }) => expectDefaultQuantity(canvas),
+};
+
+export const NoQuantityFallsBack: Story = {
+  parameters: urlState(""),
+  play: async ({ canvas }) => expectDefaultQuantity(canvas),
+};
+
+// `?quantity=2` is above this section's maximum.
+export const OneTicketPerOrder: Story = {
+  args: payload({ ticketType: { ...vip, maxPerOrder: 1 } }),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+    await expect(quantityPill(canvas)).toHaveTextContent(/^1 ticket$/);
+  },
+};
+
+// The first pick (10) is neither the lowest nor the latest number.
+export const LowerQuantityKeepsFirstPicks: Story = {
+  parameters: spiedUrlState("?quantity=2"),
+  play: async (context) => {
+    const { canvas, parameters, userEvent } = context;
+    await loaded(canvas);
+
+    await userEvent.click(seatButton(canvas, "4", "10"));
+    await userEvent.click(seatButton(canvas, "4", "09"));
+    await pickQuantity(context, "1 ticket");
+
+    await waitFor(() =>
+      expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1),
+    );
+    const { searchParams, options } = urlUpdates(parameters).mock.lastCall![0];
+    await expect(searchParams.get("quantity")).toBe("1");
+    await expect(options.history).toBe("replace");
+
+    await expect(quantityPill(canvas)).toHaveTextContent(/^1 ticket$/);
+    await expect(pressed(canvas, "4", "10")).toBe("true");
+    await expect(pressed(canvas, "4", "09")).toBe("false");
+    await expect(heroValue(canvas, "hero-seat")).toBe("10");
+  },
+};
+
+const expectNoticeAboveChart = async (canvas: Canvas, text: string) => {
+  const notice = canvas.getByText(text);
+
+  await expect(notice).toBeVisible();
+  await expect(
+    notice.compareDocumentPosition(chart(canvas)) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+};
+
+export const AllSeatsTaken: Story = {
+  args: {
+    ...payload(),
+    unavailableSeatIds: frame12Seats.map((seat) => seat.id),
+  },
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+    await expectNoticeAboveChart(canvas, "All seats in this section are taken.");
+  },
+};
+
+// The freest row (4) has 3 free seats. Row 7 has 2.
+const threeFreeInARow = {
+  ...payload(),
+  unavailableSeatIds: frame12Seats
+    .filter(
+      (seat) =>
+        !(seat.row === "4" && ["09", "10", "11"].includes(seat.number)) &&
+        !(seat.row === "7" && ["01", "02"].includes(seat.number)),
+    )
+    .map((seat) => seat.id),
+};
+
+export const NotEnoughFreeSeatsInARow: Story = {
+  args: threeFreeInARow,
+  parameters: urlState("?quantity=4"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+    await expectNoticeAboveChart(
+      canvas,
+      "No row has 4 free seats together. Pick fewer tickets.",
+    );
+  },
+};
+
+export const EnoughFreeSeatsInARow: Story = {
+  args: threeFreeInARow,
+  parameters: urlState("?quantity=3"),
+  play: async (context) => {
+    const { canvas } = context;
+    await loaded(canvas);
+
+    await expect(canvas.queryByText(/free seats together/)).toBeNull();
+    await expect(
+      canvas.queryByText("All seats in this section are taken."),
+    ).toBeNull();
+
+    await pickQuantity(context, "4 tickets");
+    await expectNoticeAboveChart(
+      canvas,
+      "No row has 4 free seats together. Pick fewer tickets.",
+    );
+  },
 };
