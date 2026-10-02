@@ -10,6 +10,7 @@ describe("GET /api/auth/session", () => {
   it("answers the session as JSON with Cache-Control: no-store", async () => {
     const session = {
       user: {
+        __typename: "CurrentUser" as const,
         id: "user-1",
         email: "a@example.com",
         firstName: "Nadia",
