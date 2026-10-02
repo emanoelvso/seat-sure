@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { IdentitySession } from '@identityModule/persistence/entity/identity-session.entity';
 import { SessionRepository } from '@identityModule/persistence/repository/session.repository';
@@ -8,6 +8,7 @@ import { Transactional } from 'typeorm-transactional';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
+const ROTATION_GRACE_MS = 30 * 1000;
 
 export interface SessionTokensResult {
   accessToken: string;
@@ -50,6 +51,84 @@ export class SessionService {
     const accessToken = this.signAccessToken(userId, sessionId, now, expiresAt);
 
     return { accessToken, refreshToken, expiresAt, persistent };
+  }
+
+  // Rotates the refresh token on every call. The previous token is still
+  // honored for a 30s grace window (returning only a fresh access token,
+  // `refreshToken: null`) to absorb a client retry racing a prior rotation;
+  // anything else (unknown token, past grace, revoked, expired) is
+  // unauthenticated.
+  @Transactional({ connectionName: 'identity' })
+  async rotate(refreshToken: string, now: Date): Promise<SessionTokensResult> {
+    const hash = this.hashToken(refreshToken);
+    const session = await this.sessionRepository.findByRefreshTokenHash(hash);
+
+    if (session) {
+      this.assertUsable(session, now);
+
+      const newRefreshToken = this.generateRefreshToken();
+      const newHash = this.hashToken(newRefreshToken);
+      await this.sessionRepository.rotate(session.id, {
+        refreshTokenHash: newHash,
+        previousRefreshTokenHash: hash,
+        rotatedAt: now,
+      });
+
+      const accessToken = this.signAccessToken(
+        session.userId,
+        session.id,
+        now,
+        session.expiresAt,
+      );
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresAt: session.expiresAt,
+        persistent: session.persistent,
+      };
+    }
+
+    const staleSession =
+      await this.sessionRepository.findByPreviousRefreshTokenHash(hash);
+    if (
+      staleSession &&
+      staleSession.rotatedAt &&
+      now.getTime() - staleSession.rotatedAt.getTime() <= ROTATION_GRACE_MS
+    ) {
+      this.assertUsable(staleSession, now);
+
+      const accessToken = this.signAccessToken(
+        staleSession.userId,
+        staleSession.id,
+        now,
+        staleSession.expiresAt,
+      );
+
+      return {
+        accessToken,
+        refreshToken: null,
+        expiresAt: staleSession.expiresAt,
+        persistent: staleSession.persistent,
+      };
+    }
+
+    throw new UnauthorizedException();
+  }
+
+  async assertActive(sessionId: string, now: Date): Promise<IdentitySession> {
+    const session = await this.sessionRepository.findOneById(sessionId);
+    if (!session) {
+      throw new UnauthorizedException();
+    }
+    this.assertUsable(session, now);
+    return session;
+  }
+
+  private assertUsable(session: IdentitySession, now: Date): void {
+    if (session.revokedAt || now.getTime() > session.expiresAt.getTime()) {
+      throw new UnauthorizedException();
+    }
   }
 
   private signAccessToken(

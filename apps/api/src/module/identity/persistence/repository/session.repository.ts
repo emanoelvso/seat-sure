@@ -25,6 +25,22 @@ export class SessionRepository extends DefaultTypeOrmRepository<IdentitySession>
     return this.findOne({ where: { previousRefreshTokenHash } });
   }
 
+  async rotate(
+    id: string,
+    fields: {
+      refreshTokenHash: string;
+      previousRefreshTokenHash: string;
+      rotatedAt: Date;
+    },
+  ): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .update(IdentitySession)
+      .set(fields)
+      .where('id = :id', { id })
+      .execute();
+  }
+
   async revokeAllForUser(userId: string, now: Date): Promise<void> {
     await this.entityManager
       .createQueryBuilder()

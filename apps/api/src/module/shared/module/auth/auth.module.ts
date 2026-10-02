@@ -3,9 +3,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { ClsModule } from 'nestjs-cls';
 import { ConfigModule } from '@sharedModules/config/config.module';
 import { ConfigService } from '@sharedModules/config/service/config.service';
+import { AuthGuard } from './guard/auth.guard';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     ClsModule.forRoot({ global: true, middleware: { mount: true } }),
     JwtModule.registerAsync({
       global: true,
@@ -20,5 +22,7 @@ import { ConfigService } from '@sharedModules/config/service/config.service';
       }),
     }),
   ],
+  providers: [AuthGuard],
+  exports: [AuthGuard, ConfigModule],
 })
 export class AuthModule {}

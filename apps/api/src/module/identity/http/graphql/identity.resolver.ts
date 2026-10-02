@@ -1,16 +1,22 @@
-import { Args, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import { CodeSenderPurpose } from '@identityModule/core/adapter/code-sender.adapter.interface';
 import { AuthenticationService } from '@identityModule/core/service/authentication.service';
 import { RegistrationService } from '@identityModule/core/service/registration.service';
+import { SessionService } from '@identityModule/core/service/session.service';
 import { VerificationCodeService } from '@identityModule/core/service/verification-code.service';
 import { CodeDelivery } from '@identityModule/http/graphql/type/code-delivery.type';
+import { CurrentUser } from '@identityModule/http/graphql/type/current-user.type';
 import { LogInInput } from '@identityModule/http/graphql/type/log-in-input.type';
 import { LogInResult } from '@identityModule/http/graphql/type/log-in-result.type';
+import { RefreshSessionInput } from '@identityModule/http/graphql/type/refresh-session-input.type';
 import { ResendCodeInput } from '@identityModule/http/graphql/type/resend-code-input.type';
 import { SessionTokens } from '@identityModule/http/graphql/type/session-tokens.type';
 import { SignUpInput } from '@identityModule/http/graphql/type/sign-up-input.type';
 import { SignUpResult } from '@identityModule/http/graphql/type/sign-up-result.type';
 import { VerifyEmailInput } from '@identityModule/http/graphql/type/verify-email-input.type';
+import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 
 @Resolver()
 export class IdentityResolver {
@@ -18,6 +24,8 @@ export class IdentityResolver {
     private readonly registrationService: RegistrationService,
     private readonly verificationCodeService: VerificationCodeService,
     private readonly authenticationService: AuthenticationService,
+    private readonly sessionService: SessionService,
+    private readonly clsService: ClsService,
   ) {}
 
   @Mutation(() => SignUpResult)
@@ -46,5 +54,24 @@ export class IdentityResolver {
   @Mutation(() => LogInResult)
   async logIn(@Args('input') input: LogInInput): Promise<LogInResult> {
     return this.authenticationService.logIn(input, new Date());
+  }
+
+  @Mutation(() => SessionTokens)
+  async refreshSession(
+    @Args('input') input: RefreshSessionInput,
+  ): Promise<SessionTokens> {
+    return this.sessionService.rotate(input.refreshToken, new Date());
+  }
+
+  @UseGuards(AuthGuard)
+  @Query(() => CurrentUser)
+  async me(): Promise<CurrentUser> {
+    const userId = this.clsService.get<string>('userId');
+    const sessionId = this.clsService.get<string>('sessionId');
+    return this.authenticationService.findCurrentUser(
+      userId,
+      sessionId,
+      new Date(),
+    );
   }
 }

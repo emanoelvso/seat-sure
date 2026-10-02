@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { normalizeEmail } from '@identityModule/core/model/credential-rules.model';
 import { IdentityException } from '@identityModule/core/exception/identity.exception';
@@ -10,7 +10,17 @@ import {
 import { VerificationCodeService } from '@identityModule/core/service/verification-code.service';
 import { LogInStatus } from '@identityModule/http/graphql/type/log-in-status.type';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
+import { UserProfileApi } from '@sharedModules/integration/interface/user-profile-integration.interface';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { Transactional } from 'typeorm-transactional';
+
+export interface CurrentUserModel {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+}
 
 export interface LogInInputModel {
   email: string;
@@ -39,6 +49,8 @@ export class AuthenticationService {
     private readonly loginThrottleService: LoginThrottleService,
     private readonly sessionService: SessionService,
     private readonly verificationCodeService: VerificationCodeService,
+    @Inject(UserProfileApi) private readonly userProfileApi: UserProfileApi,
+    private readonly logger: AppLogger,
   ) {}
 
   @Transactional({ connectionName: 'identity' })
@@ -85,6 +97,34 @@ export class AuthenticationService {
       session,
       codeSent: null,
       resendAvailableAt: null,
+    };
+  }
+
+  async findCurrentUser(
+    userId: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<CurrentUserModel> {
+    await this.sessionService.assertActive(sessionId, now);
+
+    const user = await this.userRepository.findOneById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const profile = await this.userProfileApi.findProfile(userId);
+    if (!profile) {
+      this.logger.warn('No profile found for an authenticated user', {
+        userId,
+      });
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: profile?.firstName ?? '',
+      lastName: profile?.lastName ?? '',
+      avatarUrl: profile?.avatarUrl ?? null,
     };
   }
 }
