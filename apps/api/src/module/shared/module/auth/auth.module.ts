@@ -12,8 +12,11 @@ import { ConfigService } from '@sharedModules/config/service/config.service';
       imports: [ConfigModule.forRoot()],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
+        // No default `expiresIn`: every access token this feature signs
+        // carries its own explicit `exp` (capped at the session's
+        // `expiresAt`), computed from the caller's `now`, never from the
+        // jsonwebtoken library's own clock.
         secret: configService.get('auth.jwtSecret'),
-        signOptions: { expiresIn: '60m' },
       }),
     }),
   ],

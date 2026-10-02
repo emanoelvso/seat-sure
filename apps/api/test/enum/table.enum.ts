@@ -11,4 +11,5 @@ export enum Tables {
   UserProfileUser = 'UserProfileUser',
   IdentityUser = 'IdentityUser',
   IdentityVerificationCode = 'IdentityVerificationCode',
+  IdentitySession = 'IdentitySession',
 }

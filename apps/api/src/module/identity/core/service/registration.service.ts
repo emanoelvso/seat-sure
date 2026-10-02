@@ -4,12 +4,19 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { validateSignUpCredentials } from '@identityModule/core/model/credential-rules.model';
+import {
+  validateSignUpCredentials,
+  normalizeEmail,
+} from '@identityModule/core/model/credential-rules.model';
 import { IdentityException } from '@identityModule/core/exception/identity.exception';
 import {
   IssueCodeResult,
   VerificationCodeService,
 } from '@identityModule/core/service/verification-code.service';
+import {
+  SessionService,
+  SessionTokensResult,
+} from '@identityModule/core/service/session.service';
 import { IdentityUser } from '@identityModule/persistence/entity/identity-user.entity';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
 import { UserProfileApi } from '@sharedModules/integration/interface/user-profile-integration.interface';
@@ -36,6 +43,7 @@ export class RegistrationService {
     private readonly userRepository: UserRepository,
     @Inject(UserProfileApi) private readonly userProfileApi: UserProfileApi,
     private readonly verificationCodeService: VerificationCodeService,
+    private readonly sessionService: SessionService,
   ) {}
 
   async signUp(input: SignUpInputModel, now: Date): Promise<SignUpResultModel> {
@@ -67,6 +75,32 @@ export class RegistrationService {
       await this.verificationCodeService.issue(user, 'verify_email', now);
 
     return { email: user.email, codeSent, resendAvailableAt };
+  }
+
+  @Transactional({ connectionName: 'identity' })
+  async verifyEmail(
+    input: { email: string; code: string; rememberMe: boolean },
+    now: Date,
+  ): Promise<SessionTokensResult> {
+    const email = normalizeEmail(input.email);
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      throw new IdentityException(
+        'CODE_INCORRECT',
+        'Incorrect code. Please try again.',
+      );
+    }
+
+    await this.verificationCodeService.consume(
+      user,
+      'verify_email',
+      input.code,
+      now,
+    );
+
+    await this.userRepository.markEmailVerified(user.id, now);
+
+    return this.sessionService.start(user.id, input.rememberMe, now);
   }
 
   @Transactional({ connectionName: 'identity' })

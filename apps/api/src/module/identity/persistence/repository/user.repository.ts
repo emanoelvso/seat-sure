@@ -17,6 +17,24 @@ export class UserRepository extends DefaultTypeOrmRepository<IdentityUser> {
     return this.findOne({ where: { email } });
   }
 
+  async markEmailVerified(id: string, now: Date): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .update(IdentityUser)
+      .set({ emailVerifiedAt: now })
+      .where('id = :id', { id })
+      .execute();
+  }
+
+  async markLastLogin(id: string, now: Date): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .update(IdentityUser)
+      .set({ lastLoginAt: now })
+      .where('id = :id', { id })
+      .execute();
+  }
+
   // A true DELETE, bypassing the soft-delete column: used only to compensate
   // a sign-up whose profile creation failed, so the email is free again
   // immediately rather than staying reserved by a soft-deleted row.
