@@ -57,7 +57,12 @@ export class AuthenticationService {
   async logIn(input: LogInInputModel, now: Date): Promise<LogInResultModel> {
     const email = normalizeEmail(input.email);
 
-    await this.loginThrottleService.assertNotLocked(email, now);
+    try {
+      await this.loginThrottleService.assertNotLocked(email, now);
+    } catch (error) {
+      this.logger.warn('login-locked', { email });
+      throw error;
+    }
 
     const user = await this.userRepository.findByEmail(email);
     const passwordMatches = user
@@ -66,6 +71,7 @@ export class AuthenticationService {
 
     if (!user || !passwordMatches) {
       await this.loginThrottleService.recordFailure(email, now);
+      this.logger.warn('login-failed', user ? { userId: user.id } : { email });
       throw new IdentityException(
         'INVALID_CREDENTIALS',
         'Incorrect email or password.',
@@ -91,6 +97,8 @@ export class AuthenticationService {
       input.rememberMe,
       now,
     );
+
+    this.logger.log('login-succeeded', { userId: user.id });
 
     return {
       status: LogInStatus.SIGNED_IN,

@@ -14,6 +14,7 @@ import {
 import { IdentityPasswordResetGrant } from '@identityModule/persistence/entity/identity-password-reset-grant.entity';
 import { PasswordResetGrantRepository } from '@identityModule/persistence/repository/password-reset-grant.repository';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { Transactional } from 'typeorm-transactional';
 
 const GRANT_TTL_MS = 10 * 60 * 1000;
@@ -31,6 +32,7 @@ export class PasswordResetService {
     private readonly verificationCodeService: VerificationCodeService,
     private readonly passwordResetGrantRepository: PasswordResetGrantRepository,
     private readonly sessionService: SessionService,
+    private readonly logger: AppLogger,
   ) {}
 
   // Same no-enumeration shape as `VerificationCodeService.resend`: a reset
@@ -122,6 +124,8 @@ export class PasswordResetService {
     }
 
     await this.sessionService.revokeAll(grant.userId, now);
+
+    this.logger.log('password-reset', { userId: grant.userId });
   }
 
   private generateToken(): string {

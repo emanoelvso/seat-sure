@@ -20,6 +20,7 @@ import {
 import { IdentityUser } from '@identityModule/persistence/entity/identity-user.entity';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
 import { UserProfileApi } from '@sharedModules/integration/interface/user-profile-integration.interface';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { QueryFailedError } from 'typeorm';
 import { Transactional } from 'typeorm-transactional';
 
@@ -44,6 +45,7 @@ export class RegistrationService {
     @Inject(UserProfileApi) private readonly userProfileApi: UserProfileApi,
     private readonly verificationCodeService: VerificationCodeService,
     private readonly sessionService: SessionService,
+    private readonly logger: AppLogger,
   ) {}
 
   async signUp(input: SignUpInputModel, now: Date): Promise<SignUpResultModel> {
@@ -74,6 +76,8 @@ export class RegistrationService {
     const { codeSent, resendAvailableAt } =
       await this.verificationCodeService.issue(user, 'verify_email', now);
 
+    this.logger.log('signup', { userId: user.id });
+
     return { email: user.email, codeSent, resendAvailableAt };
   }
 
@@ -99,6 +103,8 @@ export class RegistrationService {
     );
 
     await this.userRepository.markEmailVerified(user.id, now);
+
+    this.logger.log('email-verified', { userId: user.id });
 
     return this.sessionService.start(user.id, input.rememberMe, now);
   }
