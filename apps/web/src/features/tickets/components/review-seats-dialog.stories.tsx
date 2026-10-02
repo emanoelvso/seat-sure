@@ -104,6 +104,22 @@ export const SeatLines: Story = {
   },
 };
 
+export const OneTicket: Story = {
+  args: { pickedSeats: [seat("09", 499)] },
+  play: async ({ canvas }) => {
+    const inDialog = within(dialog(canvas));
+
+    await expect(inDialog.getByText("1 ticket")).toBeVisible();
+    await expect(inDialog.queryByText(/together/)).toBeNull();
+    await expect(
+      inDialog.getAllByRole("term").map((term) => term.textContent),
+    ).toEqual(["ROW", "Seat 09", "Total"]);
+    await expect(
+      inDialog.getAllByRole("definition").map((value) => value.textContent),
+    ).toEqual(["4", "$450", "$450"]);
+  },
+};
+
 export const CheckoutUnavailable: Story = {
   play: async ({ canvas }) => {
     const inDialog = within(dialog(canvas));
