@@ -1,6 +1,6 @@
 import { Icon } from "@solar-icons/react/lib/types";
 import { cva, VariantProps } from "class-variance-authority";
-import { createElement } from "react";
+import { createElement, useId, type InputHTMLAttributes } from "react";
 
 const fieldsetVariants = cva(
   "relative w-full bg-neutral-700 border rounded-lg",
@@ -45,13 +45,15 @@ const inputVariants = cva(
 interface InputProps
   extends
     VariantProps<typeof fieldsetVariants>,
-    VariantProps<typeof inputVariants> {
+    VariantProps<typeof inputVariants>,
+    Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   label?: string;
   leftIcon?: Icon;
   rightIcon?: Icon;
+  rightIconLabel?: string;
+  onRightIconClick?: () => void;
   supportingText?: string;
   counter?: string;
-  placeholder?: string;
 }
 
 export function Input({
@@ -60,15 +62,29 @@ export function Input({
   label,
   leftIcon,
   rightIcon,
+  rightIconLabel,
+  onRightIconClick,
   supportingText,
   counter,
-  placeholder,
+  id,
+  type = "text",
+  className,
+  ...props
 }: InputProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const labelId = `${inputId}-label`;
+  const supportingTextId = `${inputId}-supporting-text`;
+  const isError = variant === "error";
+
   return (
     <div className="w-full max-w-xl flex flex-col gap-1">
       <fieldset className={fieldsetVariants({ variant })}>
         {label && (
-          <legend className="ml-3 px-1 text-xs text-neutral-200 leading-none">
+          <legend
+            id={labelId}
+            className="ml-3 px-1 text-xs text-neutral-200 leading-none"
+          >
             {label}
           </legend>
         )}
@@ -79,13 +95,19 @@ export function Input({
             size: 18,
           })}
         <input
-          type="text"
-          placeholder={placeholder}
-          className={`${inputVariants({ size })} ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon ? "pr-12" : "pr-4"} py-2`}
+          id={inputId}
+          type={type}
+          aria-labelledby={label ? labelId : undefined}
+          aria-invalid={isError || undefined}
+          aria-describedby={supportingText ? supportingTextId : undefined}
+          className={`${inputVariants({ size })} ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon ? "pr-12" : "pr-4"} py-2 ${className ?? ""}`}
+          {...props}
         />
         {rightIcon && (
           <button
             type="button"
+            aria-label={rightIconLabel}
+            onClick={onRightIconClick}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-white"
           >
             {createElement(rightIcon, { size: 18 })}
@@ -93,7 +115,7 @@ export function Input({
         )}
       </fieldset>
       <div className={supportingTextVariants({ variant })}>
-        <span>{supportingText}</span>
+        <span id={supportingTextId}>{supportingText}</span>
         <span>{counter}</span>
       </div>
     </div>
