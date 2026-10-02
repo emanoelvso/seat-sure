@@ -1,29 +1,42 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 import { Header } from "./header";
+
+// HeaderAccount (rendered inside Header) fetches the session on mount; stub
+// it to a signed-out response so these stories don't hit the network.
+function stubSignedOutFetch() {
+  Object.defineProperty(window, "fetch", {
+    value: fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ user: null }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    ),
+    configurable: true,
+  });
+}
 
 const meta: Meta<typeof Header> = {
   title: "Components/Header",
   tags: ["autodocs"],
   component: Header,
-  argTypes: {
-    avatarUrl: {
-      control: { type: "boolean" },
-      mapping: {
-        true: "https://sb.kaleidousercontent.com/67418/1920x1545/c5f15ac173/samuel-raita-ridxdghg7pw-unsplash.jpg",
-        false: undefined,
-      },
-    },
-  },
 };
 
 export default meta;
 
 type Story = StoryObj<typeof Header>;
 
-export const Default: Story = {} satisfies Story;
+export const Default: Story = {
+  beforeEach: () => {
+    stubSignedOutFetch();
+  },
+} satisfies Story;
 
 export const NavigationLinks: Story = {
+  beforeEach: () => {
+    stubSignedOutFetch();
+  },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("link", { name: "SeatSure" })).toHaveAttribute(
       "href",
