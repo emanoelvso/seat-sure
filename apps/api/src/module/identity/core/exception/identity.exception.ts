@@ -20,7 +20,11 @@ export class IdentityException extends UnprocessableEntityException {
     message: string,
     fields?: Record<string, string>,
   ) {
-    super({ reason, message, fields });
+    // `statusCode` must be present on the response body: Nest's Apollo
+    // driver only treats a thrown error as an HttpException (and maps it to
+    // `extensions.code: BAD_USER_INPUT`, carrying this body in
+    // `extensions.originalError`) when `response.statusCode` is set.
+    super({ statusCode: 422, reason, message, fields });
     this.reason = reason;
     this.fields = fields;
   }

@@ -16,4 +16,16 @@ export class UserRepository extends DefaultTypeOrmRepository<IdentityUser> {
   async findByEmail(email: string): Promise<IdentityUser | null> {
     return this.findOne({ where: { email } });
   }
+
+  // A true DELETE, bypassing the soft-delete column: used only to compensate
+  // a sign-up whose profile creation failed, so the email is free again
+  // immediately rather than staying reserved by a soft-deleted row.
+  async hardDeleteById(id: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(IdentityUser)
+      .where('id = :id', { id })
+      .execute();
+  }
 }
