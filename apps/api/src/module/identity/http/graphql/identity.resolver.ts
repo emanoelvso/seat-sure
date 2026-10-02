@@ -15,6 +15,7 @@ import { LogInResult } from '@identityModule/http/graphql/type/log-in-result.typ
 import { PasswordResetGrant } from '@identityModule/http/graphql/type/password-reset-grant.type';
 import { RefreshSessionInput } from '@identityModule/http/graphql/type/refresh-session-input.type';
 import { RequestPasswordResetInput } from '@identityModule/http/graphql/type/request-password-reset-input.type';
+import { ResetPasswordInput } from '@identityModule/http/graphql/type/reset-password-input.type';
 import { ResendCodeInput } from '@identityModule/http/graphql/type/resend-code-input.type';
 import { SessionTokens } from '@identityModule/http/graphql/type/session-tokens.type';
 import { SignUpInput } from '@identityModule/http/graphql/type/sign-up-input.type';
@@ -84,6 +85,18 @@ export class IdentityResolver {
       input.code,
       new Date(),
     );
+  }
+
+  @Mutation(() => Boolean)
+  async resetPassword(
+    @Args('input') input: ResetPasswordInput,
+  ): Promise<boolean> {
+    await this.passwordResetService.resetPassword(
+      input.resetToken,
+      input.newPassword,
+      new Date(),
+    );
+    return true;
   }
 
   @UseGuards(AuthGuard)

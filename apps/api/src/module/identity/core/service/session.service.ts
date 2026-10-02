@@ -116,6 +116,11 @@ export class SessionService {
     throw new UnauthorizedException();
   }
 
+  @Transactional({ connectionName: 'identity' })
+  async revokeAll(userId: string, now: Date): Promise<void> {
+    await this.sessionRepository.revokeAllForUser(userId, now);
+  }
+
   async assertActive(sessionId: string, now: Date): Promise<IdentitySession> {
     const session = await this.sessionRepository.findOneById(sessionId);
     if (!session) {

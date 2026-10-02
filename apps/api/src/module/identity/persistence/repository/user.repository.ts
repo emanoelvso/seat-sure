@@ -26,6 +26,15 @@ export class UserRepository extends DefaultTypeOrmRepository<IdentityUser> {
       .execute();
   }
 
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .update(IdentityUser)
+      .set({ passwordHash })
+      .where('id = :id', { id })
+      .execute();
+  }
+
   async markLastLogin(id: string, now: Date): Promise<void> {
     await this.entityManager
       .createQueryBuilder()

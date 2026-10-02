@@ -1,7 +1,12 @@
 import { createHash, randomBytes } from 'crypto';
 import { Injectable } from '@nestjs/common';
-import { normalizeEmail } from '@identityModule/core/model/credential-rules.model';
+import * as bcrypt from 'bcrypt';
+import {
+  normalizeEmail,
+  validatePassword,
+} from '@identityModule/core/model/credential-rules.model';
 import { IdentityException } from '@identityModule/core/exception/identity.exception';
+import { SessionService } from '@identityModule/core/service/session.service';
 import {
   IssueCodeResult,
   VerificationCodeService,
@@ -12,6 +17,7 @@ import { UserRepository } from '@identityModule/persistence/repository/user.repo
 import { Transactional } from 'typeorm-transactional';
 
 const GRANT_TTL_MS = 10 * 60 * 1000;
+const BCRYPT_ROUNDS = 10;
 
 export interface PasswordResetGrantResult {
   resetToken: string;
@@ -24,6 +30,7 @@ export class PasswordResetService {
     private readonly userRepository: UserRepository,
     private readonly verificationCodeService: VerificationCodeService,
     private readonly passwordResetGrantRepository: PasswordResetGrantRepository,
+    private readonly sessionService: SessionService,
   ) {}
 
   // Same no-enumeration shape as `VerificationCodeService.resend`: a reset
@@ -68,6 +75,53 @@ export class PasswordResetService {
     );
 
     return { resetToken, expiresAt };
+  }
+
+  @Transactional({ connectionName: 'identity' })
+  async resetPassword(
+    resetToken: string,
+    newPassword: string,
+    now: Date,
+  ): Promise<void> {
+    const passwordMessage = validatePassword(newPassword);
+    if (passwordMessage) {
+      throw new IdentityException(
+        'INVALID_INPUT',
+        'Check the highlighted fields.',
+        { password: passwordMessage },
+      );
+    }
+
+    const tokenHash = this.hashToken(resetToken);
+    const grant =
+      await this.passwordResetGrantRepository.findByTokenHash(tokenHash);
+    if (!grant || grant.usedAt || now.getTime() > grant.expiresAt.getTime()) {
+      throw new IdentityException(
+        'RESET_GRANT_INVALID',
+        'This reset link is no longer valid.',
+      );
+    }
+
+    const consumed = await this.passwordResetGrantRepository.markUsed(
+      grant.id,
+      now,
+    );
+    if (!consumed) {
+      throw new IdentityException(
+        'RESET_GRANT_INVALID',
+        'This reset link is no longer valid.',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.userRepository.updatePasswordHash(grant.userId, passwordHash);
+
+    const user = await this.userRepository.findOneById(grant.userId);
+    if (user && !user.emailVerifiedAt) {
+      await this.userRepository.markEmailVerified(grant.userId, now);
+    }
+
+    await this.sessionService.revokeAll(grant.userId, now);
   }
 
   private generateToken(): string {
