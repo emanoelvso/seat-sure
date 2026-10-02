@@ -9,6 +9,8 @@ import { IdentityException } from '@identityModule/core/exception/identity.excep
 import { IdentityUser } from '@identityModule/persistence/entity/identity-user.entity';
 import { IdentityVerificationCode } from '@identityModule/persistence/entity/identity-verification-code.entity';
 import { VerificationCodeRepository } from '@identityModule/persistence/repository/verification-code.repository';
+import { UserRepository } from '@identityModule/persistence/repository/user.repository';
+import { normalizeEmail } from '@identityModule/core/model/credential-rules.model';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { Transactional } from 'typeorm-transactional';
 
@@ -27,9 +29,34 @@ export interface IssueCodeResult {
 export class VerificationCodeService {
   constructor(
     private readonly verificationCodeRepository: VerificationCodeRepository,
+    private readonly userRepository: UserRepository,
     @Inject(CodeSender) private readonly codeSender: CodeSender,
     private readonly logger: AppLogger,
   ) {}
+
+  // Always returns the same shape, whether the email exists or not, and
+  // whether a verify_email code is even still relevant (already verified):
+  // the caller can't distinguish "unknown email" from "nothing to resend"
+  // from "we actually sent it", which is what keeps this endpoint from
+  // leaking which emails have accounts.
+  async resend(
+    email: string,
+    purpose: CodeSenderPurpose,
+    now: Date,
+  ): Promise<IssueCodeResult> {
+    const resendAvailableAt = new Date(now.getTime() + COOLDOWN_MS);
+    const user = await this.userRepository.findByEmail(normalizeEmail(email));
+
+    if (!user) {
+      return { codeSent: true, resendAvailableAt };
+    }
+
+    if (purpose === 'verify_email' && user.emailVerifiedAt) {
+      return { codeSent: true, resendAvailableAt };
+    }
+
+    return this.issue(user, purpose, now);
+  }
 
   @Transactional({ connectionName: 'identity' })
   async issue(
