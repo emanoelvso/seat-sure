@@ -59,3 +59,59 @@ describe("paths.artist", () => {
     expect(paths.artist.getHref("ac/dc")).toBe("/artists/ac%2Fdc");
   });
 });
+
+describe("paths.login", () => {
+  it("links to the login page without a redirectTo", () => {
+    expect(paths.login.getHref()).toBe("/login");
+  });
+
+  it("links to the login page with an encoded redirectTo", () => {
+    expect(paths.login.getHref("/events/1/tickets?quantity=2")).toBe(
+      "/login?redirectTo=%2Fevents%2F1%2Ftickets%3Fquantity%3D2",
+    );
+  });
+});
+
+describe("paths.signup", () => {
+  it("links to the signup page without a redirectTo", () => {
+    expect(paths.signup.getHref()).toBe("/signup");
+  });
+
+  it("links to the signup page with an encoded redirectTo", () => {
+    expect(paths.signup.getHref("/events/1/tickets?quantity=2")).toBe(
+      "/signup?redirectTo=%2Fevents%2F1%2Ftickets%3Fquantity%3D2",
+    );
+  });
+});
+
+describe("paths.verifyEmail", () => {
+  it("links to the verify-email page", () => {
+    expect(paths.verifyEmail.getHref()).toBe("/verify-email");
+  });
+});
+
+describe("paths.forgotPassword", () => {
+  it("links to the forgot-password page", () => {
+    expect(paths.forgotPassword.getHref()).toBe("/forgot-password");
+  });
+});
+
+describe("paths.forgotPasswordVerify", () => {
+  it("links to the forgot-password verify page", () => {
+    expect(paths.forgotPasswordVerify.getHref()).toBe(
+      "/forgot-password/verify",
+    );
+  });
+});
+
+describe("paths.resetPassword", () => {
+  it("links to the reset-password page", () => {
+    expect(paths.resetPassword.getHref()).toBe("/reset-password");
+  });
+});
+
+describe("paths.session", () => {
+  it("links to the session API route", () => {
+    expect(paths.session.getHref()).toBe("/api/auth/session");
+  });
+});

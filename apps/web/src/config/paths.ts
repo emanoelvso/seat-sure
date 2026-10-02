@@ -18,4 +18,31 @@ export const paths = {
   artist: {
     getHref: (slug: string) => `/artists/${encodeURIComponent(slug)}`,
   },
+  login: {
+    getHref: (redirectTo?: string) =>
+      redirectTo
+        ? `/login?redirectTo=${encodeURIComponent(redirectTo)}`
+        : "/login",
+  },
+  signup: {
+    getHref: (redirectTo?: string) =>
+      redirectTo
+        ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}`
+        : "/signup",
+  },
+  verifyEmail: {
+    getHref: () => "/verify-email",
+  },
+  forgotPassword: {
+    getHref: () => "/forgot-password",
+  },
+  forgotPasswordVerify: {
+    getHref: () => "/forgot-password/verify",
+  },
+  resetPassword: {
+    getHref: () => "/reset-password",
+  },
+  session: {
+    getHref: () => "/api/auth/session",
+  },
 };
