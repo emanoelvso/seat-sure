@@ -3,14 +3,18 @@ import { UseGuards } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { CodeSenderPurpose } from '@identityModule/core/adapter/code-sender.adapter.interface';
 import { AuthenticationService } from '@identityModule/core/service/authentication.service';
+import { PasswordResetService } from '@identityModule/core/service/password-reset.service';
 import { RegistrationService } from '@identityModule/core/service/registration.service';
 import { SessionService } from '@identityModule/core/service/session.service';
 import { VerificationCodeService } from '@identityModule/core/service/verification-code.service';
 import { CodeDelivery } from '@identityModule/http/graphql/type/code-delivery.type';
+import { ConfirmPasswordResetCodeInput } from '@identityModule/http/graphql/type/confirm-password-reset-code-input.type';
 import { CurrentUser } from '@identityModule/http/graphql/type/current-user.type';
 import { LogInInput } from '@identityModule/http/graphql/type/log-in-input.type';
 import { LogInResult } from '@identityModule/http/graphql/type/log-in-result.type';
+import { PasswordResetGrant } from '@identityModule/http/graphql/type/password-reset-grant.type';
 import { RefreshSessionInput } from '@identityModule/http/graphql/type/refresh-session-input.type';
+import { RequestPasswordResetInput } from '@identityModule/http/graphql/type/request-password-reset-input.type';
 import { ResendCodeInput } from '@identityModule/http/graphql/type/resend-code-input.type';
 import { SessionTokens } from '@identityModule/http/graphql/type/session-tokens.type';
 import { SignUpInput } from '@identityModule/http/graphql/type/sign-up-input.type';
@@ -25,6 +29,7 @@ export class IdentityResolver {
     private readonly verificationCodeService: VerificationCodeService,
     private readonly authenticationService: AuthenticationService,
     private readonly sessionService: SessionService,
+    private readonly passwordResetService: PasswordResetService,
     private readonly clsService: ClsService,
   ) {}
 
@@ -61,6 +66,24 @@ export class IdentityResolver {
     @Args('input') input: RefreshSessionInput,
   ): Promise<SessionTokens> {
     return this.sessionService.rotate(input.refreshToken, new Date());
+  }
+
+  @Mutation(() => CodeDelivery)
+  async requestPasswordReset(
+    @Args('input') input: RequestPasswordResetInput,
+  ): Promise<CodeDelivery> {
+    return this.passwordResetService.requestReset(input.email, new Date());
+  }
+
+  @Mutation(() => PasswordResetGrant)
+  async confirmPasswordResetCode(
+    @Args('input') input: ConfirmPasswordResetCodeInput,
+  ): Promise<PasswordResetGrant> {
+    return this.passwordResetService.confirmCode(
+      input.email,
+      input.code,
+      new Date(),
+    );
   }
 
   @UseGuards(AuthGuard)
