@@ -18,6 +18,26 @@ export type Artist = {
   name: Scalars['String']['output'];
 };
 
+export type CodeDelivery = {
+  __typename: 'CodeDelivery';
+  codeSent: Scalars['Boolean']['output'];
+  resendAvailableAt: Scalars['DateTime']['output'];
+};
+
+export type ConfirmPasswordResetCodeInput = {
+  code: Scalars['String']['input'];
+  email: Scalars['String']['input'];
+};
+
+export type CurrentUser = {
+  __typename: 'CurrentUser';
+  avatarUrl: Maybe<Scalars['String']['output']>;
+  email: Scalars['String']['output'];
+  firstName: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  lastName: Scalars['String']['output'];
+};
+
 export type DateRange = {
   from: Scalars['DateTime']['input'];
   to?: InputMaybe<Scalars['DateTime']['input']>;
@@ -141,14 +161,86 @@ export type HomeSections = {
   sports: Maybe<EventSection>;
 };
 
+export type LogInInput = {
+  email: Scalars['String']['input'];
+  password: Scalars['String']['input'];
+  rememberMe: Scalars['Boolean']['input'];
+};
+
+export type LogInResult = {
+  __typename: 'LogInResult';
+  codeSent: Maybe<Scalars['Boolean']['output']>;
+  resendAvailableAt: Maybe<Scalars['DateTime']['output']>;
+  session: Maybe<SessionTokens>;
+  status: LogInStatus;
+};
+
+export type LogInStatus =
+  | 'SIGNED_IN'
+  | 'VERIFICATION_REQUIRED';
+
 export type Mutation = {
   __typename: 'Mutation';
+  confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
+  logIn: LogInResult;
+  refreshSession: SessionTokens;
+  requestPasswordReset: CodeDelivery;
+  resendCode: CodeDelivery;
+  resetPassword: Scalars['Boolean']['output'];
+  signUp: SignUpResult;
+  verifyEmail: SessionTokens;
+};
+
+
+export type MutationConfirmPasswordResetCodeArgs = {
+  input: ConfirmPasswordResetCodeInput;
 };
 
 
 export type MutationCreateEventArgs = {
   EventInput: EventInput;
+};
+
+
+export type MutationLogInArgs = {
+  input: LogInInput;
+};
+
+
+export type MutationRefreshSessionArgs = {
+  input: RefreshSessionInput;
+};
+
+
+export type MutationRequestPasswordResetArgs = {
+  input: RequestPasswordResetInput;
+};
+
+
+export type MutationResendCodeArgs = {
+  input: ResendCodeInput;
+};
+
+
+export type MutationResetPasswordArgs = {
+  input: ResetPasswordInput;
+};
+
+
+export type MutationSignUpArgs = {
+  input: SignUpInput;
+};
+
+
+export type MutationVerifyEmailArgs = {
+  input: VerifyEmailInput;
+};
+
+export type PasswordResetGrant = {
+  __typename: 'PasswordResetGrant';
+  expiresAt: Scalars['DateTime']['output'];
+  resetToken: Scalars['String']['output'];
 };
 
 export type PriceRange = {
@@ -164,6 +256,7 @@ export type Query = {
   findTicketTypeSeats: TicketTypeSeats;
   findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
+  me: CurrentUser;
 };
 
 
@@ -189,6 +282,24 @@ export type QueryFindTicketTypeSeatsArgs = {
 
 export type QueryFindUnavailableSeatsArgs = {
   FindUnavailableSeatsInput: FindUnavailableSeatsInput;
+};
+
+export type RefreshSessionInput = {
+  refreshToken: Scalars['String']['input'];
+};
+
+export type RequestPasswordResetInput = {
+  email: Scalars['String']['input'];
+};
+
+export type ResendCodeInput = {
+  email: Scalars['String']['input'];
+  purpose: Scalars['String']['input'];
+};
+
+export type ResetPasswordInput = {
+  newPassword: Scalars['String']['input'];
+  resetToken: Scalars['String']['input'];
 };
 
 export type Seat = {
@@ -242,6 +353,28 @@ export type SeatMapStageShape = {
   path: Scalars['String']['output'];
 };
 
+export type SessionTokens = {
+  __typename: 'SessionTokens';
+  accessToken: Scalars['String']['output'];
+  expiresAt: Scalars['DateTime']['output'];
+  persistent: Scalars['Boolean']['output'];
+  refreshToken: Maybe<Scalars['String']['output']>;
+};
+
+export type SignUpInput = {
+  email: Scalars['String']['input'];
+  firstName: Scalars['String']['input'];
+  lastName: Scalars['String']['input'];
+  password: Scalars['String']['input'];
+};
+
+export type SignUpResult = {
+  __typename: 'SignUpResult';
+  codeSent: Scalars['Boolean']['output'];
+  email: Scalars['String']['output'];
+  resendAvailableAt: Scalars['DateTime']['output'];
+};
+
 export type TicketType = {
   __typename: 'TicketType';
   currency: Scalars['String']['output'];
@@ -265,4 +398,10 @@ export type TicketTypeSeats = {
 export type UnavailableSeats = {
   __typename: 'UnavailableSeats';
   seatIds: Array<Scalars['String']['output']>;
+};
+
+export type VerifyEmailInput = {
+  code: Scalars['String']['input'];
+  email: Scalars['String']['input'];
+  rememberMe: Scalars['Boolean']['input'];
 };
