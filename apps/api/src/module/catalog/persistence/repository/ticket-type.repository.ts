@@ -21,4 +21,15 @@ export class TicketTypeRepository extends DefaultTypeOrmRepository<TicketType> {
       .addOrderBy('ticketType.name', 'ASC')
       .getMany();
   }
+
+  async findOneOfEvent(
+    id: string,
+    eventId: string,
+  ): Promise<TicketType | null> {
+    return this.entityManager
+      .createQueryBuilder(TicketType, 'ticketType')
+      .where('ticketType.id = :id', { id })
+      .andWhere('ticketType.eventId = :eventId', { eventId })
+      .getOne();
+  }
 }

@@ -23,6 +23,7 @@
     "outDir": "./dist",
     "paths": {
       "@catalogModule/*": ["./src/module/catalog/*"],
+      "@ticketingModule/*": ["./src/module/ticketing/*"],
       "@sharedModules/*": ["./src/module/shared/module/*"],
       "@sharedLibs/*": ["./src/module/shared/*"],
       "@testInfra/*": ["./test/*"],

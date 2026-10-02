@@ -11,6 +11,10 @@ export const paths = {
   eventTickets: {
     getHref: (id: string) => `/events/${encodeURIComponent(id)}/tickets`,
   },
+  eventSeats: {
+    getHref: (eventId: string, ticketTypeId: string, quantity: number) =>
+      `/events/${encodeURIComponent(eventId)}/tickets/${encodeURIComponent(ticketTypeId)}?quantity=${quantity}`,
+  },
   artist: {
     getHref: (slug: string) => `/artists/${encodeURIComponent(slug)}`,
   },

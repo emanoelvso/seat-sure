@@ -1,22 +1,17 @@
-import {
-  CalendarIcon,
-  ClockCircleIcon,
-  TicketIcon,
-} from "@solar-icons/react/outline";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { paths } from "@/config/paths";
 import { SeatMapPreview } from "@/features/tickets/components/seat-map";
-import { TagPill } from "@/components/ui/tag-pill";
+import {
+  TicketFacts,
+  TicketTags,
+  TicketTotals,
+} from "@/features/tickets/components/ticket-summary";
 import {
   SeatMapLayout,
   TicketsEvent,
   TicketType,
 } from "@/features/tickets/api/find-event-tickets";
-import {
-  formatEventDate,
-  formatEventTimeRange,
-} from "@/utils/event-format";
-import { formatPrice } from "@/features/tickets/utils/price";
 
 interface TicketDetailPanelProps {
   event: TicketsEvent;
@@ -26,10 +21,6 @@ interface TicketDetailPanelProps {
   onBack: () => void;
 }
 
-function quantityLine(quantity: number) {
-  return quantity === 1 ? "1 ticket" : `${quantity} tickets together`;
-}
-
 export function TicketDetailPanel({
   event,
   ticketType,
@@ -37,63 +28,18 @@ export function TicketDetailPanel({
   seatMap,
   onBack,
 }: TicketDetailPanelProps) {
-  const { priceCents, currency } = ticketType;
-
   return (
     <div className="flex flex-col gap-4">
       <section className="flex flex-col gap-6 rounded-2xl bg-neutral-800 px-4 py-6">
         <h2 className="text-2xl font-bold">Section {ticketType.name}</h2>
 
-        <dl className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-neutral-100">Price</dt>
-            <dd className="text-primary">
-              <span className="text-2xl font-bold">
-                {formatPrice(priceCents, currency)}
-              </span>
-              <span className="text-sm">/per</span>
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-neutral-100">Tickets</dt>
-            <dd className="text-xl font-bold">{quantity}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-neutral-700 pt-3">
-            <dt className="text-neutral-100">Total</dt>
-            <dd className="text-2xl font-bold">
-              {formatPrice(priceCents * quantity, currency)}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="flex flex-col gap-3 text-neutral-100">
-          <span className="flex items-center gap-2">
-            <TicketIcon size={20} className="shrink-0" />
-            {quantityLine(quantity)}
-          </span>
-          <span className="flex items-center gap-2">
-            <CalendarIcon size={20} className="shrink-0" />
-            {formatEventDate(event.startAt)}
-          </span>
-          <span className="flex items-center gap-2">
-            <ClockCircleIcon size={20} className="shrink-0" />
-            {formatEventTimeRange(event.startAt, event.endsAt)}
-          </span>
-        </div>
-
-        {ticketType.tags.length > 0 && (
-          <ul aria-label="Tags" className="flex flex-wrap gap-2">
-            {ticketType.tags.map((tag) => (
-              <li key={tag}>
-                <TagPill size="xs">{tag}</TagPill>
-              </li>
-            ))}
-          </ul>
-        )}
+        <TicketTotals ticketType={ticketType} quantity={quantity} />
+        <TicketFacts event={event} quantity={quantity} />
+        <TicketTags tags={ticketType.tags} />
 
         <div className="flex flex-col gap-3">
           <Link
-            href={`/events/${event.id}/tickets/${ticketType.id}?quantity=${quantity}`}
+            href={paths.eventSeats.getHref(event.id, ticketType.id, quantity)}
             className={buttonVariants({ size: "lg" })}
           >
             Get a Ticket

@@ -113,6 +113,15 @@ input FindEventsInput {
   type: EventType
 }
 
+input FindTicketTypeSeatsInput {
+  eventId: String!
+  ticketTypeId: String!
+}
+
+input FindUnavailableSeatsInput {
+  eventId: String!
+}
+
 type HomeSections {
   concerts: EventSection
   festivals: EventSection
@@ -133,7 +142,17 @@ type Query {
   findArtistBySlug(FindArtistInput: FindArtistInput!): FindArtist!
   findEventTickets(FindEventTicketsInput: FindEventTicketsInput!): EventTickets!
   findEvents(FindEventsInput: FindEventsInput): FindEvents!
+  findTicketTypeSeats(FindTicketTypeSeatsInput: FindTicketTypeSeatsInput!): TicketTypeSeats!
+  findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
+}
+
+type Seat {
+  id: String!
+  number: String!
+  row: String!
+  x: Float!
+  y: Float!
 }
 
 type SeatMap {
@@ -182,4 +201,15 @@ type TicketType {
   seatsAvailable: Int!
   sectionKey: String!
   tags: [String!]!
+}
+
+type TicketTypeSeats {
+  event: Event
+  seatMap: SeatMap
+  seats: [Seat!]!
+  ticketType: TicketType
+}
+
+type UnavailableSeats {
+  seatIds: [String!]!
 }

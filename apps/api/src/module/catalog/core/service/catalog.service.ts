@@ -11,10 +11,16 @@ import {
 } from 'typeorm';
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
 import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
+import { SeatRepository } from '@catalogModule/persistence/repository/seat.repository';
 import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
+import { Seat as SeatEntity } from '@catalogModule/persistence/entity/seat.entity';
 import { SeatMapModel } from '@catalogModule/core/model/seat-map.model';
 import { TicketTypeModel } from '@catalogModule/core/model/ticket-type.model';
+import {
+  SeatModel,
+  TicketTypeSeatsModel,
+} from '@catalogModule/core/model/seat.model';
 import {
   EventHeadlinerModel,
   EventModel,
@@ -67,6 +73,7 @@ export class CatalogService {
     private readonly ticketTypeRepository: TicketTypeRepository,
     private readonly venueRepository: VenueRepository,
     private readonly eventArtistRepository: EventArtistRepository,
+    private readonly seatRepository: SeatRepository,
   ) {}
 
   @Transactional({ connectionName: 'catalog' })
@@ -321,6 +328,53 @@ export class CatalogService {
     };
   }
 
+  async findTicketTypeSeats({
+    eventId,
+    ticketTypeId,
+    now = new Date(),
+  }: {
+    eventId: string;
+    ticketTypeId: string;
+    now?: Date;
+  }): Promise<TicketTypeSeatsModel> {
+    const empty: TicketTypeSeatsModel = {
+      event: null,
+      ticketType: null,
+      seatMap: null,
+      seats: [],
+    };
+
+    if (!isUUID(eventId) || !isUUID(ticketTypeId)) {
+      return empty;
+    }
+
+    const [event, ticketType] = await Promise.all([
+      this.eventRepository.findUpcomingPublishedById({ id: eventId, now }),
+      this.ticketTypeRepository.findOneOfEvent(ticketTypeId, eventId),
+    ]);
+
+    if (!event || !ticketType) {
+      return empty;
+    }
+
+    const [[eventModel], seats] = await Promise.all([
+      this.toEventModels([event]),
+      event.seatMap
+        ? this.seatRepository.findBySection(
+            event.seatMap.id,
+            ticketType.sectionKey,
+          )
+        : [],
+    ]);
+
+    return {
+      event: eventModel,
+      ticketType: this.mapTicketType(ticketType),
+      seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
+      seats: seats.map((seat) => this.mapSeat(seat)),
+    };
+  }
+
   // Maps events with their headliner, read in one query. The rows come ordered
   // by pick, so the first row of each event is its headliner.
   private async toEventModels(events: Event[]): Promise<EventModel[]> {
@@ -412,6 +466,16 @@ export class CatalogService {
       seatsAvailable: ticketType.seatsAvailable,
       maxPerOrder: ticketType.maxPerOrder,
       tags: ticketType.tags ?? [],
+    };
+  }
+
+  private mapSeat(seat: SeatEntity): SeatModel {
+    return {
+      id: seat.id,
+      row: seat.row,
+      number: seat.number,
+      x: seat.x,
+      y: seat.y,
     };
   }
 }

@@ -36,6 +36,20 @@ describe("paths.eventTickets", () => {
   });
 });
 
+describe("paths.eventSeats", () => {
+  it("links to the seat page of the ticket type with the quantity, encoding both ids (SEAT-12)", () => {
+    expect(paths.eventSeats.getHref("e 1", "t/2", 3)).toBe(
+      "/events/e%201/tickets/t%2F2?quantity=3",
+    );
+  });
+
+  it("builds its own URL from another event, ticket type and quantity (SEAT-12)", () => {
+    expect(paths.eventSeats.getHref("evt-9", "tt-4", 1)).toBe(
+      "/events/evt-9/tickets/tt-4?quantity=1",
+    );
+  });
+});
+
 describe("paths.artist", () => {
   it("links to the artist page of the slug", () => {
     expect(paths.artist.getHref("the-weeknd")).toBe("/artists/the-weeknd");
