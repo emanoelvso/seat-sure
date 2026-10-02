@@ -9,4 +9,5 @@ export enum Tables {
   SeatHold = 'TicketingSeatHold',
   Ticket = 'TicketingTicket',
   UserProfileUser = 'UserProfileUser',
+  IdentityUser = 'IdentityUser',
 }
