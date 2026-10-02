@@ -6,6 +6,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { UserRepository } from './repository/user.repository';
+import { VerificationCodeRepository } from './repository/verification-code.repository';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { UserRepository } from './repository/user.repository';
       },
     }),
   ],
-  providers: [UserRepository],
-  exports: [UserRepository],
+  providers: [UserRepository, VerificationCodeRepository],
+  exports: [UserRepository, VerificationCodeRepository],
 })
 export class IdentityPersistenceModule {}

@@ -10,4 +10,5 @@ export enum Tables {
   Ticket = 'TicketingTicket',
   UserProfileUser = 'UserProfileUser',
   IdentityUser = 'IdentityUser',
+  IdentityVerificationCode = 'IdentityVerificationCode',
 }
