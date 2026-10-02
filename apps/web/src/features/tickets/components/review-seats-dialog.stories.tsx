@@ -120,6 +120,23 @@ export const OneTicket: Story = {
   },
 };
 
+// Three picks, out of number order: 10, 02, 09.
+export const ThreeTickets: Story = {
+  args: { pickedSeats: [seat("10", 553), seat("02", 121), seat("09", 499)] },
+  play: async ({ canvas }) => {
+    const inDialog = within(dialog(canvas));
+
+    await expect(inDialog.getByText("3 tickets together")).toBeVisible();
+    await expect(inDialog.queryByText("2 tickets together")).toBeNull();
+    await expect(
+      inDialog.getAllByRole("term").map((term) => term.textContent),
+    ).toEqual(["ROW", "Seat 02", "Seat 09", "Seat 10", "Total"]);
+    await expect(
+      inDialog.getAllByRole("definition").map((value) => value.textContent),
+    ).toEqual(["4", "$450", "$450", "$450", "$1,350"]);
+  },
+};
+
 export const CheckoutUnavailable: Story = {
   play: async ({ canvas }) => {
     const inDialog = within(dialog(canvas));
