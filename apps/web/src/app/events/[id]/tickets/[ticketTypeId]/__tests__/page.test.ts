@@ -68,6 +68,19 @@ describe("EventSeatsPage", () => {
     expect(notFound).toHaveBeenCalledTimes(1);
   });
 
+  // SEAT-33: the error reaches the tickets route's error.tsx, not the 404 page.
+  it("rejects with the loader's error and doesn't answer not found when a query fails", async () => {
+    const error = new Error("findUnavailableSeats failed");
+    mockedGetEventSeats.mockRejectedValue(error);
+
+    await expect(EventSeatsPage(params("event-3", "ticket-type-3"))).rejects.toBe(
+      error,
+    );
+
+    expect(mockedGetEventSeats).toHaveBeenCalledWith("event-3", "ticket-type-3");
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
   it("renders the seat view with the loader's seats and unavailable ids", async () => {
     const ticketTypeSeats = {
       event: { id: "event-2", name: "Adele" },
