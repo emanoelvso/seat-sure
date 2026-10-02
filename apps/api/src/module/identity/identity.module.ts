@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CodeSender } from '@identityModule/core/adapter/code-sender.adapter.interface';
+import { AuthenticationService } from '@identityModule/core/service/authentication.service';
+import { LoginThrottleService } from '@identityModule/core/service/login-throttle.service';
 import { RegistrationService } from '@identityModule/core/service/registration.service';
 import { SessionService } from '@identityModule/core/service/session.service';
 import { VerificationCodeService } from '@identityModule/core/service/verification-code.service';
@@ -22,6 +24,8 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     VerificationCodeService,
     RegistrationService,
     SessionService,
+    LoginThrottleService,
+    AuthenticationService,
     IdentityResolver,
   ],
 })

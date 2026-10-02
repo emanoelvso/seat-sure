@@ -8,6 +8,7 @@ import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { UserRepository } from './repository/user.repository';
 import { SessionRepository } from './repository/session.repository';
 import { VerificationCodeRepository } from './repository/verification-code.repository';
+import { LoginThrottleRepository } from './repository/login-throttle.repository';
 
 @Module({
   imports: [
@@ -32,7 +33,17 @@ import { VerificationCodeRepository } from './repository/verification-code.repos
       },
     }),
   ],
-  providers: [UserRepository, VerificationCodeRepository, SessionRepository],
-  exports: [UserRepository, VerificationCodeRepository, SessionRepository],
+  providers: [
+    UserRepository,
+    VerificationCodeRepository,
+    SessionRepository,
+    LoginThrottleRepository,
+  ],
+  exports: [
+    UserRepository,
+    VerificationCodeRepository,
+    SessionRepository,
+    LoginThrottleRepository,
+  ],
 })
 export class IdentityPersistenceModule {}

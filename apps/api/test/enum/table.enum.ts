@@ -12,4 +12,5 @@ export enum Tables {
   IdentityUser = 'IdentityUser',
   IdentityVerificationCode = 'IdentityVerificationCode',
   IdentitySession = 'IdentitySession',
+  IdentityLoginThrottle = 'IdentityLoginThrottle',
 }
