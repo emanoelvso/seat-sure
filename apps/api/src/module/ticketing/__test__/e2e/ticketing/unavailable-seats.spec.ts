@@ -8,6 +8,7 @@ import { createNestApp } from '@testInfra/test-e2e.setup';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
 import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
+import { TicketingService } from '@ticketingModule/core/service/ticketing.service';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -85,6 +86,27 @@ describe('TicketingResolver findUnavailableSeats (e2e)', () => {
 
     expect(body.errors).toBeUndefined();
     expect(body.data.findUnavailableSeats).toEqual({ seatIds: [hold.seatId] });
+  });
+
+  // The resolver reads the request time from the clock, so the boundary is
+  // checked on the service with a fixed `now`.
+  it('returns a hold that expires at the request time and leaves out one that expired 1 ms before (SEAT-07, SEAT-09)', async () => {
+    const now = new Date('2026-10-01T12:00:00.000Z');
+    const expiresAtNow = seatHoldFactory.build({ eventId, expiresAt: now });
+    const expiredJustBefore = seatHoldFactory.build({
+      eventId,
+      expiresAt: new Date(now.getTime() - 1),
+    });
+    await testDbClient.batchInsert(Tables.SeatHold, [
+      expiresAtNow,
+      expiredJustBefore,
+    ]);
+
+    const unavailable = await module
+      .get(TicketingService)
+      .findUnavailableSeats({ eventId, now });
+
+    expect(unavailable).toEqual({ seatIds: [expiresAtNow.seatId] });
   });
 
   it('returns the seats of issued, used and transferred tickets (SEAT-08)', async () => {
