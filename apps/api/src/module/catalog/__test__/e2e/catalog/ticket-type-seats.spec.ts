@@ -1,3 +1,5 @@
+import { artistFactory } from '@catalogModule/__test__/factory/artist.factory';
+import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist.factory';
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { seatFactory } from '@catalogModule/__test__/factory/seat.factory';
@@ -5,6 +7,7 @@ import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.f
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
+import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
 import { faker } from '@faker-js/faker';
 import { INestApplication } from '@nestjs/common';
 import { TestingModule } from '@nestjs/testing';
@@ -19,7 +22,11 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
 
-  const venue = venueFactory.build({ country: 'Brazil' });
+  const venue = venueFactory.build({
+    name: 'Allianz Parque',
+    city: 'São Paulo',
+    country: 'Brazil',
+  });
 
   const EMPTY = { event: null, ticketType: null, seatMap: null, seats: [] };
 
@@ -30,6 +37,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     await testDbClient(Tables.Seat).del();
     await testDbClient(Tables.TicketType).del();
     await testDbClient(Tables.EventArtist).del();
+    await testDbClient(Tables.Artist).del();
     await testDbClient(Tables.Event).del();
     await testDbClient(Tables.SeatMap).del();
   };
@@ -57,7 +65,57 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     await app.getHttpServer().close();
   });
 
-  const findTicketTypeSeats = async (eventId: string, ticketTypeId: string) => {
+  // The event and seat map fields the seat page selects, the same ones
+  // findEventTickets returns (SEAT-01).
+  const EVENT_FIELDS = `
+    id
+    name
+    type
+    coverImage
+    venue
+    city
+    country
+    startAt
+    endsAt
+    headliner {
+      slug
+      name
+    }
+  `;
+  const SEAT_MAP_FIELDS = `
+    id
+    name
+    viewBoxWidth
+    viewBoxHeight
+    labelSize
+    labelWeight
+    stage {
+      label
+      labelX
+      labelY
+      shapes {
+        path
+        color
+      }
+    }
+    sections {
+      key
+      label
+      color
+      shapes {
+        path
+        labelX
+        labelY
+        labelRotation
+      }
+    }
+  `;
+
+  const findTicketTypeSeats = async (
+    eventId: string,
+    ticketTypeId: string,
+    { eventFields = 'id name', seatMapFields = 'id name' } = {},
+  ) => {
     const response = await request(app.getHttpServer())
       .post('/graphql')
       .send({
@@ -65,8 +123,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
           query FindTicketTypeSeats($FindTicketTypeSeatsInput: FindTicketTypeSeatsInput!) {
             findTicketTypeSeats(FindTicketTypeSeatsInput: $FindTicketTypeSeatsInput) {
               event {
-                id
-                name
+                ${eventFields}
               }
               ticketType {
                 id
@@ -79,8 +136,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
                 tags
               }
               seatMap {
-                id
-                name
+                ${seatMapFields}
               }
               seats {
                 id
@@ -99,8 +155,11 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     return response.body;
   };
 
-  const insertSeatMap = async (name: string) => {
-    const seatMap = seatMapFactory.build({ name });
+  const insertSeatMap = async (name: string, layout?: SeatMapLayout) => {
+    const seatMap = seatMapFactory.build({
+      name,
+      ...(layout && { layout: JSON.stringify(layout) }),
+    });
     await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
     return seatMap;
   };
@@ -151,8 +210,57 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
   };
 
   it('returns the event, the requested ticket type with every field, and the seat map (SEAT-01)', async () => {
-    const seatMap = await insertSeatMap('Concentric Arena');
+    // width ≠ height, size ≠ weight, x ≠ y, and the last section has two
+    // shapes, so a swapped or dropped field changes the response.
+    const seatMap = await insertSeatMap('Concentric Arena', {
+      viewBox: { width: 800, height: 600 },
+      labelStyle: { size: 24, weight: 700 },
+      stage: {
+        label: 'STAGE',
+        labelAt: [350, 35],
+        shapes: [{ path: 'M10 10L690 10L690 60L10 60Z', color: '#999999' }],
+      },
+      sections: [
+        {
+          key: 'vip',
+          label: 'VIP',
+          color: '#454545',
+          shapes: [
+            {
+              path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
+              labelAt: [352, 300],
+              labelRotation: 0,
+            },
+          ],
+        },
+        {
+          key: 'a',
+          label: 'A',
+          color: '#303030',
+          shapes: [
+            {
+              path: 'M20 200L90 110L120 130L50 220Z',
+              labelAt: [96.8, 172.3],
+              labelRotation: -57,
+            },
+            {
+              path: 'M600 110L680 200L650 220L580 130Z',
+              labelAt: [625.4, 185.7],
+              labelRotation: 55,
+            },
+          ],
+        },
+      ],
+    });
     const event = await insertEvent({ seatMapId: seatMap.id });
+    const headliner = artistFactory.build({
+      slug: 'hello-adkins',
+      stage_name: 'Adele',
+    });
+    await testDbClient.batchInsert(Tables.Artist, [headliner]);
+    await testDbClient.batchInsert(Tables.EventArtist, [
+      eventArtistFactory.build({ eventId: event.id!, artistId: headliner.id }),
+    ]);
     const vip = ticketTypeFactory.build({
       eventId: event.id!,
       sectionKey: 'vip',
@@ -175,13 +283,24 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     });
     await testDbClient.batchInsert(Tables.TicketType, [vip, sectionA]);
 
-    const forVip = await findTicketTypeSeats(event.id!, vip.id);
+    const forVip = await findTicketTypeSeats(event.id!, vip.id, {
+      eventFields: EVENT_FIELDS,
+      seatMapFields: SEAT_MAP_FIELDS,
+    });
     const forSectionA = await findTicketTypeSeats(event.id!, sectionA.id);
 
     expect(forVip.errors).toBeUndefined();
     expect(forVip.data.findTicketTypeSeats.event).toEqual({
       id: event.id,
       name: event.name,
+      type: event.type,
+      coverImage: event.coverImage,
+      venue: 'Allianz Parque',
+      city: 'São Paulo',
+      country: 'Brazil',
+      startAt: event.startAt!.toISOString(),
+      endsAt: event.endsAt!.toISOString(),
+      headliner: { slug: 'hello-adkins', name: 'Adele' },
     });
     expect(forVip.data.findTicketTypeSeats.ticketType).toEqual({
       id: vip.id,
@@ -196,6 +315,50 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     expect(forVip.data.findTicketTypeSeats.seatMap).toEqual({
       id: seatMap.id,
       name: 'Concentric Arena',
+      viewBoxWidth: 800,
+      viewBoxHeight: 600,
+      labelSize: 24,
+      labelWeight: 700,
+      stage: {
+        label: 'STAGE',
+        labelX: 350,
+        labelY: 35,
+        shapes: [{ path: 'M10 10L690 10L690 60L10 60Z', color: '#999999' }],
+      },
+      sections: [
+        {
+          key: 'vip',
+          label: 'VIP',
+          color: '#454545',
+          shapes: [
+            {
+              path: 'M252 200A100 100 0 1 0 452 200A100 100 0 1 0 252 200Z',
+              labelX: 352,
+              labelY: 300,
+              labelRotation: 0,
+            },
+          ],
+        },
+        {
+          key: 'a',
+          label: 'A',
+          color: '#303030',
+          shapes: [
+            {
+              path: 'M20 200L90 110L120 130L50 220Z',
+              labelX: 96.8,
+              labelY: 172.3,
+              labelRotation: -57,
+            },
+            {
+              path: 'M600 110L680 200L650 220L580 130Z',
+              labelX: 625.4,
+              labelY: 185.7,
+              labelRotation: 55,
+            },
+          ],
+        },
+      ],
     });
 
     expect(forSectionA.errors).toBeUndefined();
