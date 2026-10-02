@@ -9,13 +9,14 @@ import { GqlExecutionContext } from '@nestjs/graphql';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { ClsService } from 'nestjs-cls';
-import { jwtConstants } from '../auth.module';
+import { ConfigService } from '@sharedModules/config/service/config.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly clsService: ClsService,
+    private readonly configService: ConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -26,10 +27,11 @@ export class AuthGuard implements CanActivate {
     }
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: jwtConstants.secret,
+        secret: this.configService.get('auth.jwtSecret'),
       });
 
       this.clsService.set('userId', payload.sub);
+      this.clsService.set('sessionId', payload.sid);
       this.clsService.set('userToken', token);
     } catch {
       throw new UnauthorizedException();

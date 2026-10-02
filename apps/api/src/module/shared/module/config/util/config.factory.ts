@@ -18,6 +18,10 @@ export const factory = (): Config => {
       host: process.env.REDIS_HOST,
       port: process.env.REDIS_PORT,
     },
+    auth: {
+      jwtSecret: process.env.JWT_SECRET,
+      codeSender: process.env.AUTH_CODE_SENDER || undefined,
+    },
   });
 
   if (result.success) {
