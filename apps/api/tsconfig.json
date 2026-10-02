@@ -24,6 +24,8 @@
     "paths": {
       "@catalogModule/*": ["./src/module/catalog/*"],
       "@ticketingModule/*": ["./src/module/ticketing/*"],
+      "@identityModule/*": ["./src/module/identity/*"],
+      "@userProfileModule/*": ["./src/module/user-profile/*"],
       "@sharedModules/*": ["./src/module/shared/module/*"],
       "@sharedLibs/*": ["./src/module/shared/*"],
       "@testInfra/*": ["./test/*"],
