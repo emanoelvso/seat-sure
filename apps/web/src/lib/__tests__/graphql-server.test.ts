@@ -1,6 +1,9 @@
 import { parse, print } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { graphqlServerFetch } from "@/lib/graphql-server";
+import {
+  GraphQLRequestError,
+  graphqlServerFetch,
+} from "@/lib/graphql-server";
 
 vi.mock("server-only", () => ({}));
 
@@ -126,9 +129,7 @@ describe("graphqlServerFetch", () => {
         ),
       );
 
-      await expect(fetchArtist()).rejects.toThrow(
-        new Error("Artist lookup failed"),
-      );
+      await expect(fetchArtist()).rejects.toThrow("Artist lookup failed");
     },
   );
 
@@ -142,5 +143,82 @@ describe("graphqlServerFetch", () => {
     stubFetch(new Response("<html>Bad Gateway</html>", { status: 502 }));
 
     await expect(fetchArtist()).rejects.toThrow(/502/);
+  });
+
+  it("sends no Authorization header when no accessToken is given", async () => {
+    const fetchMock = stubFetch(jsonResponse({ data: {} }));
+
+    await fetchArtist();
+
+    expect(requestInit(fetchMock).headers).toEqual({
+      "Content-Type": "application/json",
+    });
+  });
+
+  it("sends the Bearer token when an accessToken is given", async () => {
+    const fetchMock = stubFetch(jsonResponse({ data: {} }));
+
+    await fetchArtist({ accessToken: "access-token-123" });
+
+    expect(requestInit(fetchMock).headers).toEqual({
+      "Content-Type": "application/json",
+      Authorization: "Bearer access-token-123",
+    });
+  });
+
+  it("throws a GraphQLRequestError with the reason, message and fields from a BAD_USER_INPUT error", async () => {
+    stubFetch(
+      jsonResponse({
+        data: null,
+        errors: [
+          {
+            message: "Email is already taken",
+            extensions: {
+              code: "BAD_USER_INPUT",
+              originalError: {
+                reason: "EMAIL_TAKEN",
+                message: "Email is already taken",
+                fields: { email: "Email is already taken" },
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    const error = (await fetchArtist().catch(
+      (caught: unknown) => caught,
+    )) as GraphQLRequestError;
+
+    expect(error).toBeInstanceOf(GraphQLRequestError);
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toBe("Email is already taken");
+    expect(error.code).toBe("BAD_USER_INPUT");
+    expect(error.reason).toBe("EMAIL_TAKEN");
+    expect(error.fields).toEqual({ email: "Email is already taken" });
+  });
+
+  it("throws a GraphQLRequestError with the code and no reason for an UNAUTHENTICATED error", async () => {
+    stubFetch(
+      jsonResponse({
+        data: null,
+        errors: [
+          {
+            message: "Unauthorized",
+            extensions: { code: "UNAUTHENTICATED" },
+          },
+        ],
+      }),
+    );
+
+    const error = (await fetchArtist().catch(
+      (caught: unknown) => caught,
+    )) as GraphQLRequestError;
+
+    expect(error).toBeInstanceOf(GraphQLRequestError);
+    expect(error.message).toBe("Unauthorized");
+    expect(error.code).toBe("UNAUTHENTICATED");
+    expect(error.reason).toBeUndefined();
+    expect(error.fields).toBeUndefined();
   });
 });
