@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
 import {
   hasSession,
+  readResetDoneCookie,
   readResetGrantCookie,
 } from "@/features/auth/api/session-cookies";
 import { AuthShell } from "@/features/auth/components/auth-shell";
@@ -22,6 +23,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/features/auth/api/session-cookies", () => ({
   hasSession: vi.fn(),
   readResetGrantCookie: vi.fn(),
+  readResetDoneCookie: vi.fn(),
 }));
 vi.mock("@/features/auth/api/reset-password-action", () => ({
   resetPasswordAction: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("@/features/auth/components/reset-password-form", () => ({
 
 const mockedHasSession = vi.mocked(hasSession);
 const mockedReadResetGrantCookie = vi.mocked(readResetGrantCookie);
+const mockedReadResetDoneCookie = vi.mocked(readResetDoneCookie);
 
 function findElement(node: ReactNode, type: unknown): ReactElement | undefined {
   if (Array.isArray(node)) {
@@ -54,6 +57,7 @@ describe("ResetPasswordPage", () => {
   beforeEach(() => {
     mockedHasSession.mockReset();
     mockedReadResetGrantCookie.mockReset();
+    mockedReadResetDoneCookie.mockReset().mockResolvedValue(false);
     vi.mocked(redirect).mockClear();
   });
 
@@ -65,9 +69,10 @@ describe("ResetPasswordPage", () => {
     expect(redirect).toHaveBeenCalledWith("/");
   });
 
-  it("redirects to /forgot-password when there is no reset grant (AUTH-70)", async () => {
+  it("redirects to /forgot-password when there is no reset grant and no done breadcrumb (AUTH-70)", async () => {
     mockedHasSession.mockResolvedValue(false);
     mockedReadResetGrantCookie.mockResolvedValue(null);
+    mockedReadResetDoneCookie.mockResolvedValue(false);
 
     await expect(ResetPasswordPage()).rejects.toBe(REDIRECT_ERROR);
 
@@ -90,6 +95,21 @@ describe("ResetPasswordPage", () => {
       title: "Reset Password",
       subtitle: "Enter a new password below to change your password.",
     });
+    expect(findElement(page, ResetPasswordForm)).toBeTruthy();
+  });
+
+  // The grant cookie is deleted inside resetPasswordAction on success, and
+  // Next.js refreshes this Server Component right after; without this
+  // breadcrumb the visitor would be bounced to /forgot-password before the
+  // success dialog (AUTH-67) can render (see reset-password-action.ts).
+  it("does not redirect when there is no grant but the reset-done breadcrumb is set", async () => {
+    mockedHasSession.mockResolvedValue(false);
+    mockedReadResetGrantCookie.mockResolvedValue(null);
+    mockedReadResetDoneCookie.mockResolvedValue(true);
+
+    const page = await ResetPasswordPage();
+
+    expect(redirect).not.toHaveBeenCalled();
     expect(findElement(page, ResetPasswordForm)).toBeTruthy();
   });
 });

@@ -3,6 +3,7 @@ import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
 import {
   deleteResetGrantCookie,
   readResetGrantCookie,
+  writeResetDoneCookie,
 } from "@/features/auth/api/session-cookies";
 import {
   resetPasswordAction,
@@ -19,11 +20,13 @@ vi.mock("@/lib/graphql-server", async () => {
 vi.mock("@/features/auth/api/session-cookies", () => ({
   readResetGrantCookie: vi.fn(),
   deleteResetGrantCookie: vi.fn(),
+  writeResetDoneCookie: vi.fn(),
 }));
 
 const mockedFetch = vi.mocked(graphqlServerFetch);
 const mockedReadResetGrantCookie = vi.mocked(readResetGrantCookie);
 const mockedDeleteResetGrantCookie = vi.mocked(deleteResetGrantCookie);
+const mockedWriteResetDoneCookie = vi.mocked(writeResetDoneCookie);
 
 const initialState: ResetPasswordFormState = { fieldErrors: {} };
 
@@ -44,6 +47,7 @@ describe("resetPasswordAction", () => {
     mockedFetch.mockReset();
     mockedReadResetGrantCookie.mockReset().mockResolvedValue(grant);
     mockedDeleteResetGrantCookie.mockReset().mockResolvedValue(undefined);
+    mockedWriteResetDoneCookie.mockReset().mockResolvedValue(undefined);
   });
 
   it("shows 'Passwords don't match.' and never calls the API when the two passwords differ (AUTH-62)", async () => {
@@ -86,6 +90,10 @@ describe("resetPasswordAction", () => {
       { revalidate: 0 },
     );
     expect(mockedDeleteResetGrantCookie).toHaveBeenCalledTimes(1);
+    // Written alongside the grant deletion so /reset-password's "no grant"
+    // guard doesn't bounce the visitor away before the success dialog
+    // renders (see reset-password-action.ts's comment on this call).
+    expect(mockedWriteResetDoneCookie).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ fieldErrors: {}, status: "success" });
   });
 

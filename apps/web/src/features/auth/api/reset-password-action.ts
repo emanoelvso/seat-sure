@@ -4,6 +4,7 @@ import { RESET_PASSWORD } from "@/features/auth/api/reset-password";
 import {
   deleteResetGrantCookie,
   readResetGrantCookie,
+  writeResetDoneCookie,
 } from "@/features/auth/api/session-cookies";
 import { resetPasswordSchema } from "@/features/auth/utils/auth-schemas";
 import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
@@ -68,6 +69,14 @@ export async function resetPasswordAction(
     );
 
     await deleteResetGrantCookie();
+    // Deleting the grant cookie makes Next.js refresh this page's Server
+    // Component (it read that cookie on the last render), and without this
+    // breadcrumb, the just-deleted grant would read as "missing" and
+    // AUTH-70's guard would bounce the visitor to /forgot-password before
+    // the success dialog (AUTH-67) can render. The breadcrumb is short-lived
+    // and only ever read as a "we just succeeded" signal, never re-used to
+    // spend the reset.
+    await writeResetDoneCookie();
     return { fieldErrors: {}, status: "success" };
   } catch (error) {
     if (

@@ -10,9 +10,16 @@ export const REFRESH_COOKIE = "ss_refresh";
 const PENDING_COOKIE = "ss_pending";
 const RESET_PENDING_COOKIE = "ss_reset_pending";
 const RESET_GRANT_COOKIE = "ss_reset_grant";
+// A short breadcrumb written alongside deleting ss_reset_grant on a
+// successful reset (AUTH-67). Next.js refreshes any Server Component that
+// read ss_reset_grant as soon as a Server Action deletes it; without this,
+// /reset-password's "no grant -> /forgot-password" guard (AUTH-70) would
+// fire on that very refresh and the success dialog would never render.
+const RESET_DONE_COOKIE = "ss_reset_done";
 
 const PENDING_MAX_AGE = 60 * 60; // 1h
 const RESET_GRANT_MAX_AGE = 10 * 60; // 10min
+const RESET_DONE_MAX_AGE = 60; // 1min: only needs to outlive the action's refresh
 
 function jsonCookieOptions(maxAge: number) {
   return {
@@ -121,4 +128,12 @@ export function readResetGrantCookie<T>(): Promise<T | null> {
 
 export function deleteResetGrantCookie(): Promise<void> {
   return deleteJsonCookie(RESET_GRANT_COOKIE);
+}
+
+export function writeResetDoneCookie(): Promise<void> {
+  return writeJsonCookie(RESET_DONE_COOKIE, true, RESET_DONE_MAX_AGE);
+}
+
+export function readResetDoneCookie(): Promise<boolean | null> {
+  return readJsonCookie<boolean>(RESET_DONE_COOKIE);
 }
