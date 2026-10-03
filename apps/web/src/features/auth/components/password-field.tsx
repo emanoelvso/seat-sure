@@ -9,6 +9,12 @@ interface PasswordFieldProps {
   name?: string;
   variant?: "default" | "success" | "error" | "disabled";
   supportingText?: string;
+  // Opt-in controlled/uncontrolled passthrough: lets a controlled caller
+  // (e.g. ResetPasswordForm, AUTH-69) keep a typed value across a form
+  // reset that would otherwise clear an uncontrolled input.
+  value?: string;
+  defaultValue?: string;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 // AUTH-30: a password input with a lock icon and an eye toggle that swaps
@@ -18,6 +24,9 @@ export function PasswordField({
   name,
   variant,
   supportingText,
+  value,
+  defaultValue,
+  onChange,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
@@ -28,6 +37,9 @@ export function PasswordField({
       type={visible ? "text" : "password"}
       variant={variant}
       supportingText={supportingText}
+      value={value}
+      defaultValue={defaultValue}
+      onChange={onChange}
       leftIcon={LockIcon}
       rightIcon={visible ? EyeClosedIcon : EyeIcon}
       rightIconLabel={visible ? "Hide password" : "Show password"}
