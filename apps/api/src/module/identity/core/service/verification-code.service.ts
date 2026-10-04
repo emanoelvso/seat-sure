@@ -113,7 +113,7 @@ export class VerificationCodeService {
     const code = this.generateCode();
     const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
 
-    await this.verificationCodeRepository.save(
+    const savedRow = await this.verificationCodeRepository.save(
       new IdentityVerificationCode({
         userId: user.id,
         purpose,
@@ -129,6 +129,15 @@ export class VerificationCodeService {
       await this.codeSender.send({ email: user.email, purpose, code });
     } catch (error) {
       codeSent = false;
+      // Nothing was actually delivered, so this row must not behave like a
+      // live code: it must not block the next resend attempt with
+      // RESEND_TOO_SOON, and `issueOrReuse` must not reuse it and report
+      // codeSent: true for a code nobody received. Going through `save`
+      // (rather than a raw query on `invalidateLive`) matters here: that
+      // query runs on its own connection and can't see this row, which was
+      // inserted earlier in this same still-open transaction.
+      savedRow.invalidatedAt = now;
+      await this.verificationCodeRepository.save(savedRow);
       this.logger.error("Couldn't send verification code", {
         exception: error,
         userId: user.id,

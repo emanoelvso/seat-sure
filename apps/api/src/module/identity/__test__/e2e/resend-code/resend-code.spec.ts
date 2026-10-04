@@ -23,13 +23,18 @@ import { initializeTransactionalContext } from 'typeorm-transactional';
 @Injectable()
 class FakeCodeSender implements CodeSender {
   sent: SendCodeInput[] = [];
+  shouldThrow = false;
 
   async send(input: SendCodeInput): Promise<void> {
+    if (this.shouldThrow) {
+      throw new Error('sender failure');
+    }
     this.sent.push(input);
   }
 
   reset(): void {
     this.sent = [];
+    this.shouldThrow = false;
   }
 }
 
@@ -288,5 +293,26 @@ describe('ResendCode (e2e)', () => {
     expect(
       newAttempt.body.data.confirmPasswordResetCode.resetToken,
     ).toBeDefined();
+  });
+
+  it('allows an immediate resend after a failed send, since nothing was ever delivered (AUTH-13 x AUTH-27)', async () => {
+    const email = `negar-dead-code-resend-${randomUUID()}@example.com`;
+    fakeCodeSender.shouldThrow = true;
+    await signUp(email);
+    // Signup's own code never reached an inbox.
+    expect(fakeCodeSender.sent).toHaveLength(0);
+
+    fakeCodeSender.shouldThrow = false;
+    // No aging: a live, delivered code would still be inside its 60s
+    // cooldown here. A dead (never-sent) code must not block a resend.
+    const response = await resendCode(email);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.resendCode.codeSent).toBe(true);
+    expect(fakeCodeSender.sent).toHaveLength(1);
+
+    const newCode = fakeCodeSender.sent[0].code;
+    const verifyAttempt = await verifyEmail(email, newCode);
+    expect(verifyAttempt.body.errors).toBeUndefined();
   });
 });

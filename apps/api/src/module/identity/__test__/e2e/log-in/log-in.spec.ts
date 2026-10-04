@@ -23,13 +23,18 @@ import { initializeTransactionalContext } from 'typeorm-transactional';
 @Injectable()
 class FakeCodeSender implements CodeSender {
   sent: SendCodeInput[] = [];
+  shouldThrow = false;
 
   async send(input: SendCodeInput): Promise<void> {
+    if (this.shouldThrow) {
+      throw new Error('sender failure');
+    }
     this.sent.push(input);
   }
 
   reset(): void {
     this.sent = [];
+    this.shouldThrow = false;
   }
 }
 
@@ -424,5 +429,36 @@ describe('LogIn (e2e)', () => {
     }
     const stillOk = await logIn(email, PASSWORD);
     expect(stillOk.body.errors).toBeUndefined();
+  });
+
+  it('sends a real new code, rather than lying codeSent: true, when logging in after a failed send (AUTH-13 x AUTH-34)', async () => {
+    const email = `negar-dead-code-${randomUUID()}@example.com`;
+    fakeCodeSender.shouldThrow = true;
+    await signUpUnverified(email);
+    // Signup's own code never reached an inbox.
+    expect(fakeCodeSender.sent).toHaveLength(0);
+
+    fakeCodeSender.shouldThrow = false;
+    // No aging: this is still inside what would be the dead code's 60s
+    // cooldown. A dead (never-delivered) code must not be reused and must
+    // not be reported as sent.
+    const response = await logIn(email, PASSWORD);
+
+    expect(response.body.errors).toBeUndefined();
+    const result = response.body.data.logIn;
+    expect(result.status).toBe('VERIFICATION_REQUIRED');
+    expect(result.session).toBeNull();
+    expect(result.codeSent).toBe(true);
+    expect(fakeCodeSender.sent).toHaveLength(1);
+
+    const newCode = fakeCodeSender.sent[0].code;
+    const verifyAttempt = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: VERIFY_EMAIL_MUTATION,
+        variables: { input: { email, code: newCode, rememberMe: false } },
+      });
+    expect(verifyAttempt.body.errors).toBeUndefined();
+    expect(verifyAttempt.body.data.verifyEmail.accessToken).toBeDefined();
   });
 });
