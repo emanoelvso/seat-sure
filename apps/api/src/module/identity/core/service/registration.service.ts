@@ -9,6 +9,7 @@ import {
   normalizeEmail,
 } from '@identityModule/core/model/credential-rules.model';
 import { IdentityException } from '@identityModule/core/exception/identity.exception';
+import { SecurityAlertSender } from '@identityModule/core/adapter/security-alert-sender.adapter.interface';
 import {
   IssueCodeResult,
   VerificationCodeService,
@@ -26,6 +27,7 @@ import { Transactional } from 'typeorm-transactional';
 
 const UNIQUE_VIOLATION = '23505';
 const BCRYPT_ROUNDS = 10;
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 export interface SignUpInputModel {
   firstName: string;
@@ -45,6 +47,8 @@ export class RegistrationService {
     @Inject(UserProfileApi) private readonly userProfileApi: UserProfileApi,
     private readonly verificationCodeService: VerificationCodeService,
     private readonly sessionService: SessionService,
+    @Inject(SecurityAlertSender)
+    private readonly securityAlertSender: SecurityAlertSender,
     private readonly logger: AppLogger,
   ) {}
 
@@ -58,7 +62,18 @@ export class RegistrationService {
       );
     }
 
-    const user = await this.createUser(value, now);
+    let user: IdentityUser;
+    try {
+      user = await this.createUser(value, now);
+    } catch (error) {
+      if (
+        error instanceof IdentityException &&
+        error.reason === 'EMAIL_TAKEN'
+      ) {
+        return this.handleDuplicateSignUp(value.email, now);
+      }
+      throw error;
+    }
 
     try {
       await this.userProfileApi.createProfile({
@@ -107,6 +122,28 @@ export class RegistrationService {
     this.logger.log('email-verified', { userId: user.id });
 
     return this.sessionService.start(user.id, input.rememberMe, now);
+  }
+
+  // Mirrors a real signup's response shape instead of surfacing EMAIL_TAKEN,
+  // so the caller can't tell an existing email from a new one (OWASP
+  // user-enumeration); the existing account is alerted instead.
+  private async handleDuplicateSignUp(
+    email: string,
+    now: Date,
+  ): Promise<SignUpResultModel> {
+    const existing = await this.userRepository.findByEmail(email);
+    if (existing) {
+      await this.securityAlertSender.send({
+        email: existing.email,
+        event: 'duplicate_sign_up_attempt',
+      });
+    }
+
+    return {
+      email,
+      codeSent: true,
+      resendAvailableAt: new Date(now.getTime() + RESEND_COOLDOWN_MS),
+    };
   }
 
   @Transactional({ connectionName: 'identity' })

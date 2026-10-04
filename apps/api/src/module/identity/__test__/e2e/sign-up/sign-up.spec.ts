@@ -13,6 +13,10 @@ import {
   CodeSender,
   SendCodeInput,
 } from '@identityModule/core/adapter/code-sender.adapter.interface';
+import {
+  SecurityAlertSender,
+  SendSecurityAlertInput,
+} from '@identityModule/core/adapter/security-alert-sender.adapter.interface';
 import { IdentityModule } from '@identityModule/identity.module';
 import { GraphqlModule } from '@sharedModules/graphql/graphql.module';
 import { UserProfileService } from '@userProfileModule/core/service/user-profile.service';
@@ -37,6 +41,19 @@ class FakeCodeSender implements CodeSender {
   reset(): void {
     this.sent = [];
     this.shouldThrow = false;
+  }
+}
+
+@Injectable()
+class FakeSecurityAlertSender implements SecurityAlertSender {
+  sent: SendSecurityAlertInput[] = [];
+
+  async send(input: SendSecurityAlertInput): Promise<void> {
+    this.sent.push(input);
+  }
+
+  reset(): void {
+    this.sent = [];
   }
 }
 
@@ -67,6 +84,7 @@ describe('SignUp (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
   let fakeCodeSender: FakeCodeSender;
+  let fakeSecurityAlertSender: FakeSecurityAlertSender;
 
   beforeAll(async () => {
     initializeTransactionalContext();
@@ -75,16 +93,21 @@ describe('SignUp (e2e)', () => {
     })
       .overrideProvider(CodeSender)
       .useClass(FakeCodeSender)
+      .overrideProvider(SecurityAlertSender)
+      .useClass(FakeSecurityAlertSender)
       .compile();
 
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
     fakeCodeSender = module.get<FakeCodeSender>(CodeSender);
+    fakeSecurityAlertSender =
+      module.get<FakeSecurityAlertSender>(SecurityAlertSender);
   });
 
   beforeEach(async () => {
     fakeCodeSender.reset();
+    fakeSecurityAlertSender.reset();
     await testDbClient(Tables.IdentityVerificationCode).del();
     await testDbClient(Tables.IdentityUser).del();
     await testDbClient(Tables.UserProfileUser).del();
@@ -268,36 +291,41 @@ describe('SignUp (e2e)', () => {
     expect(max.body.errors).toBeUndefined();
   });
 
-  it('refuses a duplicate email in another casing, whether verified or not (AUTH-10)', async () => {
+  it('treats a duplicate email in another casing as a normal signup, alerting the existing account instead of sending a code, whether verified or not (AUTH-10)', async () => {
     const email = `negar-dup-${randomUUID()}@example.com`;
     await signUp(validInput({ email }));
+    fakeCodeSender.reset();
 
     const unverifiedDup = await signUp(
       validInput({ email: email.toUpperCase() }),
     );
-    expect(unverifiedDup.body.errors[0].extensions.originalError).toEqual(
-      expect.objectContaining({
-        reason: 'EMAIL_TAKEN',
-        message: 'An account with this email already exists.',
-      }),
-    );
+    expect(unverifiedDup.body.errors).toBeUndefined();
+    expect(unverifiedDup.body.data.signUp.email).toBe(email);
+    expect(unverifiedDup.body.data.signUp.codeSent).toBe(true);
+    expect(fakeCodeSender.sent).toHaveLength(0);
+    expect(fakeSecurityAlertSender.sent).toEqual([
+      { email, event: 'duplicate_sign_up_attempt' },
+    ]);
 
     await testDbClient(Tables.IdentityUser)
       .where({ email })
       .update({ emailVerifiedAt: new Date() });
+    fakeSecurityAlertSender.reset();
 
     const verifiedDup = await signUp(
       validInput({ email: email.toUpperCase() }),
     );
-    expect(verifiedDup.body.errors[0].extensions.originalError).toEqual(
-      expect.objectContaining({
-        reason: 'EMAIL_TAKEN',
-        message: 'An account with this email already exists.',
-      }),
-    );
+    expect(verifiedDup.body.errors).toBeUndefined();
+    expect(fakeCodeSender.sent).toHaveLength(0);
+    expect(fakeSecurityAlertSender.sent).toEqual([
+      { email, event: 'duplicate_sign_up_attempt' },
+    ]);
+
+    const rows = await testDbClient(Tables.IdentityUser).where({ email });
+    expect(rows).toHaveLength(1);
   });
 
-  it('lets only one of two concurrent sign-ups with the same email succeed (AUTH-11)', async () => {
+  it('lets only one of two concurrent sign-ups with the same email create a user, alerting on the other (AUTH-11)', async () => {
     const email = `negar-race-${randomUUID()}@example.com`;
 
     const [first, second] = await Promise.all([
@@ -305,17 +333,16 @@ describe('SignUp (e2e)', () => {
       signUp(validInput({ email })),
     ]);
 
-    const results = [first, second];
-    const successes = results.filter((r) => !r.body.errors);
-    const failures = results.filter((r) => r.body.errors);
-    expect(successes).toHaveLength(1);
-    expect(failures).toHaveLength(1);
-    expect(failures[0].body.errors[0].extensions.originalError.reason).toBe(
-      'EMAIL_TAKEN',
-    );
+    expect(first.body.errors).toBeUndefined();
+    expect(second.body.errors).toBeUndefined();
 
     const rows = await testDbClient(Tables.IdentityUser).where({ email });
     expect(rows).toHaveLength(1);
+    expect(fakeCodeSender.sent).toHaveLength(1);
+    expect(fakeCodeSender.sent[0].email).toBe(email);
+    expect(fakeSecurityAlertSender.sent).toEqual([
+      { email, event: 'duplicate_sign_up_attempt' },
+    ]);
   });
 
   it('hard-deletes the user and lets the email be reused when profile creation fails (AUTH-12)', async () => {
