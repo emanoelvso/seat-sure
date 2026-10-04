@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BillingModule } from '@billingModule/billing.module';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { AuthModule } from '@sharedModules/auth/auth.module';
 import { LoggerModule } from '@sharedModules/logger/logger.module';
@@ -6,6 +7,7 @@ import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapte
 import { LogTicketSender } from '@ticketingModule/integration/provider/log-ticket-sender.provider';
 import { TicketingPersistenceModule } from '@ticketingModule/persistence/ticketing-persistence.module';
 import { CheckoutService } from './core/service/checkout.service';
+import { OrderPaymentService } from './core/service/order-payment.service';
 import { TicketCodeGenerator } from './core/service/ticket-code-generator.service';
 import { TicketingService } from './core/service/ticketing.service';
 import { TicketingResolver } from './http/graphql/ticketing.resolver';
@@ -14,6 +16,7 @@ import { TicketingResolver } from './http/graphql/ticketing.resolver';
   imports: [
     TicketingPersistenceModule,
     CatalogModule,
+    BillingModule,
     AuthModule,
     LoggerModule,
   ],
@@ -21,6 +24,7 @@ import { TicketingResolver } from './http/graphql/ticketing.resolver';
     TicketingResolver,
     TicketingService,
     CheckoutService,
+    OrderPaymentService,
     TicketCodeGenerator,
     { provide: TicketSender, useClass: LogTicketSender },
   ],

@@ -36,6 +36,21 @@ export class OrderRepository extends DefaultTypeOrmRepository<Order> {
     });
   }
 
+  // Claims the payment attempt: only one caller can move a pending, unexpired
+  // order to processing (PAY-45). `now` is the API clock (AD-025).
+  async claimPayment(orderId: string, now: Date): Promise<boolean> {
+    const [rows]: [{ id: string }[], number] = await this.entityManager.query(
+      `
+      UPDATE "TicketingOrder" SET "status" = $1, "updatedAt" = now()
+      WHERE "id" = $2 AND "status" = $3 AND "expiresAt" >= $4
+      RETURNING "id"
+      `,
+      [OrderStatus.PROCESSING, orderId, OrderStatus.PENDING, now],
+    );
+
+    return rows.length === 1;
+  }
+
   async cancel(manager: EntityManager, orderId: string): Promise<void> {
     await manager.update(
       Order,
