@@ -65,6 +65,28 @@ export const BackspaceClearsPreviousBox: Story = {
   },
 };
 
+// AUTH-18 boundary case: Backspace in an empty box 2 clears box 1 and
+// moves focus to it. The middle-box case above (box3 -> box2) alone can
+// pass even if a subtly wrong index check breaks this first-box boundary
+// (e.g. an off-by-one that only re-enables Backspace-back from box 3
+// onward), so this is covered separately.
+export const BackspaceClearsFirstBox: Story = {
+  args: {
+    onChange: fn(),
+  },
+  play: async ({ canvas, userEvent }) => {
+    const box1 = canvas.getByLabelText("Digit 1");
+    const box2 = canvas.getByLabelText("Digit 2");
+
+    await userEvent.type(box1, "5");
+    // box2 is now focused and empty; Backspace there clears box1.
+    await userEvent.type(box2, "{Backspace}");
+
+    await expect(box1).toHaveValue("");
+    await expect(box1).toHaveFocus();
+  },
+};
+
 // AUTH-19: pasting a 6-digit string into any box fills all 6 boxes in
 // order, and onChange receives the full code.
 export const PasteFillsAllBoxes: Story = {
