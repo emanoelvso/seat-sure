@@ -232,6 +232,36 @@ describe('VerifyEmail (e2e)', () => {
     );
   });
 
+  // The sequential test above proves `consumedAt` is checked once a code
+  // is already marked consumed, but that alone passes even if the
+  // repository's conditional `UPDATE ... WHERE consumedAt IS NULL` guard is
+  // removed, because nothing ever races the two reads. Firing two
+  // concurrent attempts with the SAME right code is the only way to prove
+  // the single-use guarantee holds under a race, not just sequentially.
+  it('consumes a code exactly once under concurrent verifyEmail calls (AUTH-24)', async () => {
+    const email = `negar-concurrent-${randomUUID()}@example.com`;
+    await signUp(email);
+    const code = fakeCodeSender.sent[0].code;
+
+    const [first, second] = await Promise.all([
+      verifyEmail({ email, code, rememberMe: false }),
+      verifyEmail({ email, code, rememberMe: false }),
+    ]);
+
+    const results = [first, second];
+    const succeeded = results.filter((r) => r.body.errors === undefined);
+    const failed = results.filter((r) => r.body.errors !== undefined);
+
+    expect(succeeded).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0].body.errors[0].extensions.originalError.reason).toBe(
+      'CODE_INCORRECT',
+    );
+
+    const sessions = await testDbClient(Tables.IdentitySession).where({});
+    expect(sessions).toHaveLength(1);
+  });
+
   it('rejects an unknown email with CODE_INCORRECT', async () => {
     const response = await verifyEmail({
       email: `negar-unknown-${randomUUID()}@example.com`,
