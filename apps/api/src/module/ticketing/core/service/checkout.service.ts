@@ -174,7 +174,38 @@ export class CheckoutService {
         }),
     );
 
-    await this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => {
+      // Serializes one user's starts for one event, so a double click can't
+      // create two orders (PAY-15).
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        `${userId}:${eventId}`,
+      ]);
+
+      // One active checkout per event: the same seats return the unexpired
+      // order (PAY-15). Any other pending order is cancelled and its holds
+      // are deleted (PAY-14).
+      const requested = [...seatIds].sort().join(',');
+      for (const pending of await this.orderRepository.findPendingWithItems(
+        manager,
+        userId,
+        eventId,
+      )) {
+        const pendingSeatIds = pending.items.map((item) => item.seatId);
+        if (
+          pending.expiresAt.getTime() >= now.getTime() &&
+          [...pendingSeatIds].sort().join(',') === requested
+        ) {
+          return toCheckoutOrderModel(pending, pending.items, now);
+        }
+        await this.orderRepository.cancel(manager, pending.id);
+        await this.seatHoldRepository.deleteForSeats(
+          manager,
+          eventId,
+          userId,
+          pendingSeatIds,
+        );
+      }
+
       const liveSeatIds = await this.ticketRepository.findLiveSeatIds(
         manager,
         eventId,
@@ -184,7 +215,9 @@ export class CheckoutService {
         throw seatsUnavailable();
       }
 
-      for (const seatId of seatIds) {
+      // Ascending seat order, so overlapping claims lock rows in the same
+      // order and can't deadlock.
+      for (const seatId of [...seatIds].sort()) {
         const holdId = await this.seatHoldRepository.claim(manager, {
           eventId,
           seatId,
@@ -198,8 +231,8 @@ export class CheckoutService {
       }
 
       await this.orderRepository.insertWithItems(manager, order, items);
-    });
 
-    return toCheckoutOrderModel(order, items, now);
+      return toCheckoutOrderModel(order, items, now);
+    });
   }
 }

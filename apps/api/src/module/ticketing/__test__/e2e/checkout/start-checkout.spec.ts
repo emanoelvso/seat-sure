@@ -12,6 +12,10 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
 import { createNestApp } from '@testInfra/test-e2e.setup';
+import {
+  orderFactory,
+  orderItemFactory,
+} from '@ticketingModule/__test__/factory/order.factory';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
 import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
@@ -411,6 +415,260 @@ describe('TicketingResolver startCheckout (e2e)', () => {
 
       expect(reasonOf(body)).toBe('SEATS_UNAVAILABLE');
       await expectNothingCreated();
+    });
+  });
+
+  describe('PAY-10: expired holds', () => {
+    it('reclaims a seat whose only hold expired 1 s ago for the caller', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [seat] = seats;
+      const expiredHold = seatHoldFactory.build({
+        eventId: event.id!,
+        seatId: seat.id,
+        userId: randomUUID(),
+        expiresAt: new Date(Date.now() - 1_000),
+      });
+      await testDbClient.batchInsert(Tables.SeatHold, [expiredHold]);
+      const userId = randomUUID();
+      const before = Date.now();
+
+      const body = await startCheckout(
+        {
+          eventId: event.id!,
+          ticketTypeId: ticketType.id,
+          seatIds: [seat.id],
+        },
+        tokenFor(userId),
+      );
+
+      expect(body.errors).toBeUndefined();
+      const holds = await testDbClient(Tables.SeatHold).where({
+        seatId: seat.id,
+      });
+      expect(holds).toHaveLength(1);
+      expect(holds[0].userId).toBe(userId);
+      expectTenMinutesAfter(holds[0].expiresAt, before, Date.now());
+    });
+  });
+
+  describe('PAY-11: concurrent starts by two users', () => {
+    it('lets exactly one of two racing users hold the overlapping seat, 5 times in a row', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [a, b, c] = seats;
+
+      for (let round = 0; round < 5; round++) {
+        await testDbClient(Tables.SeatHold).del();
+        await testDbClient(Tables.OrderItem).del();
+        await testDbClient(Tables.Order).del();
+        const firstUser = randomUUID();
+        const secondUser = randomUUID();
+
+        const [firstBody, secondBody] = await Promise.all([
+          startCheckout(
+            {
+              eventId: event.id!,
+              ticketTypeId: ticketType.id,
+              seatIds: [a.id, b.id],
+            },
+            tokenFor(firstUser),
+          ),
+          startCheckout(
+            {
+              eventId: event.id!,
+              ticketTypeId: ticketType.id,
+              seatIds: [b.id, c.id],
+            },
+            tokenFor(secondUser),
+          ),
+        ]);
+
+        const outcomes = [
+          { userId: firstUser, body: firstBody, seatIds: [a.id, b.id] },
+          { userId: secondUser, body: secondBody, seatIds: [b.id, c.id] },
+        ];
+        const winners = outcomes.filter(({ body }) => !body.errors);
+        const losers = outcomes.filter(({ body }) => body.errors);
+        expect(winners).toHaveLength(1);
+        expect(losers).toHaveLength(1);
+        const [winner] = winners;
+        const [loser] = losers;
+        expect(reasonOf(loser.body)).toBe('SEATS_UNAVAILABLE');
+
+        const holdsOnB = await testDbClient(Tables.SeatHold).where({
+          seatId: b.id,
+        });
+        expect(holdsOnB).toHaveLength(1);
+        expect(holdsOnB[0].userId).toBe(winner.userId);
+        expect(
+          (await holdsOf(winner.userId)).map((hold) => hold.seatId).sort(),
+        ).toEqual([...winner.seatIds].sort());
+        expect(await holdsOf(loser.userId)).toHaveLength(0);
+        expect(
+          await testDbClient(Tables.Order).where({ userId: loser.userId }),
+        ).toHaveLength(0);
+        expect(
+          await testDbClient(Tables.Order).where({ userId: winner.userId }),
+        ).toHaveLength(1);
+      }
+    });
+  });
+
+  describe('PAY-14, PAY-15: one active checkout per event', () => {
+    it('cancels the pending order and frees its seats when the user starts again with other seats (PAY-14)', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [a, b, c] = seats;
+      const userId = randomUUID();
+      const token = tokenFor(userId);
+      const first = await startCheckout(
+        {
+          eventId: event.id!,
+          ticketTypeId: ticketType.id,
+          seatIds: [a.id, b.id],
+        },
+        token,
+      );
+      expect(first.errors).toBeUndefined();
+
+      const second = await startCheckout(
+        { eventId: event.id!, ticketTypeId: ticketType.id, seatIds: [c.id] },
+        token,
+      );
+
+      expect(second.errors).toBeUndefined();
+      const firstOrder = await testDbClient(Tables.Order)
+        .where({ id: first.data.startCheckout.id })
+        .first();
+      expect(firstOrder.status).toBe('cancelled');
+      const secondOrder = await testDbClient(Tables.Order)
+        .where({ id: second.data.startCheckout.id })
+        .first();
+      expect(secondOrder.status).toBe('pending');
+      expect(second.data.startCheckout.id).not.toBe(
+        first.data.startCheckout.id,
+      );
+      expect(
+        await testDbClient(Tables.SeatHold).whereIn('seatId', [a.id, b.id]),
+      ).toHaveLength(0);
+      const holds = await holdsOf(userId);
+      expect(holds.map((hold) => hold.seatId)).toEqual([c.id]);
+    });
+
+    it('returns the same order unchanged for the same seats in another order, creating no rows (PAY-15)', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [a, b] = seats;
+      const userId = randomUUID();
+      const token = tokenFor(userId);
+      const first = await startCheckout(
+        {
+          eventId: event.id!,
+          ticketTypeId: ticketType.id,
+          seatIds: [a.id, b.id],
+        },
+        token,
+      );
+      const holdsBefore = await holdsOf(userId).orderBy('seatId');
+
+      const second = await startCheckout(
+        {
+          eventId: event.id!,
+          ticketTypeId: ticketType.id,
+          seatIds: [b.id, a.id],
+        },
+        token,
+      );
+
+      expect(second.errors).toBeUndefined();
+      expect(second.data.startCheckout.id).toBe(first.data.startCheckout.id);
+      expect(second.data.startCheckout.expiresAt).toBe(
+        first.data.startCheckout.expiresAt,
+      );
+      expect(second.data.startCheckout.status).toBe('PENDING');
+      const orders = await testDbClient(Tables.Order).where({ userId });
+      expect(orders).toHaveLength(1);
+      expect(orders[0].status).toBe('pending');
+      expect(orders[0].expiresAt.toISOString()).toBe(
+        first.data.startCheckout.expiresAt,
+      );
+      expect(await testDbClient(Tables.OrderItem)).toHaveLength(2);
+      expect(await holdsOf(userId).orderBy('seatId')).toEqual(holdsBefore);
+    });
+
+    it('starts a new order for the same seats once the pending order has expired, cancelling the expired one (PAY-15)', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [a, b] = seats;
+      const userId = randomUUID();
+      const expiredAt = new Date(Date.now() - 1_000);
+      const expiredOrder = orderFactory.build({
+        userId,
+        eventId: event.id!,
+        ticketTypeId: ticketType.id,
+        expiresAt: expiredAt,
+      });
+      await testDbClient.batchInsert(Tables.Order, [expiredOrder]);
+      await testDbClient.batchInsert(
+        Tables.OrderItem,
+        [a, b].map((seat) =>
+          orderItemFactory.build({ orderId: expiredOrder.id, seatId: seat.id }),
+        ),
+      );
+      await testDbClient.batchInsert(
+        Tables.SeatHold,
+        [a, b].map((seat) =>
+          seatHoldFactory.build({
+            eventId: event.id!,
+            seatId: seat.id,
+            userId,
+            expiresAt: expiredAt,
+          }),
+        ),
+      );
+      const before = Date.now();
+
+      const body = await startCheckout(
+        {
+          eventId: event.id!,
+          ticketTypeId: ticketType.id,
+          seatIds: [a.id, b.id],
+        },
+        tokenFor(userId),
+      );
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.startCheckout.id).not.toBe(expiredOrder.id);
+      const old = await testDbClient(Tables.Order)
+        .where({ id: expiredOrder.id })
+        .first();
+      expect(old.status).toBe('cancelled');
+      const holds = await holdsOf(userId);
+      expect(holds).toHaveLength(2);
+      for (const hold of holds) {
+        expectTenMinutesAfter(hold.expiresAt, before, Date.now());
+      }
+    });
+
+    it('returns the same order to both calls of a double click on the same seats', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [a, b] = seats;
+      const userId = randomUUID();
+      const token = tokenFor(userId);
+      const input = {
+        eventId: event.id!,
+        ticketTypeId: ticketType.id,
+        seatIds: [a.id, b.id],
+      };
+
+      const [first, second] = await Promise.all([
+        startCheckout(input, token),
+        startCheckout(input, token),
+      ]);
+
+      expect(first.errors).toBeUndefined();
+      expect(second.errors).toBeUndefined();
+      expect(second.data.startCheckout.id).toBe(first.data.startCheckout.id);
+      expect(await testDbClient(Tables.Order).where({ userId })).toHaveLength(
+        1,
+      );
+      expect(await holdsOf(userId)).toHaveLength(2);
     });
   });
 
