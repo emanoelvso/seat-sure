@@ -16,6 +16,11 @@ export function formatEventTime(iso: string, timeZone = env.timeZone) {
   return format(new Date(iso), "h:mm a", { in: tz(timeZone) });
 }
 
+// PAY-21/AD-007: the checkout event card's date line.
+export function formatEventDay(iso: string, timeZone = env.timeZone) {
+  return format(new Date(iso), "EEE dd MMM", { in: tz(timeZone) });
+}
+
 export function formatEventTimeRange(
   startIso: string,
   endIso: string,

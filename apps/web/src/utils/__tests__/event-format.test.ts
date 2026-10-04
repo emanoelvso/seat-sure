@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   formatEventDate,
+  formatEventDay,
   formatEventLocation,
   formatEventTime,
   formatEventTimeRange,
@@ -117,5 +118,12 @@ describe("event-format time zone", () => {
     expect(formatEventTimeRange(elevenPmUtc, halfPastOneAmUtcNextDay)).toBe(
       "4:30 AM - 7:00 AM",
     );
+  });
+
+  it("formats EEE dd MMM in America/Los_Angeles, differing from the UTC calendar day around midnight UTC (PAY-21, AD-007)", () => {
+    const instant = "2026-11-07T06:00:00.000Z";
+
+    expect(formatEventDay(instant, "America/Los_Angeles")).toBe("Fri 06 Nov");
+    expect(formatEventDay(instant, "UTC")).toBe("Sat 07 Nov");
   });
 });
