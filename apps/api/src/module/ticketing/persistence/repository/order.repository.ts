@@ -60,6 +60,15 @@ export class OrderRepository extends DefaultTypeOrmRepository<Order> {
     );
   }
 
+  // A charged attempt whose seats were lost, after its refund (PAY-46)
+  async markFailed(orderId: string): Promise<void> {
+    await this.entityManager.update(
+      Order,
+      { id: orderId, status: OrderStatus.PROCESSING },
+      { status: OrderStatus.FAILED },
+    );
+  }
+
   async markPaid(
     manager: EntityManager,
     orderId: string,

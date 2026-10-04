@@ -17,8 +17,10 @@ import {
   orderItemFactory,
 } from '@ticketingModule/__test__/factory/order.factory';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
+import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory';
 import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
+import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
 import { LogTicketSender } from '@ticketingModule/integration/provider/log-ticket-sender.provider';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
@@ -552,5 +554,91 @@ describe('TicketingResolver payOrder (e2e)', () => {
     for (const spy of spies) {
       spy.mockRestore();
     }
+  });
+
+  describe('concurrent payments (PAY-45)', () => {
+    it('charges once when the same order is paid twice at the same time, 5 times over', async () => {
+      for (let round = 0; round < 5; round++) {
+        const { order } = await insertOrder();
+        gateway.charge.mockClear();
+
+        const bodies = await Promise.all([
+          payOrder(order.id),
+          payOrder(order.id),
+        ]);
+
+        expect(gateway.charge).toHaveBeenCalledTimes(1);
+        const payments = await paymentsOf(order.id);
+        expect(payments).toHaveLength(1);
+        expect(payments[0].status).toBe('succeeded');
+        const winners = bodies.filter((body) => !body.errors);
+        const losers = bodies.filter((body) => body.errors);
+        expect(winners).toHaveLength(1);
+        expect(winners[0].data.payOrder.status).toBe('PAID');
+        expect(losers).toHaveLength(1);
+        expect(['ORDER_ALREADY_PAID', 'PAYMENT_IN_PROGRESS']).toContain(
+          errorOf(losers[0])?.reason,
+        );
+      }
+    });
+  });
+
+  describe('PAY-46: seats lost after the charge are refunded', () => {
+    const expectRefundedAndFailed = async (orderId: string) => {
+      const payments = await paymentsOf(orderId);
+      expect(payments).toHaveLength(1);
+      expect(payments[0].status).toBe('refunded');
+      expect(payments[0].refundedAt).not.toBeNull();
+      expect(gateway.refund).toHaveBeenCalledTimes(1);
+      expect(gateway.refund).toHaveBeenCalledWith(
+        payments[0].providerPaymentId,
+      );
+      expect((await orderRow(orderId)).status).toBe('failed');
+    };
+
+    it('refunds and fails the order when a hold was deleted after the checkout started', async () => {
+      const { order, holds } = await insertOrder();
+      await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      await expectRefundedAndFailed(order.id);
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+      expect(sender.send).not.toHaveBeenCalled();
+    });
+
+    it('refunds and fails the order when a seat already has an issued ticket of another order', async () => {
+      const { order, items } = await insertOrder();
+      const sold = ticketFactory.build({
+        eventId: order.eventId,
+        seatId: items[0].seatId,
+        status: TicketStatus.ISSUED,
+      });
+      await testDbClient.batchInsert(Tables.Ticket, [sold]);
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      await expectRefundedAndFailed(order.id);
+      const tickets = await testDbClient(Tables.Ticket);
+      expect(tickets.map((ticket) => ticket.id)).toEqual([sold.id]);
+      expect(sender.send).not.toHaveBeenCalled();
+    });
+  });
+
+  it('frees the seats of an expired pending order, but not a seat sold elsewhere (PAY-63)', async () => {
+    const { order, items } = await insertOrder({ expiresAt: fromNow(-1_000) });
+    await testDbClient.batchInsert(Tables.Ticket, [
+      ticketFactory.build({
+        eventId: order.eventId,
+        seatId: items[1].seatId,
+        status: TicketStatus.ISSUED,
+      }),
+    ]);
+
+    expect(await findUnavailableSeats(order.eventId)).toEqual([
+      items[1].seatId,
+    ]);
   });
 });

@@ -19,7 +19,7 @@ import { OrderRepository } from '@ticketingModule/persistence/repository/order.r
 import { SeatHoldRepository } from '@ticketingModule/persistence/repository/seat-hold.repository';
 import { TicketRepository } from '@ticketingModule/persistence/repository/ticket.repository';
 import { isUUID } from 'class-validator';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 
 const orderNotFound = () =>
   new TicketingException('ORDER_NOT_FOUND', "We couldn't find this order.");
@@ -29,6 +29,14 @@ const seatsUnavailable = () =>
     'SEATS_UNAVAILABLE',
     'Some of your seats were just taken. Pick your seats again.',
   );
+
+// A seat lost between the start and the issuance: a missing or foreign hold,
+// or a live ticket already on the seat (unique violation, AD-014).
+const isIssuanceConflict = (error: unknown): boolean =>
+  (error instanceof TicketingException &&
+    error.reason === 'SEATS_UNAVAILABLE') ||
+  (error instanceof QueryFailedError &&
+    (error.driverError as { code?: string }).code === '23505');
 
 const paymentInProgress = () =>
   new TicketingException(
@@ -159,7 +167,19 @@ export class OrderPaymentService {
       );
     }
 
-    const codes = await this.issue(order, charge.paymentId, now);
+    let codes: string[];
+    try {
+      codes = await this.issue(order, charge.paymentId, now);
+    } catch (error) {
+      if (!isIssuanceConflict(error)) {
+        throw error;
+      }
+      // Billing has no shared transaction with Ticketing, so the charge is
+      // compensated by a refund (AD-022, PAY-46).
+      await this.billingApi.refund(charge.paymentId);
+      await this.orderRepository.markFailed(order.id);
+      throw seatsUnavailable();
+    }
     await this.sendTickets(order, codes);
     order.status = OrderStatus.PAID;
     order.paidAt = now;
