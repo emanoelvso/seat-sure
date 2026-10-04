@@ -251,6 +251,9 @@ describe('LogIn (e2e)', () => {
     const sentBefore = fakeCodeSender.sent.length;
     const originalCode =
       fakeCodeSender.sent[fakeCodeSender.sent.length - 1].code;
+    const originalRow = await testDbClient(Tables.IdentityVerificationCode)
+      .where({})
+      .first();
 
     // No aging here: the signup code is still well within the 60s cooldown,
     // so a plain `issue` call would throw RESEND_TOO_SOON. logIn must not
@@ -262,7 +265,12 @@ describe('LogIn (e2e)', () => {
     expect(result.status).toBe('VERIFICATION_REQUIRED');
     expect(result.session).toBeNull();
     expect(result.codeSent).toBe(true);
-    expect(result.resendAvailableAt).toBeDefined();
+    // The resend window is relative to when the code was actually sent, not
+    // to now and not to the code's original createdAt: reuse must not reset
+    // or drift the cooldown the web uses to enable "Resend".
+    expect(new Date(result.resendAvailableAt).getTime()).toBe(
+      new Date(originalRow.createdAt).getTime() + 60_000,
+    );
     // No second code was dispatched: the original is reused as-is.
     expect(fakeCodeSender.sent.length).toBe(sentBefore);
 
