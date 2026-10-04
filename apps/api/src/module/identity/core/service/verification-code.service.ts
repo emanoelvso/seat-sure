@@ -58,6 +58,37 @@ export class VerificationCodeService {
     return this.issue(user, purpose, now);
   }
 
+  // Used by an unverified login: if a code sent within the last COOLDOWN_MS
+  // is still confirmable, reuse it (same resendAvailableAt, no new code
+  // dispatched) instead of calling `issue`, which would throw
+  // RESEND_TOO_SOON. If the latest code is consumed, expired, or simply
+  // older than the cooldown, issue a fresh one as usual.
+  async issueOrReuse(
+    user: IdentityUser,
+    purpose: CodeSenderPurpose,
+    now: Date,
+  ): Promise<IssueCodeResult> {
+    const latest = await this.verificationCodeRepository.findLatestLive(
+      user.id,
+      purpose,
+    );
+
+    const isLive =
+      latest !== null &&
+      !latest.consumedAt &&
+      now.getTime() < latest.expiresAt.getTime() &&
+      now.getTime() - latest.createdAt.getTime() < COOLDOWN_MS;
+
+    if (isLive && latest) {
+      return {
+        codeSent: true,
+        resendAvailableAt: new Date(latest.createdAt.getTime() + COOLDOWN_MS),
+      };
+    }
+
+    return this.issue(user, purpose, now);
+  }
+
   @Transactional({ connectionName: 'identity' })
   async issue(
     user: IdentityUser,

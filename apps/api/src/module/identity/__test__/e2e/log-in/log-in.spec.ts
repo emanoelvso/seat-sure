@@ -245,6 +245,39 @@ describe('LogIn (e2e)', () => {
     expect(fakeCodeSender.sent.length).toBe(sentBefore + 1);
   });
 
+  it('reuses a still-live code instead of erroring when logging in inside the 60s cooldown (AUTH-34 x AUTH-27)', async () => {
+    const email = `negar-pending-${randomUUID()}@example.com`;
+    await signUpUnverified(email);
+    const sentBefore = fakeCodeSender.sent.length;
+    const originalCode =
+      fakeCodeSender.sent[fakeCodeSender.sent.length - 1].code;
+
+    // No aging here: the signup code is still well within the 60s cooldown,
+    // so a plain `issue` call would throw RESEND_TOO_SOON. logIn must not
+    // surface that as an error.
+    const response = await logIn(email, PASSWORD);
+
+    expect(response.body.errors).toBeUndefined();
+    const result = response.body.data.logIn;
+    expect(result.status).toBe('VERIFICATION_REQUIRED');
+    expect(result.session).toBeNull();
+    expect(result.codeSent).toBe(true);
+    expect(result.resendAvailableAt).toBeDefined();
+    // No second code was dispatched: the original is reused as-is.
+    expect(fakeCodeSender.sent.length).toBe(sentBefore);
+
+    const verifyAttempt = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: VERIFY_EMAIL_MUTATION,
+        variables: {
+          input: { email, code: originalCode, rememberMe: false },
+        },
+      });
+    expect(verifyAttempt.body.errors).toBeUndefined();
+    expect(verifyAttempt.body.data.verifyEmail.accessToken).toBeDefined();
+  });
+
   it('locks after 5 failures within 15 minutes and unlocks after the window (AUTH-35)', async () => {
     const email = `negar-lockout-${randomUUID()}@example.com`;
     await signUpAndVerify(email);

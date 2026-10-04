@@ -82,7 +82,11 @@ export class AuthenticationService {
 
     if (!user.emailVerifiedAt) {
       const { codeSent, resendAvailableAt } =
-        await this.verificationCodeService.issue(user, 'verify_email', now);
+        await this.verificationCodeService.issueOrReuse(
+          user,
+          'verify_email',
+          now,
+        );
       return {
         status: LogInStatus.VERIFICATION_REQUIRED,
         session: null,
