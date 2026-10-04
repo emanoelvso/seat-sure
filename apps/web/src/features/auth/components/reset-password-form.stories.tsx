@@ -133,7 +133,7 @@ export const StayFailureKeepsForm: Story = {
     const confirmPassword = canvas.getByLabelText("Re-enter New Password");
 
     await userEvent.type(newPassword, "fresh-pass-1");
-    await userEvent.type(confirmPassword, "fresh-pass-1");
+    await userEvent.type(confirmPassword, "fresh-pass-2");
     await userEvent.click(
       canvas.getByRole("button", { name: "Reset password" }),
     );
@@ -147,6 +147,6 @@ export const StayFailureKeepsForm: Story = {
 
     await expect(dialog.open).toBe(false);
     await expect(newPassword).toHaveValue("fresh-pass-1");
-    await expect(confirmPassword).toHaveValue("fresh-pass-1");
+    await expect(confirmPassword).toHaveValue("fresh-pass-2");
   },
 };
