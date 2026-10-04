@@ -66,21 +66,27 @@ export function HeaderAccount() {
       <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
         <BellIcon />
       </div>
-      {user.avatarUrl ? (
-        <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-          <Image
-            className="object-cover w-full h-full"
-            src={user.avatarUrl}
-            alt="Profile Avatar"
-            width={40}
-            height={40}
-          />
-        </div>
-      ) : (
-        <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0 text-white text-sm font-medium">
-          {getInitials(user.firstName, user.lastName, user.email)}
-        </div>
-      )}
+      <form action="/api/auth/logout" method="post">
+        <button
+          type="submit"
+          title="Log out"
+          className="w-10 h-10 rounded-full overflow-hidden shrink-0"
+        >
+          {user.avatarUrl ? (
+            <Image
+              className="object-cover w-full h-full"
+              src={user.avatarUrl}
+              alt="Profile Avatar"
+              width={40}
+              height={40}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center text-white text-sm font-medium">
+              {getInitials(user.firstName, user.lastName, user.email)}
+            </div>
+          )}
+        </button>
+      </form>
     </>
   );
 }
