@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
-import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
+import { graphqlServerFetch } from "@/lib/graphql-server";
 import { writePendingCookie } from "@/features/auth/api/session-cookies";
 import { signUpAction, type SignUpFormState } from "@/features/auth/api/sign-up-action";
 
@@ -152,14 +152,14 @@ describe("signUpAction", () => {
     );
   });
 
-  it("shows the email-taken message under the Email field (AUTH-10)", async () => {
-    mockedFetch.mockRejectedValueOnce(
-      new GraphQLRequestError(
-        "An account with this email already exists.",
-        "BAD_USER_INPUT",
-        "EMAIL_TAKEN",
-      ),
-    );
+  it("redirects to /verify-email the same as a new signup, even for an already-registered email (AUTH-10)", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      signUp: {
+        email: "amara.okafor@example.com",
+        codeSent: true,
+        resendAvailableAt: "2026-10-02T10:01:00.000Z",
+      },
+    });
     const formData = buildFormData({
       firstName: "Amara",
       lastName: "Okafor",
@@ -167,12 +167,11 @@ describe("signUpAction", () => {
       password: "s3cret-pw!",
     });
 
-    const result = await signUpAction(initialState, formData);
+    await expectRedirectTo("/verify-email", formData);
 
-    expect(result.fieldErrors).toEqual({
-      email: "An account with this email already exists.",
-    });
-    expect(mockedWritePendingCookie).not.toHaveBeenCalled();
+    expect(mockedWritePendingCookie).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "amara.okafor@example.com" }),
+    );
   });
 
   it("shows a generic form error on an unexpected failure (AUTH-12)", async () => {

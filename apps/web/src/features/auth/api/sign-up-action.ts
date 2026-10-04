@@ -14,7 +14,6 @@ export interface SignUpFormState {
 }
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
-const EMAIL_TAKEN_MESSAGE = "An account with this email already exists.";
 
 function readString(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -82,9 +81,6 @@ export async function signUpAction(
     });
   } catch (error) {
     if (error instanceof GraphQLRequestError) {
-      if (error.reason === "EMAIL_TAKEN") {
-        return { values, fieldErrors: { email: EMAIL_TAKEN_MESSAGE } };
-      }
       if (error.reason === "INVALID_INPUT" && error.fields) {
         return { values, fieldErrors: error.fields };
       }
