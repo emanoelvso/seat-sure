@@ -527,7 +527,7 @@ Why: fat resolvers make business logic untestable without a GraphQL request, dup
 
 1. Read arguments (`@Args` input types, or body/params/query for REST)
 2. Rely on `ValidationPipe` + `class-validator` for input validation
-3. Read user context from `ClsService` (`userId`, set by `AuthGuard`)
+3. Read user context from `ClsService` (`userId` and `sessionId`, set by `AuthGuard`)
 4. Call one service or use case method with plain values
 5. Return a GraphQL `@ObjectType` (or a response DTO for REST)
 6. Let domain exceptions surface as GraphQL/HTTP errors
@@ -589,6 +589,7 @@ Service or use case methods that write to the database MUST use `@Transactional(
 - ❌ **DON'T**: nest `@Transactional()` methods (call non-transactional methods from a transactional one)
 - ❌ **DON'T**: add it to read-only methods
 - ❌ **DON'T**: expect one transaction to cover two modules; they use different connections
+- ❌ **DON'T**: run a repository's raw `this.entityManager.createQueryBuilder()...execute()` against a row inserted earlier in the same still-open `@Transactional` method and expect it to see that row. `typeorm-transactional` patches `Repository` methods (`.save()`, `.find()`, ...) to resolve the ambient transactional connection per call, but a raw query builder built from the `EntityManager` captured once in `DefaultTypeOrmRepository`'s constructor resolves its own pooled connection instead, so it can't see an uncommitted row from the current transaction. It silently matches 0 rows rather than throwing. Found in `identity`'s `VerificationCodeRepository.invalidateLive`: superseding an already-committed code (an earlier transaction) works; invalidating a code inserted earlier in the *same* transaction does not. Fix by mutating and `.save()`-ing the entity you already have in memory instead of a second raw query against the same transaction.
 
 ```typescript
 // ✅ Multiple writes: all succeed or all roll back

@@ -207,9 +207,10 @@ The `-input.type.ts` suffix is a project convention; lint only checks `{kebab-ca
 2. **Validate at the boundary**: `@InputType` classes and request DTOs use `class-validator` decorators. Domain rules are validated in `core/`.
 3. **Separate inputs from outputs**: `@InputType` for arguments, `@ObjectType` for results; request and response DTOs for REST.
 4. **Don't expose entities**: resolvers return GraphQL types, controllers return response DTOs.
-5. **REST only when required**: Stripe webhooks, multipart uploads, `GET /health`. Everything else is GraphQL.
-6. **Authentication**: `AuthGuard` (`@sharedModules/auth/guard/auth.guard`) works for GraphQL and REST, and stores `userId` in `ClsService`.
-7. **HTTP clients**: calls to external APIs live in `http/client/` and use the shared `HttpClient` (`@sharedModules/http-client/client/http.client`).
+5. **A closed set of values is a GraphQL enum, never a raw `String!`.** Register it with `registerEnumType` (see `LogInStatus` for the pattern) and map it to the internal representation at the resolver boundary. Identity's `resendCode` originally took `purpose: String!`; the web and the API quietly settled on different spellings (`'verify-email'` vs `'verify_email'`), and nothing caught it until a user-visible bug shipped. An enum makes that mismatch a type error instead.
+6. **REST only when required**: Stripe webhooks, multipart uploads, `GET /health`. Everything else is GraphQL.
+7. **Authentication**: `AuthGuard` (`@sharedModules/auth/guard/auth.guard`) works for GraphQL and REST. It verifies the `Authorization: Bearer` access token (a JWT signed with `JWT_SECRET`) without a database call and stores `userId` and `sessionId` in `ClsService` ([ADR-016](../../../docs/adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)). The API never reads or sets cookies; the web server holds the tokens. Only Identity checks whether a session was revoked.
+8. **HTTP clients**: calls to external APIs live in `http/client/` and use the shared `HttpClient` (`@sharedModules/http-client/client/http.client`).
 
 ---
 
@@ -303,7 +304,7 @@ shared/
 ├── core/
 │   └── model/default.model.ts           # Base domain model
 └── module/
-    ├── auth/                            # AuthGuard, JWT, ClsModule
+    ├── auth/                            # AuthGuard, JwtModule (JWT_SECRET), ClsModule
     ├── config/                          # ConfigService (zod-validated env)
     ├── http-client/                     # HttpClient wrapper around @nestjs/axios
     ├── logger/                          # Winston logger (LoggerFactory)
@@ -533,6 +534,9 @@ export class StripeWebhookController {
 
 - Create domain exceptions in `core/exception/` (e.g. `EventNotAvailableException`).
 - Let exceptions bubble up; NestJS turns `HttpException` subclasses into GraphQL errors or HTTP responses.
+- A missing record in a lookup query is a `null` result, not an error ([ADR-014](../../../docs/adrs/014-not-found-as-null-results-in-graphql-queries.md)).
+- A business rule the user can trip (email taken, account locked, code expired) extends `UnprocessableEntityException` with `{ reason, message, fields? }`. Clients get `extensions.code: "BAD_USER_INPUT"` and read `extensions.originalError.reason`, an `UPPER_SNAKE` code owned by the module; `fields` maps input fields to messages ([ADR-018](../../../docs/adrs/018-business-errors-as-unprocessable-entity-with-a-reason-code.md)).
+- Missing or invalid credentials throw `UnauthorizedException` (`UNAUTHENTICATED`). Other HTTP statuses surface as `INTERNAL_SERVER_ERROR`, so don't use them for user-facing errors.
 
 ```typescript
 // src/module/ticketing/core/exception/event-not-available.exception.ts
@@ -541,12 +545,20 @@ export class EventNotAvailableException extends NotFoundException {
     super(`Event ${eventId} is not available for sale`);
   }
 }
+
+// A user-facing business error (ADR-018)
+// src/module/identity/core/exception/identity.exception.ts
+export class IdentityException extends UnprocessableEntityException {
+  constructor(reason: IdentityErrorReason, message: string, fields?: Record<string, string>) {
+    super({ statusCode: 422, reason, message, fields });
+  }
+}
 ```
 
 ### 3. Validation
 
 - `class-validator` on `@InputType` classes and request DTOs; `ValidationPipe` runs at the boundary.
-- Domain invariants are validated in models and services.
+- Domain invariants are validated in models and services. When the user must see a message per field (lengths, formats), the rules and messages live in `core/model/` and the service throws them as `fields` (ADR-018). `class-validator` on the input then only checks types.
 
 ### 4. Environment Configuration
 
@@ -557,7 +569,7 @@ export class EventNotAvailableException extends NotFoundException {
 ### 5. Logging
 
 - Use NestJS `Logger` with a context name; `main.ts` routes it to the shared Winston logger.
-- Include identifiers (`orderId`, `eventId`) in messages; never log passwords, tokens, or card data.
+- Include identifiers (`orderId`, `eventId`, `userId`) in messages; never log passwords, password hashes, tokens, verification codes, or card data. The dev code sender is the one exception: it logs codes, and the API refuses to start with it in production.
 
 ### 6. Database Migrations
 

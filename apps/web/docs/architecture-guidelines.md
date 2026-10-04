@@ -105,6 +105,7 @@ src/features/tickets/
 | `tickets`      | Seat map, ticket listings, price/quantity filters      | Catalog, Ticketing   |
 | `testimonials` | Testimonial cards and carousel                         | Social Proof         |
 | `faq`          | FAQ section                                            | —                    |
+| `auth`         | Login, signup, code verification, password reset, session cookies | Identity & Access, User Profile |
 
 Add features as new product areas appear (checkout, auth, account). Features are organized by UI area; they usually line up with a backend bounded context but don't have to.
 
@@ -163,6 +164,7 @@ Each GraphQL operation gets its own files in `features/<name>/api/`:
 | `{operation}.ts`         | Typed `gql` document + derived result types | Both                      |
 | `get-{resource}.ts`      | Server fetcher                        | Server Components only         |
 | `use-{resource}.ts`      | Apollo hook                           | Client Components only         |
+| `{operation}-action.ts`  | Server Action (`"use server"`) for a form ([ADR-019](../../../docs/adrs/019-forms-with-server-actions-and-zod.md)) | Client form components         |
 
 This split adapts Bulletproof's one-file-per-request pattern to Server Components: the document file is safe in both environments, while fetchers and hooks each stay on their side of the boundary. Create only the consumers you need.
 
@@ -252,6 +254,9 @@ export async function graphqlServerFetch<TData, TVariables>(
 ```
 
 - `import "server-only"` makes `next build` fail if a Client Component imports the fetcher, directly or through a `get-*` file.
+- `accessToken` adds `Authorization: Bearer <token>` for protected operations. Only server code reads the token, from its `httpOnly` cookie ([ADR-016](../../../docs/adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)).
+- GraphQL errors throw a `GraphQLRequestError { message, code, reason, fields }`: `code` is `extensions.code`, `reason` and `fields` come from `extensions.originalError` ([ADR-018](../../../docs/adrs/018-business-errors-as-unprocessable-entity-with-a-reason-code.md)). It extends `Error`, so callers that only need the message don't change.
+- **Mutations always pass `revalidate: 0`.** With the default `revalidate: 60`, a POST is cached by its body (see the next bullet).
 - The project uses Next.js 16's previous caching model (`cacheComponents` is off), where `fetch` is uncached unless `cache` or `next.revalidate` is set. **POST requests with an explicit `next.revalidate` are cached**: in Next 16.2.10, `patch-fetch.js` only turns a POST into "auto no cache" when the fetch has no cache config, and the Data Cache key includes the request body (`incremental-cache/index.js`, `generateCacheKey`), so each query and its variables get their own entry.
 
 ### Types
@@ -268,6 +273,7 @@ export async function graphqlServerFetch<TData, TVariables>(
 - ✅ **Server Components by default.** Pages and non-interactive sections render on the server.
 - ✅ **`"use client"` at the leaves.** Mark the filter bar or the seat map as a client component, not the whole page.
 - ✅ **First render from the server.** Public pages (home, events, event detail, artist) fetch on the server with `revalidate` (ADR-001 ISR) and pass data down as props. Client components take over for interaction: filtering, pagination, seat selection.
+- ✅ **Personalized UI on cached pages loads on the client.** Shared chrome (the header) never reads session cookies while rendering, or every page would lose ISR. It fetches the uncached `/api/auth/session` Route Handler after mount ([ADR-017](../../../docs/adrs/017-signed-in-state-loaded-on-the-client-to-keep-pages-cached.md)).
 - ✅ **Serializable props.** Props passed from Server to Client Components must be plain data: no functions or class instances; dates as ISO strings.
 - ❌ Never import a `get-*` server fetcher into a Client Component, or a `use-*` hook into a Server Component.
 - ❌ Never read `process.env` outside `src/config/env.ts`. Only `NEXT_PUBLIC_*` variables reach the browser.
@@ -282,9 +288,9 @@ Bulletproof splits state into five categories. Pick the category first, then the
 | Category          | Examples                                   | Seat Sure                                                                                   |
 | ----------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
 | Component state   | Open/closed dropdown, hovered seat         | `useState` / `useReducer`                                                                   |
-| Application state | Signed-in user, global modals              | React Context, only when prop drilling hurts. No global store library until one is needed. |
+| Application state | Signed-in user, global modals              | Signed-in user: `HeaderAccount` fetches `/api/auth/session` after mount ([ADR-017](../../../docs/adrs/017-signed-in-state-loaded-on-the-client-to-keep-pages-cached.md)). Otherwise React Context, only when prop drilling hurts. No global store library until one is needed. |
 | Server cache      | Events, artists, ticket types              | Next.js fetch cache (server), Apollo `InMemoryCache` (client)                               |
-| Form state        | Checkout, login                            | Bulletproof recommends React Hook Form + Zod. Not installed; decide with the first real form. |
+| Form state        | Checkout, login                            | Server Actions + `useActionState` + zod schemas in `features/<name>/utils/`; no React Hook Form ([ADR-019](../../../docs/adrs/019-forms-with-server-actions-and-zod.md)) |
 | URL state         | Filters, sort order, pagination, selected tab | `nuqs` parsers shared by the server page and client leaves (see [URL State](#url-state))  |
 
 - ✅ Keep state as close as possible to where it's used.
@@ -377,13 +383,16 @@ export const buttonVariants = cva(
 - **No `loading.tsx` on routes that can call `notFound()`** (`/artists/[slug]`, `/events/[id]/tickets`). A `loading.tsx` starts streaming a 200 response before the page runs, so `notFound()` could no longer answer 404. These pages wait for their (usually cached) data instead.
 - **Feature level**: Client Components handle Apollo's `error` with a fallback inside the feature, so one failing section doesn't blank the page.
 - **Server fetches**: `graphqlServerFetch` throws on GraphQL errors, which renders the nearest `error.tsx`.
+- **Server Actions** catch `GraphQLRequestError`, map its `reason` to the feature's own copy, and return it as field or form errors. They never show the API's `message` to users ([ADR-018](../../../docs/adrs/018-business-errors-as-unprocessable-entity-with-a-reason-code.md)).
 - **Future**: error tracking (e.g. Sentry) in production.
 
 ---
 
 ## Security
 
-- **Authentication** (when login is built): the API expects `Authorization: Bearer <JWT>` (ADR-001). Bulletproof recommends keeping tokens out of `localStorage`, in HttpOnly cookies. Decide how the token reaches the API (e.g. through a Next.js route handler) in an ADR when login lands.
+- **Authentication** ([ADR-016](../../../docs/adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)): the API expects `Authorization: Bearer <JWT>` (ADR-001) and never sets cookies. The Next.js server keeps the access and refresh tokens in `httpOnly`, `SameSite=Lax`, `Secure` (production) cookies, written only by Server Actions and Route Handlers (`features/auth/api/session-cookies.ts`). Tokens never reach client code or `localStorage`.
+- **Refreshing**: `/api/auth/session` (`features/auth/api/get-session.ts`) refreshes an expired access token and clears the cookies of a dead session. Server Components can't write cookies, so they never refresh.
+- **Redirect targets** after signing in go through `safeRedirect` (paths starting with exactly one `/`), never straight from the query string.
 - **Authorization**: checks in the UI are for UX only; the API enforces access.
 - **User content** (testimonials, bios): render as text. Never use `dangerouslySetInnerHTML` with unsanitized content.
 - **Secrets**: never in `NEXT_PUBLIC_*` variables.
