@@ -4,6 +4,9 @@ import {
   BillingApi,
   BillingCardInput,
 } from '@sharedModules/integration/interface/billing-integration.interface';
+import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
+import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
 import { TicketingException } from '@ticketingModule/core/exception/ticketing.exception';
@@ -71,6 +74,11 @@ export class OrderPaymentService {
     private readonly seatHoldRepository: SeatHoldRepository,
     private readonly ticketRepository: TicketRepository,
     private readonly ticketCodeGenerator: TicketCodeGenerator,
+    @Inject(IdentityApi)
+    private readonly identityApi: IdentityApi,
+    @Inject(TicketSender)
+    private readonly ticketSender: TicketSender,
+    private readonly logger: AppLogger,
   ) {}
 
   async pay({
@@ -151,7 +159,8 @@ export class OrderPaymentService {
       );
     }
 
-    await this.issue(order, charge.paymentId, now);
+    const codes = await this.issue(order, charge.paymentId, now);
+    await this.sendTickets(order, codes);
     order.status = OrderStatus.PAID;
     order.paidAt = now;
     order.paymentId = charge.paymentId;
@@ -166,10 +175,10 @@ export class OrderPaymentService {
     order: Order,
     paymentId: string,
     now: Date,
-  ): Promise<void> {
+  ): Promise<string[]> {
     const seatIds = order.items.map((item) => item.seatId);
 
-    await this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => {
       const holds = await this.seatHoldRepository.lockForSeats(
         manager,
         order.eventId,
@@ -182,20 +191,18 @@ export class OrderPaymentService {
         throw seatsUnavailable();
       }
 
-      await this.ticketRepository.issue(
-        manager,
-        order.items.map(
-          (item) =>
-            new Ticket({
-              eventId: order.eventId,
-              seatId: item.seatId,
-              userId: order.userId,
-              code: this.ticketCodeGenerator.generate(),
-              status: TicketStatus.ISSUED,
-              orderItemId: item.id,
-            }),
-        ),
+      const tickets = order.items.map(
+        (item) =>
+          new Ticket({
+            eventId: order.eventId,
+            seatId: item.seatId,
+            userId: order.userId,
+            code: this.ticketCodeGenerator.generate(),
+            status: TicketStatus.ISSUED,
+            orderItemId: item.id,
+          }),
       );
+      await this.ticketRepository.issue(manager, tickets);
       await this.seatHoldRepository.deleteForSeats(
         manager,
         order.eventId,
@@ -206,6 +213,29 @@ export class OrderPaymentService {
         paymentId,
         paidAt: now,
       });
+
+      return tickets.map((ticket) => ticket.code);
     });
+  }
+
+  // Runs after the issuance commit: the order is paid whatever happens here,
+  // so a failure is only logged (PAY-39).
+  private async sendTickets(order: Order, codes: string[]): Promise<void> {
+    try {
+      const email = await this.identityApi.findAccountEmail(order.userId);
+      if (!email) {
+        throw new Error('The buyer has no account email');
+      }
+      await this.ticketSender.send({
+        email,
+        eventName: order.eventName,
+        codes,
+      });
+    } catch (exception) {
+      this.logger.error("Couldn't send the tickets", {
+        exception,
+        orderId: order.id,
+      });
+    }
   }
 }

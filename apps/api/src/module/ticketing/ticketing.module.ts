@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BillingModule } from '@billingModule/billing.module';
 import { CatalogModule } from '@catalogModule/catalog.module';
+import { IdentityModule } from '@identityModule/identity.module';
 import { AuthModule } from '@sharedModules/auth/auth.module';
 import { LoggerModule } from '@sharedModules/logger/logger.module';
 import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
@@ -17,6 +18,7 @@ import { TicketingResolver } from './http/graphql/ticketing.resolver';
     TicketingPersistenceModule,
     CatalogModule,
     BillingModule,
+    IdentityModule,
     AuthModule,
     LoggerModule,
   ],

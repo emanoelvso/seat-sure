@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { GraphqlModule } from '@sharedModules/graphql/graphql.module';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
 import {
@@ -16,7 +17,9 @@ import {
   orderItemFactory,
 } from '@ticketingModule/__test__/factory/order.factory';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
+import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
+import { LogTicketSender } from '@ticketingModule/integration/provider/log-ticket-sender.provider';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -66,7 +69,11 @@ describe('TicketingResolver payOrder (e2e)', () => {
     refund: jest.fn<Promise<void>, [string]>(),
   };
 
+  // Records every ticket notice
+  const sender = { send: jest.fn<Promise<void>, [unknown]>() };
+
   const userId = randomUUID();
+  const email = `buyer-${userId}@example.com`;
 
   const deleteRows = async () => {
     await testDbClient(Tables.Ticket).del();
@@ -83,24 +90,37 @@ describe('TicketingResolver payOrder (e2e)', () => {
     })
       .overrideProvider(PaymentGateway)
       .useValue(gateway)
+      .overrideProvider(TicketSender)
+      .useValue(sender)
       .compile();
 
     app = module.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
     jwtService = module.get(JwtService);
+    await testDbClient.batchInsert(Tables.IdentityUser, [
+      { id: userId, email, passwordHash: 'x'.repeat(60) },
+    ]);
   });
 
   beforeEach(async () => {
     await deleteRows();
     gateway.charge.mockImplementation((input) => simulated.charge(input));
     gateway.refund.mockImplementation(() => simulated.refund());
+    sender.send.mockResolvedValue(undefined);
   });
 
   afterAll(async () => {
     await deleteRows();
+    await testDbClient(Tables.IdentityUser).where({ id: userId }).del();
     await testDbClient.destroy();
-    for (const name of ['ticketing', 'catalog', 'billing']) {
+    for (const name of [
+      'ticketing',
+      'catalog',
+      'billing',
+      'identity',
+      'user-profile',
+    ]) {
       const dataSource = module.get<DataSource>(getDataSourceToken(name));
       if (dataSource.isInitialized) {
         await dataSource.destroy();
@@ -442,5 +462,95 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(await paymentsOf(order.id)).toHaveLength(0);
       expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
     });
+  });
+
+  describe('ticket notice', () => {
+    it("sends the notice once with the buyer's email, the event name and the issued codes (PAY-39)", async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      const codes = (
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId })
+      ).map((ticket) => ticket.code);
+      expect(codes).toHaveLength(2);
+      expect(sender.send).toHaveBeenCalledTimes(1);
+      expect(sender.send).toHaveBeenCalledWith({
+        email,
+        eventName: 'Coldplay: Music of the Spheres',
+        codes: expect.arrayContaining(codes),
+      });
+      const [[notice]] = sender.send.mock.calls as [[{ codes: string[] }]];
+      expect(notice.codes).toHaveLength(2);
+    });
+
+    it('sends no notice when the card is declined', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrder(order.id, DECLINED_CARD);
+
+      expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      expect(sender.send).not.toHaveBeenCalled();
+    });
+
+    it('still answers PAID when the sender fails, and logs the failure with the order id', async () => {
+      const { order } = await insertOrder();
+      sender.send.mockRejectedValueOnce(new Error('mail server down'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ orderId: order.id }),
+      );
+      errorSpy.mockRestore();
+    });
+  });
+
+  it('logs no card number or CVV across a purchase and a decline (PAY-47)', async () => {
+    const cvv = '987';
+    const spies = (['log', 'warn', 'error'] as const).map((method) =>
+      jest.spyOn(AppLogger.prototype, method),
+    );
+    // The real log sender, so the notice itself goes through the spy
+    const logSender = new LogTicketSender(module.get(AppLogger));
+    sender.send.mockImplementation((input) =>
+      logSender.send(input as Parameters<LogTicketSender['send']>[0]),
+    );
+    const { order: declinedOrder } = await insertOrder();
+    const { order: paidOrder } = await insertOrder();
+
+    const declined = await payOrder(declinedOrder.id, {
+      ...DECLINED_CARD,
+      cvv,
+    });
+    const paid = await payOrder(paidOrder.id, { ...VALID_CARD, cvv });
+
+    expect(errorOf(declined)?.reason).toBe('CARD_DECLINED');
+    expect(paid.data.payOrder.status).toBe('PAID');
+    expect(spies[0]).toHaveBeenCalledWith(
+      'Sending tickets',
+      expect.objectContaining({ email }),
+    );
+    const logged = spies
+      .flatMap((spy) => spy.mock.calls)
+      .map((args) => JSON.stringify(args));
+    for (const line of logged) {
+      expect(line).not.toContain('4242424242424242');
+      expect(line).not.toContain('4242 4242 4242 4242');
+      expect(line).not.toContain('4000000000000002');
+      expect(line).not.toContain('4000 0000 0000 0002');
+      expect(line).not.toContain(`"${cvv}"`);
+    }
+    for (const spy of spies) {
+      spy.mockRestore();
+    }
   });
 });
