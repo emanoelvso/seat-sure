@@ -462,6 +462,8 @@ export class CatalogService {
       sectionKey: ticketType.sectionKey,
       name: ticketType.name,
       priceCents: ticketType.priceCents,
+      serviceFeeCents: ticketType.serviceFeeCents,
+      taxCents: ticketType.taxCents,
       currency: ticketType.currency,
       seatsAvailable: ticketType.seatsAvailable,
       maxPerOrder: ticketType.maxPerOrder,
