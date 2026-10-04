@@ -5,6 +5,7 @@ import { CheckoutService } from '@ticketingModule/core/service/checkout.service'
 import { TicketingService } from '@ticketingModule/core/service/ticketing.service';
 import { ClsService } from 'nestjs-cls';
 import { CheckoutOrder } from './type/checkout-order.type';
+import { FindCheckoutOrderInput } from './type/find-checkout-order-input.type';
 import { FindUnavailableSeatsInput } from './type/find-unavailable-seats-input.type';
 import { StartCheckoutInput } from './type/start-checkout-input.type';
 import { UnavailableSeats } from './type/unavailable-seats.type';
@@ -34,6 +35,18 @@ export class TicketingResolver {
       eventId,
       ticketTypeId,
       seatIds,
+      now: new Date(),
+    });
+  }
+
+  @UseGuards(AuthGuard)
+  @Query(() => CheckoutOrder, { nullable: true })
+  async findCheckoutOrder(
+    @Args('input') { orderId }: FindCheckoutOrderInput,
+  ): Promise<CheckoutOrder | null> {
+    return this.checkoutService.findForUser({
+      userId: this.clsService.get<string>('userId'),
+      orderId,
       now: new Date(),
     });
   }

@@ -235,4 +235,27 @@ export class CheckoutService {
       return toCheckoutOrderModel(order, items, now);
     });
   }
+
+  // The caller's own order, or null for another user's, an unknown or a
+  // malformed id (PAY-23).
+  async findForUser({
+    userId,
+    orderId,
+    now,
+  }: {
+    userId: string;
+    orderId: string;
+    now: Date;
+  }): Promise<CheckoutOrderModel | null> {
+    if (!isUUID(orderId)) {
+      return null;
+    }
+
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId, userId },
+      relations: { items: true },
+    });
+
+    return order ? toCheckoutOrderModel(order, order.items, now) : null;
+  }
 }
