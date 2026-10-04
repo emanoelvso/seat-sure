@@ -20,11 +20,15 @@ const features = fs.existsSync(featuresDir)
   : [];
 
 const boundaryZones = [
-  // No cross-feature imports
+  // No cross-feature imports, except every feature may reuse `auth`'s
+  // session primitives (session cookies, refresh, withAccessToken): every
+  // protected feature needs them, same as the API's public-API-provider
+  // pattern for cross-module reads (buy-ticket-checkout design.md, Code
+  // Reuse Analysis). See todo.md, "Frontend Architecture Migration".
   ...features.map((feature) => ({
     target: `./src/features/${feature}`,
     from: "./src/features",
-    except: [`./${feature}`],
+    except: feature === "auth" ? [`./${feature}`] : [`./${feature}`, "./auth"],
   })),
   // Unidirectional: shared -> features -> app
   { target: "./src/features", from: "./src/app" },
