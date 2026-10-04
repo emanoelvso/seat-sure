@@ -14,4 +14,5 @@ export enum Tables {
   IdentitySession = 'IdentitySession',
   IdentityLoginThrottle = 'IdentityLoginThrottle',
   IdentityPasswordResetGrant = 'IdentityPasswordResetGrant',
+  BillingPayment = 'BillingPayment',
 }

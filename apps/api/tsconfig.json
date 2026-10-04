@@ -26,6 +26,7 @@
       "@ticketingModule/*": ["./src/module/ticketing/*"],
       "@identityModule/*": ["./src/module/identity/*"],
       "@userProfileModule/*": ["./src/module/user-profile/*"],
+      "@billingModule/*": ["./src/module/billing/*"],
       "@sharedModules/*": ["./src/module/shared/module/*"],
       "@sharedLibs/*": ["./src/module/shared/*"],
       "@testInfra/*": ["./test/*"],
