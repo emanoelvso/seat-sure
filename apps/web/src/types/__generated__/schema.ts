@@ -18,6 +18,64 @@ export type Artist = {
   name: Scalars['String']['output'];
 };
 
+export type CardInput = {
+  cvv: Scalars['String']['input'];
+  expiry: Scalars['String']['input'];
+  holder: Scalars['String']['input'];
+  number: Scalars['String']['input'];
+};
+
+export type CheckoutEvent = {
+  __typename: 'CheckoutEvent';
+  city: Scalars['String']['output'];
+  country: Scalars['String']['output'];
+  coverImage: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  startAt: Scalars['DateTime']['output'];
+  venue: Scalars['String']['output'];
+};
+
+export type CheckoutOrder = {
+  __typename: 'CheckoutOrder';
+  currency: Scalars['String']['output'];
+  event: CheckoutEvent;
+  expiresAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  items: Array<CheckoutOrderItem>;
+  quantity: Scalars['Int']['output'];
+  secondsLeft: Scalars['Int']['output'];
+  serviceFeeCents: Scalars['Int']['output'];
+  status: CheckoutOrderStatus;
+  subtotalCents: Scalars['Int']['output'];
+  taxCents: Scalars['Int']['output'];
+  ticketType: CheckoutTicketType;
+  totalCents: Scalars['Int']['output'];
+  unitPriceCents: Scalars['Int']['output'];
+  unitServiceFeeCents: Scalars['Int']['output'];
+  unitTaxCents: Scalars['Int']['output'];
+};
+
+export type CheckoutOrderItem = {
+  __typename: 'CheckoutOrderItem';
+  number: Scalars['String']['output'];
+  row: Scalars['String']['output'];
+  seatId: Scalars['String']['output'];
+};
+
+export type CheckoutOrderStatus =
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'FAILED'
+  | 'PAID'
+  | 'PENDING';
+
+export type CheckoutTicketType = {
+  __typename: 'CheckoutTicketType';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type CodeDelivery = {
   __typename: 'CodeDelivery';
   codeSent: Scalars['Boolean']['output'];
@@ -124,6 +182,10 @@ export type FindArtistInput = {
   slug: Scalars['String']['input'];
 };
 
+export type FindCheckoutOrderInput = {
+  orderId: Scalars['String']['input'];
+};
+
 export type FindEventTicketsInput = {
   eventId: Scalars['String']['input'];
 };
@@ -184,11 +246,13 @@ export type Mutation = {
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
   logIn: LogInResult;
+  payOrder: CheckoutOrder;
   refreshSession: SessionTokens;
   requestPasswordReset: CodeDelivery;
   resendCode: CodeDelivery;
   resetPassword: Scalars['Boolean']['output'];
   signUp: SignUpResult;
+  startCheckout: CheckoutOrder;
   verifyEmail: SessionTokens;
 };
 
@@ -205,6 +269,11 @@ export type MutationCreateEventArgs = {
 
 export type MutationLogInArgs = {
   input: LogInInput;
+};
+
+
+export type MutationPayOrderArgs = {
+  input: PayOrderInput;
 };
 
 
@@ -233,6 +302,11 @@ export type MutationSignUpArgs = {
 };
 
 
+export type MutationStartCheckoutArgs = {
+  input: StartCheckoutInput;
+};
+
+
 export type MutationVerifyEmailArgs = {
   input: VerifyEmailInput;
 };
@@ -243,6 +317,11 @@ export type PasswordResetGrant = {
   resetToken: Scalars['String']['output'];
 };
 
+export type PayOrderInput = {
+  card: CardInput;
+  orderId: Scalars['String']['input'];
+};
+
 export type PriceRange = {
   max?: InputMaybe<Scalars['Float']['input']>;
   min?: InputMaybe<Scalars['Float']['input']>;
@@ -251,6 +330,7 @@ export type PriceRange = {
 export type Query = {
   __typename: 'Query';
   findArtistBySlug: FindArtist;
+  findCheckoutOrder: Maybe<CheckoutOrder>;
   findEventTickets: EventTickets;
   findEvents: FindEvents;
   findTicketTypeSeats: TicketTypeSeats;
@@ -262,6 +342,11 @@ export type Query = {
 
 export type QueryFindArtistBySlugArgs = {
   FindArtistInput: FindArtistInput;
+};
+
+
+export type QueryFindCheckoutOrderArgs = {
+  input: FindCheckoutOrderInput;
 };
 
 
@@ -379,6 +464,12 @@ export type SignUpResult = {
   resendAvailableAt: Scalars['DateTime']['output'];
 };
 
+export type StartCheckoutInput = {
+  eventId: Scalars['String']['input'];
+  seatIds: Array<Scalars['String']['input']>;
+  ticketTypeId: Scalars['String']['input'];
+};
+
 export type TicketType = {
   __typename: 'TicketType';
   currency: Scalars['String']['output'];
@@ -388,7 +479,9 @@ export type TicketType = {
   priceCents: Scalars['Int']['output'];
   seatsAvailable: Scalars['Int']['output'];
   sectionKey: Scalars['String']['output'];
+  serviceFeeCents: Scalars['Int']['output'];
   tags: Array<Scalars['String']['output']>;
+  taxCents: Scalars['Int']['output'];
 };
 
 export type TicketTypeSeats = {

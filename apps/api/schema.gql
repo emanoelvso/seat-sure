@@ -8,6 +8,61 @@ type Artist {
   name: String!
 }
 
+input CardInput {
+  cvv: String!
+  expiry: String!
+  holder: String!
+  number: String!
+}
+
+type CheckoutEvent {
+  city: String!
+  country: String!
+  coverImage: String!
+  id: ID!
+  name: String!
+  startAt: DateTime!
+  venue: String!
+}
+
+type CheckoutOrder {
+  currency: String!
+  event: CheckoutEvent!
+  expiresAt: DateTime!
+  id: ID!
+  items: [CheckoutOrderItem!]!
+  quantity: Int!
+  secondsLeft: Int!
+  serviceFeeCents: Int!
+  status: CheckoutOrderStatus!
+  subtotalCents: Int!
+  taxCents: Int!
+  ticketType: CheckoutTicketType!
+  totalCents: Int!
+  unitPriceCents: Int!
+  unitServiceFeeCents: Int!
+  unitTaxCents: Int!
+}
+
+type CheckoutOrderItem {
+  number: String!
+  row: String!
+  seatId: String!
+}
+
+enum CheckoutOrderStatus {
+  CANCELLED
+  EXPIRED
+  FAILED
+  PAID
+  PENDING
+}
+
+type CheckoutTicketType {
+  id: ID!
+  name: String!
+}
+
 type CodeDelivery {
   codeSent: Boolean!
   resendAvailableAt: DateTime!
@@ -112,6 +167,10 @@ input FindArtistInput {
   slug: String!
 }
 
+input FindCheckoutOrderInput {
+  orderId: String!
+}
+
 input FindEventTicketsInput {
   eventId: String!
 }
@@ -169,17 +228,24 @@ type Mutation {
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   logIn(input: LogInInput!): LogInResult!
+  payOrder(input: PayOrderInput!): CheckoutOrder!
   refreshSession(input: RefreshSessionInput!): SessionTokens!
   requestPasswordReset(input: RequestPasswordResetInput!): CodeDelivery!
   resendCode(input: ResendCodeInput!): CodeDelivery!
   resetPassword(input: ResetPasswordInput!): Boolean!
   signUp(input: SignUpInput!): SignUpResult!
+  startCheckout(input: StartCheckoutInput!): CheckoutOrder!
   verifyEmail(input: VerifyEmailInput!): SessionTokens!
 }
 
 type PasswordResetGrant {
   expiresAt: DateTime!
   resetToken: String!
+}
+
+input PayOrderInput {
+  card: CardInput!
+  orderId: String!
 }
 
 input PriceRange {
@@ -189,6 +255,7 @@ input PriceRange {
 
 type Query {
   findArtistBySlug(FindArtistInput: FindArtistInput!): FindArtist!
+  findCheckoutOrder(input: FindCheckoutOrderInput!): CheckoutOrder
   findEventTickets(FindEventTicketsInput: FindEventTicketsInput!): EventTickets!
   findEvents(FindEventsInput: FindEventsInput): FindEvents!
   findTicketTypeSeats(FindTicketTypeSeatsInput: FindTicketTypeSeatsInput!): TicketTypeSeats!
@@ -285,6 +352,12 @@ type SignUpResult {
   resendAvailableAt: DateTime!
 }
 
+input StartCheckoutInput {
+  eventId: String!
+  seatIds: [String!]!
+  ticketTypeId: String!
+}
+
 type TicketType {
   currency: String!
   id: String!
@@ -293,7 +366,9 @@ type TicketType {
   priceCents: Int!
   seatsAvailable: Int!
   sectionKey: String!
+  serviceFeeCents: Int!
   tags: [String!]!
+  taxCents: Int!
 }
 
 type TicketTypeSeats {
