@@ -15,6 +15,8 @@ import {
   writeResetGrantCookie,
   readResetGrantCookie,
   deleteResetGrantCookie,
+  writeResetDoneCookie,
+  readResetDoneCookie,
 } from "@/features/auth/api/session-cookies";
 
 vi.mock("server-only", () => ({}));
@@ -157,6 +159,23 @@ describe("session-cookies", () => {
       await deleteResetGrantCookie();
       expect(store.delete).toHaveBeenCalledWith("ss_reset_grant");
       expect(await readResetGrantCookie()).toBeNull();
+    });
+  });
+
+  // Pins the breadcrumb's short lifetime: it only needs to outlive the
+  // reset action's own refresh (15517bd). A regression that left it alive
+  // for much longer (e.g. 24h) would let a reload of /reset-password show
+  // the form instead of redirecting, long after a completed reset.
+  describe("ss_reset_done", () => {
+    it("writes httpOnly with maxAge 60", async () => {
+      await writeResetDoneCookie();
+
+      expect(store.set).toHaveBeenCalledWith(
+        "ss_reset_done",
+        JSON.stringify(true),
+        expect.objectContaining({ httpOnly: true, maxAge: 60 }),
+      );
+      expect(await readResetDoneCookie()).toBe(true);
     });
   });
 });
