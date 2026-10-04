@@ -11,6 +11,8 @@ import { IdentityResolver } from '@identityModule/http/graphql/identity.resolver
 import { IdentityPersistenceModule } from '@identityModule/persistence/identity-persistence.module';
 import { LogCodeSender } from '@identityModule/integration/provider/log-code-sender.provider';
 import { LogSecurityAlertSender } from '@identityModule/integration/provider/log-security-alert-sender.provider';
+import { IdentityPublicApiProvider } from '@identityModule/integration/provider/public-api.provider';
+import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
 import { AuthModule } from '@sharedModules/auth/auth.module';
 import { LoggerModule } from '@sharedModules/logger/logger.module';
 import { UserProfileModule } from '@userProfileModule/user-profile.module';
@@ -25,6 +27,7 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
   providers: [
     { provide: CodeSender, useClass: LogCodeSender },
     { provide: SecurityAlertSender, useClass: LogSecurityAlertSender },
+    { provide: IdentityApi, useClass: IdentityPublicApiProvider },
     VerificationCodeService,
     RegistrationService,
     SessionService,
@@ -33,5 +36,6 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     PasswordResetService,
     IdentityResolver,
   ],
+  exports: [IdentityApi],
 })
 export class IdentityModule {}
