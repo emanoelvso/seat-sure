@@ -153,6 +153,16 @@
           ]
         },
         {
+          "name": "integration",
+          "children": [
+            {
+              "name": "{kebab-case}",
+              "children": [{ "name": "{kebab-case}.spec.ts" }]
+            },
+            { "name": "{kebab-case}.*.ts" }
+          ]
+        },
+        {
           "name": "factory",
           "children": [
             {
