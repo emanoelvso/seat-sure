@@ -278,6 +278,84 @@ describe('LogIn (e2e)', () => {
     expect(verifyAttempt.body.data.verifyEmail.accessToken).toBeDefined();
   });
 
+  it("keeps the reused code's attempt count and expiry exactly as they were, instead of resetting them (AUTH-34 x AUTH-23)", async () => {
+    const email = `negar-reuse-attempts-${randomUUID()}@example.com`;
+    await signUpUnverified(email);
+    const originalCode =
+      fakeCodeSender.sent[fakeCodeSender.sent.length - 1].code;
+    const wrongCode =
+      originalCode.slice(0, -1) + (originalCode.slice(-1) === '0' ? '1' : '0');
+
+    const userRow = await testDbClient(Tables.IdentityUser)
+      .where({ email })
+      .first();
+
+    for (let i = 0; i < 2; i += 1) {
+      const attempt = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: VERIFY_EMAIL_MUTATION,
+          variables: {
+            input: { email, code: wrongCode, rememberMe: false },
+          },
+        });
+      expect(attempt.body.errors[0].extensions.originalError.reason).toBe(
+        'CODE_INCORRECT',
+      );
+    }
+
+    const beforeLogin = await testDbClient(Tables.IdentityVerificationCode)
+      .where({ userId: userRow.id, purpose: 'verify_email' })
+      .first();
+    expect(beforeLogin.failedAttempts).toBe(2);
+
+    // Within the 60s cooldown: this reuses the live code rather than
+    // issuing a fresh one.
+    const response = await logIn(email, PASSWORD);
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.logIn.status).toBe('VERIFICATION_REQUIRED');
+
+    const afterLogin = await testDbClient(Tables.IdentityVerificationCode)
+      .where({ userId: userRow.id, purpose: 'verify_email' })
+      .first();
+    // A regression that resets failedAttempts or extends expiresAt on
+    // reuse would let an attacker who knows the password but not the
+    // inbox guess indefinitely: 4 wrong, log in, repeat.
+    expect(afterLogin.failedAttempts).toBe(2);
+    expect(new Date(afterLogin.expiresAt).getTime()).toBe(
+      new Date(beforeLogin.expiresAt).getTime(),
+    );
+    expect(new Date(afterLogin.createdAt).getTime()).toBe(
+      new Date(beforeLogin.createdAt).getTime(),
+    );
+
+    for (let i = 0; i < 3; i += 1) {
+      const attempt = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: VERIFY_EMAIL_MUTATION,
+          variables: {
+            input: { email, code: wrongCode, rememberMe: false },
+          },
+        });
+      expect(attempt.body.errors[0].extensions.originalError.reason).toBe(
+        'CODE_INCORRECT',
+      );
+    }
+
+    const finalAttempt = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: VERIFY_EMAIL_MUTATION,
+        variables: {
+          input: { email, code: originalCode, rememberMe: false },
+        },
+      });
+    expect(finalAttempt.body.errors[0].extensions.originalError.reason).toBe(
+      'CODE_ATTEMPTS_EXCEEDED',
+    );
+  });
+
   it('locks after 5 failures within 15 minutes and unlocks after the window (AUTH-35)', async () => {
     const email = `negar-lockout-${randomUUID()}@example.com`;
     await signUpAndVerify(email);
