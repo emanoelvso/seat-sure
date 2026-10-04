@@ -71,6 +71,24 @@ const RESEND_CODE_MUTATION = `
   }
 `;
 
+const REQUEST_RESET_MUTATION = `
+  mutation RequestPasswordReset($input: RequestPasswordResetInput!) {
+    requestPasswordReset(input: $input) {
+      codeSent
+      resendAvailableAt
+    }
+  }
+`;
+
+const CONFIRM_CODE_MUTATION = `
+  mutation ConfirmPasswordResetCode($input: ConfirmPasswordResetCodeInput!) {
+    confirmPasswordResetCode(input: $input) {
+      resetToken
+      expiresAt
+    }
+  }
+`;
+
 describe('ResendCode (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
@@ -141,12 +159,28 @@ describe('ResendCode (e2e)', () => {
         variables: { input: { email, code, rememberMe: false } },
       });
 
-  const resendCode = (email: string, purpose = 'verify_email') =>
+  const resendCode = (email: string, purpose = 'VERIFY_EMAIL') =>
     request(app.getHttpServer())
       .post('/graphql')
       .send({
         query: RESEND_CODE_MUTATION,
         variables: { input: { email, purpose } },
+      });
+
+  const requestPasswordReset = (email: string) =>
+    request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: REQUEST_RESET_MUTATION,
+        variables: { input: { email } },
+      });
+
+  const confirmPasswordResetCode = (email: string, code: string) =>
+    request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: CONFIRM_CODE_MUTATION,
+        variables: { input: { email, code } },
       });
 
   it('sends a new code once the original is 61s old; the old code is refused and the new one works (AUTH-26)', async () => {
@@ -202,5 +236,57 @@ describe('ResendCode (e2e)', () => {
     expect(response.body.errors).toBeUndefined();
     expect(response.body.data.resendCode.codeSent).toBe(true);
     expect(fakeCodeSender.sent).toHaveLength(0);
+  });
+
+  // The actual bug (Gap 1): the web used to send the purpose as a bare,
+  // hyphenated string ("verify-email"/"reset-password") that the schema
+  // didn't validate. A GraphQL enum must now reject anything that isn't
+  // VERIFY_EMAIL/RESET_PASSWORD before the resolver (and no code row) is
+  // ever reached.
+  it('rejects a purpose value outside the enum and inserts no code row', async () => {
+    const email = `negar-bad-purpose-${randomUUID()}@example.com`;
+    await signUp(email);
+    fakeCodeSender.reset();
+
+    const response = await resendCode(email, 'verify-email');
+
+    expect(response.body.errors).toBeDefined();
+    expect(fakeCodeSender.sent).toHaveLength(0);
+    const rows = await testDbClient(Tables.IdentityVerificationCode).where({
+      purpose: 'verify_email',
+    });
+    expect(rows).toHaveLength(1);
+  });
+
+  it('resends a reset_password code via the RESET_PASSWORD enum value; the new code works and the original is refused (AUTH-60)', async () => {
+    const email = `negar-resend-reset-${randomUUID()}@example.com`;
+    await signUp(email);
+    const verifyCode = fakeCodeSender.sent[0].code;
+    await verifyEmail(email, verifyCode);
+    fakeCodeSender.reset();
+
+    await requestPasswordReset(email);
+    const oldCode = fakeCodeSender.sent[0].code;
+
+    await testDbClient(Tables.IdentityVerificationCode)
+      .where({ purpose: 'reset_password' })
+      .update({ createdAt: new Date(Date.now() - 61_000) });
+
+    const response = await resendCode(email, 'RESET_PASSWORD');
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.resendCode.codeSent).toBe(true);
+    expect(fakeCodeSender.sent).toHaveLength(2);
+    const newCode = fakeCodeSender.sent[1].code;
+
+    const oldAttempt = await confirmPasswordResetCode(email, oldCode);
+    expect(oldAttempt.body.errors[0].extensions.originalError.reason).toBe(
+      'CODE_INCORRECT',
+    );
+
+    const newAttempt = await confirmPasswordResetCode(email, newCode);
+    expect(newAttempt.body.errors).toBeUndefined();
+    expect(
+      newAttempt.body.data.confirmPasswordResetCode.resetToken,
+    ).toBeDefined();
   });
 });

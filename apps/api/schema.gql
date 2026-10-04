@@ -207,7 +207,12 @@ input RequestPasswordResetInput {
 
 input ResendCodeInput {
   email: String!
-  purpose: String!
+  purpose: ResendCodePurpose!
+}
+
+enum ResendCodePurpose {
+  RESET_PASSWORD
+  VERIFY_EMAIL
 }
 
 input ResetPasswordInput {

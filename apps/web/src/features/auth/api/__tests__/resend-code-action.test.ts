@@ -56,7 +56,12 @@ describe("resendCodeAction", () => {
 
     expect(mockedFetch).toHaveBeenCalledWith(
       expect.anything(),
-      { input: { email: "amara.okafor@example.com", purpose: "verify-email" } },
+      {
+        input: {
+          email: "amara.okafor@example.com",
+          purpose: "VERIFY_EMAIL",
+        },
+      },
       { revalidate: 0 },
     );
     expect(mockedWritePendingCookie).toHaveBeenCalledWith({
@@ -92,7 +97,7 @@ describe("resendCodeAction", () => {
       {
         input: {
           email: "thandiwe.nkosi@example.com",
-          purpose: "reset-password",
+          purpose: "RESET_PASSWORD",
         },
       },
       { revalidate: 0 },

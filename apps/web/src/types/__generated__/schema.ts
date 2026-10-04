@@ -294,8 +294,12 @@ export type RequestPasswordResetInput = {
 
 export type ResendCodeInput = {
   email: Scalars['String']['input'];
-  purpose: Scalars['String']['input'];
+  purpose: ResendCodePurpose;
 };
+
+export type ResendCodePurpose =
+  | 'RESET_PASSWORD'
+  | 'VERIFY_EMAIL';
 
 export type ResetPasswordInput = {
   newPassword: Scalars['String']['input'];

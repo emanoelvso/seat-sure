@@ -17,11 +17,19 @@ import { RefreshSessionInput } from '@identityModule/http/graphql/type/refresh-s
 import { RequestPasswordResetInput } from '@identityModule/http/graphql/type/request-password-reset-input.type';
 import { ResetPasswordInput } from '@identityModule/http/graphql/type/reset-password-input.type';
 import { ResendCodeInput } from '@identityModule/http/graphql/type/resend-code-input.type';
+import { ResendCodePurpose } from '@identityModule/http/graphql/type/resend-code-purpose.type';
 import { SessionTokens } from '@identityModule/http/graphql/type/session-tokens.type';
 import { SignUpInput } from '@identityModule/http/graphql/type/sign-up-input.type';
 import { SignUpResult } from '@identityModule/http/graphql/type/sign-up-result.type';
 import { VerifyEmailInput } from '@identityModule/http/graphql/type/verify-email-input.type';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
+
+// Maps the GraphQL-facing enum to the internal purpose string the identity
+// module's services and persistence layer use everywhere else.
+const RESEND_CODE_PURPOSE_MAP: Record<ResendCodePurpose, CodeSenderPurpose> = {
+  [ResendCodePurpose.VERIFY_EMAIL]: 'verify_email',
+  [ResendCodePurpose.RESET_PASSWORD]: 'reset_password',
+};
 
 @Resolver()
 export class IdentityResolver {
@@ -52,7 +60,7 @@ export class IdentityResolver {
   ): Promise<CodeDelivery> {
     return this.verificationCodeService.resend(
       input.email,
-      input.purpose as CodeSenderPurpose,
+      RESEND_CODE_PURPOSE_MAP[input.purpose],
       new Date(),
     );
   }

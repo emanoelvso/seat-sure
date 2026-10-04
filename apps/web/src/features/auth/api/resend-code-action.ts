@@ -12,6 +12,7 @@ import type {
   CodeVerificationResendState,
 } from "@/features/auth/components/code-verification-form";
 import { graphqlServerFetch } from "@/lib/graphql-server";
+import type { ResendCodePurpose } from "@/types/__generated__/graphql";
 
 interface VerifyEmailPendingCookie {
   email: string;
@@ -24,6 +25,15 @@ interface ResetPendingCookie {
 }
 
 const SEND_FAILURE_MESSAGE = "We couldn't send the code. Please try again.";
+
+// Maps the web's own purpose vocabulary to the API's ResendCodePurpose
+// GraphQL enum. Keeping this mapping explicit (rather than passing the web
+// string straight through) is what closed Gap 1: the API now rejects
+// anything that isn't exactly one of these two values.
+const API_PURPOSE: Record<CodeVerificationPurpose, ResendCodePurpose> = {
+  "verify-email": "VERIFY_EMAIL",
+  "reset-password": "RESET_PASSWORD",
+};
 
 // AUTH-26, AUTH-27: asks the API for a new code for the pending email and
 // purpose, updates the pending cookie's resendAvailableAt/codeSent on
@@ -41,7 +51,7 @@ export async function resendCodeAction(
     try {
       const { resendCode } = await graphqlServerFetch(
         RESEND_CODE,
-        { input: { email: pending.email, purpose } },
+        { input: { email: pending.email, purpose: API_PURPOSE[purpose] } },
         { revalidate: 0 },
       );
 
@@ -68,7 +78,7 @@ export async function resendCodeAction(
   try {
     const { resendCode } = await graphqlServerFetch(
       RESEND_CODE,
-      { input: { email: pending.email, purpose } },
+      { input: { email: pending.email, purpose: API_PURPOSE[purpose] } },
       { revalidate: 0 },
     );
 

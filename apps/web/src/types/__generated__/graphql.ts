@@ -69,8 +69,12 @@ export type RequestPasswordResetInput = {
 
 export type ResendCodeInput = {
   email: string;
-  purpose: string;
+  purpose: ResendCodePurpose;
 };
+
+export type ResendCodePurpose =
+  | 'RESET_PASSWORD'
+  | 'VERIFY_EMAIL';
 
 export type ResetPasswordInput = {
   newPassword: string;
