@@ -51,6 +51,27 @@ export class OrderRepository extends DefaultTypeOrmRepository<Order> {
     return rows.length === 1;
   }
 
+  // Ends a payment attempt that charged nothing, so the buyer can retry
+  async releasePayment(orderId: string): Promise<void> {
+    await this.entityManager.update(
+      Order,
+      { id: orderId, status: OrderStatus.PROCESSING },
+      { status: OrderStatus.PENDING },
+    );
+  }
+
+  async markPaid(
+    manager: EntityManager,
+    orderId: string,
+    { paymentId, paidAt }: { paymentId: string; paidAt: Date },
+  ): Promise<void> {
+    await manager.update(
+      Order,
+      { id: orderId, status: OrderStatus.PROCESSING },
+      { status: OrderStatus.PAID, paymentId, paidAt },
+    );
+  }
+
   async cancel(manager: EntityManager, orderId: string): Promise<void> {
     await manager.update(
       Order,

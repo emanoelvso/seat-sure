@@ -35,12 +35,22 @@ const PAY_ORDER = `
   }
 `;
 
+const FIND_UNAVAILABLE_SEATS = `
+  query FindUnavailableSeats($input: FindUnavailableSeatsInput!) {
+    findUnavailableSeats(FindUnavailableSeatsInput: $input) {
+      seatIds
+    }
+  }
+`;
+
 const VALID_CARD = {
   number: '4242 4242 4242 4242',
   holder: 'Jane Doe',
   expiry: '06/30',
   cvv: '123',
 };
+
+const DECLINED_CARD = { ...VALID_CARD, number: '4000 0000 0000 0002' };
 
 describe('TicketingResolver payOrder (e2e)', () => {
   let app: INestApplication;
@@ -170,6 +180,20 @@ describe('TicketingResolver payOrder (e2e)', () => {
   const orderRow = (orderId: string) =>
     testDbClient(Tables.Order).where({ id: orderId }).first();
 
+  const paymentsOf = (orderId: string) =>
+    testDbClient(Tables.BillingPayment).where({ orderId });
+
+  const findUnavailableSeats = async (eventId: string): Promise<string[]> => {
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: FIND_UNAVAILABLE_SEATS,
+        variables: { input: { eventId } },
+      })
+      .expect(200);
+    return response.body.data.findUnavailableSeats.seatIds;
+  };
+
   describe('guards', () => {
     it('fails an order that expired 1 s ago with ORDER_EXPIRED without charging (PAY-41)', async () => {
       const { order } = await insertOrder({ expiresAt: fromNow(-1_000) });
@@ -279,6 +303,144 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(body.errors[0].extensions.code).toBe('UNAUTHENTICATED');
       expect(body.data).toBeNull();
       expect(gateway.charge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a card the gateway approves', () => {
+    it('records one succeeded payment for the order total with the brand and last 4 (PAY-37)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      const payments = await paymentsOf(order.id);
+      expect(payments).toHaveLength(1);
+      expect(payments[0]).toMatchObject({
+        userId,
+        orderId: order.id,
+        status: 'succeeded',
+        amountCents: 110700,
+        currency: 'USD',
+        cardBrand: 'visa',
+        cardLast4: '4242',
+      });
+      expect(gateway.charge).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks the order paid with paidAt and the payment id (PAY-38)', async () => {
+      const { order, items } = await insertOrder();
+      const before = Date.now();
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder).toEqual({
+        id: order.id,
+        status: 'PAID',
+        totalCents: 110700,
+        items: expect.arrayContaining(
+          items.map((item) => ({ seatId: item.seatId })),
+        ),
+      });
+      const [payment] = await paymentsOf(order.id);
+      const row = await orderRow(order.id);
+      expect(row.status).toBe('paid');
+      expect(row.paymentId).toBe(payment.id);
+      expect(row.paidAt.getTime()).toBeGreaterThanOrEqual(before - 1_000);
+      expect(row.paidAt.getTime()).toBeLessThanOrEqual(Date.now() + 1_000);
+    });
+
+    it('issues one ticket per item with distinct 12-character codes and deletes the holds (PAY-38)', async () => {
+      const { order, items } = await insertOrder();
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      const tickets = await testDbClient(Tables.Ticket).where({
+        eventId: order.eventId,
+      });
+      expect(tickets).toHaveLength(2);
+      expect(
+        tickets
+          .map(({ status, userId: owner, seatId, orderItemId }) => ({
+            status,
+            userId: owner,
+            seatId,
+            orderItemId,
+          }))
+          .sort((a, b) => a.seatId.localeCompare(b.seatId)),
+      ).toEqual(
+        items
+          .map((item) => ({
+            status: 'issued',
+            userId,
+            seatId: item.seatId,
+            orderItemId: item.id,
+          }))
+          .sort((a, b) => a.seatId.localeCompare(b.seatId)),
+      );
+      for (const ticket of tickets) {
+        expect(ticket.code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{12}$/);
+      }
+      expect(tickets[0].code).not.toBe(tickets[1].code);
+      expect(
+        await testDbClient(Tables.SeatHold).where({ eventId: order.eventId }),
+      ).toHaveLength(0);
+    });
+
+    it('keeps both seats unavailable once sold (PAY-57)', async () => {
+      const { order, items } = await insertOrder();
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect((await findUnavailableSeats(order.eventId)).sort()).toEqual(
+        items.map((item) => item.seatId).sort(),
+      );
+    });
+  });
+
+  describe('a card the gateway declines or a gateway failure', () => {
+    it('fails with CARD_DECLINED, records a failed payment and leaves the order pending with its holds; a retry with another card succeeds (PAY-40)', async () => {
+      const { order, holds } = await insertOrder();
+
+      const declined = await payOrder(order.id, DECLINED_CARD);
+
+      expect(errorOf(declined)?.reason).toBe('CARD_DECLINED');
+      const payments = await paymentsOf(order.id);
+      expect(payments).toHaveLength(1);
+      expect(payments[0]).toMatchObject({
+        status: 'failed',
+        cardLast4: '0002',
+      });
+      expect((await orderRow(order.id)).status).toBe('pending');
+      expect(
+        (await testDbClient(Tables.SeatHold).where({ userId }))
+          .map((hold) => hold.id)
+          .sort(),
+      ).toEqual(holds.map((hold) => hold.id).sort());
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+
+      const retried = await payOrder(order.id);
+
+      expect(retried.errors).toBeUndefined();
+      expect(retried.data.payOrder.status).toBe('PAID');
+      expect(
+        (await paymentsOf(order.id)).map((payment) => payment.status).sort(),
+      ).toEqual(['failed', 'succeeded']);
+    });
+
+    it('answers a gateway error with a generic error, leaves the order pending and records no payment (PAY-53)', async () => {
+      const { order } = await insertOrder();
+      gateway.charge.mockRejectedValueOnce(new Error('gateway unavailable'));
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors[0].extensions.code).toBe('INTERNAL_SERVER_ERROR');
+      expect(errorOf(body)?.reason).toBeUndefined();
+      expect((await orderRow(order.id)).status).toBe('pending');
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
     });
   });
 });

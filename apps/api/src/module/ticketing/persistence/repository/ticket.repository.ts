@@ -50,4 +50,8 @@ export class TicketRepository extends DefaultTypeOrmRepository<Ticket> {
 
     return rows.map((row) => row.seatId);
   }
+
+  async issue(manager: EntityManager, tickets: Ticket[]): Promise<void> {
+    await manager.insert(Ticket, tickets);
+  }
 }
