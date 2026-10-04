@@ -45,4 +45,19 @@ export const paths = {
   session: {
     getHref: () => "/api/auth/session",
   },
+  checkoutStart: {
+    getHref: (eventId: string, ticketTypeId: string, seatIds: string[]) =>
+      `/events/${encodeURIComponent(eventId)}/tickets/${encodeURIComponent(ticketTypeId)}/checkout?seats=${seatIds.map(encodeURIComponent).join(",")}`,
+  },
+  checkout: {
+    getHref: (orderId: string) => `/checkout/${encodeURIComponent(orderId)}`,
+  },
+  checkoutSuccess: {
+    getHref: (orderId: string) =>
+      `/checkout/${encodeURIComponent(orderId)}/success`,
+  },
+  sessionRefresh: {
+    getHref: (redirectTo: string) =>
+      `/api/auth/refresh?redirectTo=${encodeURIComponent(redirectTo)}`,
+  },
 };

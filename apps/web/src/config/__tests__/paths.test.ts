@@ -115,3 +115,33 @@ describe("paths.session", () => {
     expect(paths.session.getHref()).toBe("/api/auth/session");
   });
 });
+
+describe("paths.checkoutStart", () => {
+  it("builds the checkout start URL, encoding ids and seats while preserving pick order (PAY-01)", () => {
+    expect(
+      paths.checkoutStart.getHref("e 1", "t/2", ["b-2", "a/1", "c-3"]),
+    ).toBe("/events/e%201/tickets/t%2F2/checkout?seats=b-2,a%2F1,c-3");
+  });
+});
+
+describe("paths.checkout", () => {
+  it("links to the checkout order page, encoding the order id", () => {
+    expect(paths.checkout.getHref("order/1")).toBe("/checkout/order%2F1");
+  });
+});
+
+describe("paths.checkoutSuccess", () => {
+  it("links to the checkout success page, encoding the order id", () => {
+    expect(paths.checkoutSuccess.getHref("order/1")).toBe(
+      "/checkout/order%2F1/success",
+    );
+  });
+});
+
+describe("paths.sessionRefresh", () => {
+  it("links to the refresh route with an encoded redirectTo (PAY-16, PAY-48)", () => {
+    expect(paths.sessionRefresh.getHref("/checkout/o1")).toBe(
+      "/api/auth/refresh?redirectTo=%2Fcheckout%2Fo1",
+    );
+  });
+});
