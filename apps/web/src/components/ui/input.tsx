@@ -1,6 +1,11 @@
 import { Icon } from "@solar-icons/react/lib/types";
 import { cva, VariantProps } from "class-variance-authority";
-import { createElement, useId, type InputHTMLAttributes } from "react";
+import {
+  createElement,
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from "react";
 
 const fieldsetVariants = cva(
   "relative w-full bg-neutral-700 border rounded-lg",
@@ -52,6 +57,8 @@ interface InputProps
   rightIcon?: Icon;
   rightIconLabel?: string;
   onRightIconClick?: () => void;
+  /** Non-interactive content shown at the right, e.g. a labelled status icon. Not focusable, not a button. */
+  rightAdornment?: ReactNode;
   supportingText?: string;
   counter?: string;
 }
@@ -64,6 +71,7 @@ export function Input({
   rightIcon,
   rightIconLabel,
   onRightIconClick,
+  rightAdornment,
   supportingText,
   counter,
   id,
@@ -100,7 +108,7 @@ export function Input({
           aria-labelledby={label ? labelId : undefined}
           aria-invalid={isError || undefined}
           aria-describedby={supportingText ? supportingTextId : undefined}
-          className={`${inputVariants({ size })} ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon ? "pr-12" : "pr-4"} py-2 ${className ?? ""}`}
+          className={`${inputVariants({ size })} ${leftIcon ? "pl-12" : "pl-4"} ${rightIcon || rightAdornment ? "pr-12" : "pr-4"} py-2 ${className ?? ""}`}
           {...props}
         />
         {rightIcon && (
@@ -112,6 +120,11 @@ export function Input({
           >
             {createElement(rightIcon, { size: 18 })}
           </button>
+        )}
+        {!rightIcon && rightAdornment && (
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-300">
+            {rightAdornment}
+          </span>
         )}
       </fieldset>
       <div className={supportingTextVariants({ variant })}>

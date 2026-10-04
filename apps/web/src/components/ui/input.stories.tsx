@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn } from "storybook/test";
 import { Input } from "./input";
-import { EyeIcon, MagnifierIcon } from "@solar-icons/react/outline";
+import { CheckCircleIcon, EyeIcon, MagnifierIcon } from "@solar-icons/react/outline";
 
 const meta: Meta<typeof Input> = {
   title: "Components/Input",
@@ -88,5 +88,25 @@ export const WithRightIconAction: Story = {
     const button = canvas.getByRole("button", { name: "Show password" });
     await userEvent.click(button);
     await expect(args.onRightIconClick).toHaveBeenCalledTimes(1);
+  },
+} satisfies Story;
+
+// PAY-30: the card-number field's non-interactive valid-number check. It
+// shows a labelled icon, adds no button, and stays out of the tab order.
+export const WithRightAdornment: Story = {
+  args: {
+    label: "Card number",
+    rightAdornment: (
+      <span role="img" aria-label="Valid card number">
+        <CheckCircleIcon size={18} />
+      </span>
+    ),
+  },
+  play: async ({ canvas }) => {
+    const adornment = canvas.getByRole("img", { name: "Valid card number" });
+    await expect(adornment).toBeVisible();
+    await expect(adornment).not.toHaveAttribute("tabindex");
+
+    await expect(canvas.queryByRole("button")).toBeNull();
   },
 } satisfies Story;
