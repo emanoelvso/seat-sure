@@ -5,7 +5,7 @@ import { Popover } from "radix-ui";
 import { FormEvent, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { subCategoriePillVariant } from "@/components/ui/sub-categorie-pill";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 import { PriceRange } from "@/features/tickets/utils/ticket-listings";
 
 interface PriceRangeFilterProps {

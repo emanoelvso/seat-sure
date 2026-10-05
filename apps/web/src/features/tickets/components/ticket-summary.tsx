@@ -12,7 +12,7 @@ import {
   formatEventDate,
   formatEventTimeRange,
 } from "@/utils/event-format";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 
 // The parts of a ticket summary shared by the section detail panel and the
 // seat picks panel.

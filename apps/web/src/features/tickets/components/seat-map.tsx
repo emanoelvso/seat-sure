@@ -7,7 +7,7 @@ import {
   SeatMapSection,
   TicketType,
 } from "@/features/tickets/api/find-event-tickets";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 
 interface SeatMapProps {
   layout: SeatMapLayout;

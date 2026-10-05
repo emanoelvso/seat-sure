@@ -18,7 +18,7 @@ import {
   SEAT_SIZE,
   STAGE_HEIGHT,
 } from "@/features/tickets/utils/seat-chart";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 
 interface SeatChartProps {
   seats: Seat[];

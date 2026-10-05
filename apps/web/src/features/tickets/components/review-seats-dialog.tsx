@@ -15,7 +15,7 @@ import type {
 } from "@/features/tickets/api/find-event-tickets";
 import type { Seat } from "@/features/tickets/api/find-ticket-type-seats";
 import { TicketTags } from "@/features/tickets/components/ticket-summary";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 import { byNumber } from "@/features/tickets/utils/seat-picks";
 import {
   formatEventDate,
