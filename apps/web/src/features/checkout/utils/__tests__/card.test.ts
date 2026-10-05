@@ -230,6 +230,22 @@ describe("detectBrand / brandLabel", () => {
     expect(detectBrand("2721000000000000")).toBe("card");
   });
 
+  it.each([
+    ["50", "card"],
+    ["51", "mastercard"],
+    ["55", "mastercard"],
+    ["56", "card"],
+    ["2220", "card"],
+    ["2221", "mastercard"],
+    ["2720", "mastercard"],
+    ["2721", "card"],
+  ])("detects %s on the mastercard range edge as %s (PAY-32)", (prefix, brand) => {
+    const number = luhnValidNumber(16, prefix);
+
+    expect(validateCard(buildCard({ number }), NOW).number).toBe("");
+    expect(detectBrand(number)).toBe(brand);
+  });
+
   it("detects amex for a prefix of 34 or 37", () => {
     expect(detectBrand("340000000000000")).toBe("amex");
     expect(detectBrand("370000000000000")).toBe("amex");
