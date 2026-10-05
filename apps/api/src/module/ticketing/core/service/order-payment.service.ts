@@ -30,13 +30,20 @@ const seatsUnavailable = () =>
     'Some of your seats were just taken. Pick your seats again.',
   );
 
-// A seat lost between the start and the issuance: a missing or foreign hold,
-// or a live ticket already on the seat (unique violation, AD-014).
-const isIssuanceConflict = (error: unknown): boolean =>
-  (error instanceof TicketingException &&
-    error.reason === 'SEATS_UNAVAILABLE') ||
-  (error instanceof QueryFailedError &&
-    (error.driverError as { code?: string }).code === '23505');
+// Attempts at issuing with fresh ticket codes when a code is already taken
+const MAX_ISSUE_ATTEMPTS = 3;
+
+// The unique constraint a query broke, if it broke one
+const violatedConstraint = (error: unknown): string | undefined => {
+  if (!(error instanceof QueryFailedError)) {
+    return undefined;
+  }
+  const driverError = error.driverError as {
+    code?: string;
+    constraint?: string;
+  };
+  return driverError.code === '23505' ? driverError.constraint : undefined;
+};
 
 const paymentInProgress = () =>
   new TicketingException(
@@ -169,15 +176,19 @@ export class OrderPaymentService {
 
     let codes: string[];
     try {
-      codes = await this.issue(order, charge.paymentId, now);
+      codes = await this.issueWithFreshCodes(order, charge.paymentId, now);
     } catch (error) {
-      if (!isIssuanceConflict(error)) {
+      const seatLost = this.isSeatConflict(error);
+      if (!seatLost && !this.isCodeCollision(error)) {
         throw error;
       }
       // Billing has no shared transaction with Ticketing, so the charge is
       // compensated by a refund (AD-022, PAY-46).
       await this.billingApi.refund(charge.paymentId);
       await this.orderRepository.markFailed(order.id);
+      if (!seatLost) {
+        throw new Error("We couldn't issue your tickets.");
+      }
       throw seatsUnavailable();
     }
     await this.sendTickets(order, codes);
@@ -186,6 +197,52 @@ export class OrderPaymentService {
     order.paymentId = charge.paymentId;
 
     return toCheckoutOrderModel(order, order.items, now);
+  }
+
+  // A seat lost between the start and the issuance: a missing or foreign hold,
+  // or a live ticket already on the seat (unique violation, AD-014).
+  private isSeatConflict(error: unknown): boolean {
+    if (
+      error instanceof TicketingException &&
+      error.reason === 'SEATS_UNAVAILABLE'
+    ) {
+      return true;
+    }
+    const constraint = violatedConstraint(error);
+    return (
+      constraint !== undefined &&
+      this.dataSource
+        .getMetadata(Ticket)
+        .indices.some((index) => index.isUnique && index.name === constraint)
+    );
+  }
+
+  private isCodeCollision(error: unknown): boolean {
+    const constraint = violatedConstraint(error);
+    return (
+      constraint !== undefined &&
+      this.dataSource
+        .getMetadata(Ticket)
+        .uniques.some((unique) => unique.name === constraint)
+    );
+  }
+
+  // A taken ticket code rolls the whole issuance back, so it is retried with
+  // new codes. The charge is not repeated.
+  private async issueWithFreshCodes(
+    order: Order,
+    paymentId: string,
+    now: Date,
+  ): Promise<string[]> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.issue(order, paymentId, now);
+      } catch (error) {
+        if (attempt >= MAX_ISSUE_ATTEMPTS || !this.isCodeCollision(error)) {
+          throw error;
+        }
+      }
+    }
   }
 
   // One Ticketing transaction (AD-023, PAY-38): the user's holds must still

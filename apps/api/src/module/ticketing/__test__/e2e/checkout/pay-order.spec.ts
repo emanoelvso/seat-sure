@@ -21,6 +21,7 @@ import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory'
 import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
+import { TicketCodeGenerator } from '@ticketingModule/core/service/ticket-code-generator.service';
 import { LogTicketSender } from '@ticketingModule/integration/provider/log-ticket-sender.provider';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
@@ -644,6 +645,68 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const tickets = await testDbClient(Tables.Ticket);
       expect(tickets.map((ticket) => ticket.id)).toEqual([sold.id]);
       expect(sender.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ticket code collision', () => {
+    const TAKEN_CODE = 'TAKENCODE234';
+
+    // A ticket of another event already owns TAKEN_CODE
+    const insertTicketWithTakenCode = async () => {
+      const taken = ticketFactory.build({ code: TAKEN_CODE });
+      await testDbClient.batchInsert(Tables.Ticket, [taken]);
+      return taken;
+    };
+
+    const spyOnCodes = () =>
+      jest.spyOn(module.get(TicketCodeGenerator), 'generate');
+
+    it('retries the issuance with fresh codes and charges once', async () => {
+      const { order } = await insertOrder();
+      await insertTicketWithTakenCode();
+      const generate = spyOnCodes().mockReturnValueOnce(TAKEN_CODE);
+
+      try {
+        const body = await payOrder(order.id);
+
+        expect(body.errors).toBeUndefined();
+        expect(body.data.payOrder.status).toBe('PAID');
+      } finally {
+        generate.mockRestore();
+      }
+      expect(gateway.charge).toHaveBeenCalledTimes(1);
+      expect(gateway.refund).not.toHaveBeenCalled();
+      const payments = await paymentsOf(order.id);
+      expect(payments.map((payment) => payment.status)).toEqual(['succeeded']);
+      const codes = (await testDbClient(Tables.Ticket).where({ userId })).map(
+        (ticket) => ticket.code,
+      );
+      expect(codes).toHaveLength(2);
+      expect(new Set(codes).size).toBe(2);
+      expect(codes).not.toContain(TAKEN_CODE);
+    });
+
+    it('refunds and fails the order with a generic error when every retry collides', async () => {
+      const { order } = await insertOrder();
+      const taken = await insertTicketWithTakenCode();
+      const generate = spyOnCodes().mockReturnValue(TAKEN_CODE);
+
+      try {
+        const body = await payOrder(order.id);
+
+        expect(body.errors[0].extensions.code).toBe('INTERNAL_SERVER_ERROR');
+        expect(errorOf(body)?.reason).toBeUndefined();
+      } finally {
+        generate.mockRestore();
+      }
+      expect(gateway.charge).toHaveBeenCalledTimes(1);
+      const payments = await paymentsOf(order.id);
+      expect(payments).toHaveLength(1);
+      expect(payments[0].status).toBe('refunded');
+      expect(gateway.refund).toHaveBeenCalledTimes(1);
+      expect((await orderRow(order.id)).status).toBe('failed');
+      const tickets = await testDbClient(Tables.Ticket);
+      expect(tickets.map((ticket) => ticket.id)).toEqual([taken.id]);
     });
   });
 
