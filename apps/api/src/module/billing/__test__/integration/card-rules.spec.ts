@@ -194,6 +194,41 @@ describe('card-rules', () => {
       );
       expect(result.cvv).toBe('Enter a valid CVV');
     });
+
+    it.each(['51', '2221'])(
+      'passes 3 digits for a Mastercard number starting with %s',
+      (prefix) => {
+        const result = validateCard(
+          buildCard({ number: luhnValidNumber(16, prefix), cvv: '123' }),
+          NOW,
+        );
+        expect(result.cvv).toBe('');
+      },
+    );
+
+    it('fails 4 digits for a Mastercard number', () => {
+      const result = validateCard(
+        buildCard({ number: luhnValidNumber(16, '51'), cvv: '1234' }),
+        NOW,
+      );
+      expect(result.cvv).toBe('Enter a valid CVV');
+    });
+
+    it('passes 3 digits for a generic card number', () => {
+      const result = validateCard(
+        buildCard({ number: luhnValidNumber(16, '6011'), cvv: '123' }),
+        NOW,
+      );
+      expect(result.cvv).toBe('');
+    });
+
+    it('fails 4 digits for a generic card number', () => {
+      const result = validateCard(
+        buildCard({ number: luhnValidNumber(16, '6011'), cvv: '1234' }),
+        NOW,
+      );
+      expect(result.cvv).toBe('Enter a valid CVV');
+    });
   });
 
   describe('detectBrand', () => {
