@@ -168,6 +168,45 @@ describe("cvv (PAY-44)", () => {
       validateCard(buildCard({ number: amexNumber, cvv: "123" }), NOW).cvv,
     ).toBe("Enter a valid CVV");
   });
+
+  it.each(["51", "2221"])(
+    "passes 3 digits for a Mastercard number starting with %s",
+    (prefix) => {
+      expect(
+        validateCard(
+          buildCard({ number: luhnValidNumber(16, prefix), cvv: "123" }),
+          NOW,
+        ).cvv,
+      ).toBe("");
+    },
+  );
+
+  it("fails 4 digits for a Mastercard number", () => {
+    expect(
+      validateCard(
+        buildCard({ number: luhnValidNumber(16, "51"), cvv: "1234" }),
+        NOW,
+      ).cvv,
+    ).toBe("Enter a valid CVV");
+  });
+
+  it("passes 3 digits for a generic card number", () => {
+    expect(
+      validateCard(
+        buildCard({ number: luhnValidNumber(16, "6011"), cvv: "123" }),
+        NOW,
+      ).cvv,
+    ).toBe("");
+  });
+
+  it("fails 4 digits for a generic card number", () => {
+    expect(
+      validateCard(
+        buildCard({ number: luhnValidNumber(16, "6011"), cvv: "1234" }),
+        NOW,
+      ).cvv,
+    ).toBe("Enter a valid CVV");
+  });
 });
 
 describe("detectBrand / brandLabel", () => {
