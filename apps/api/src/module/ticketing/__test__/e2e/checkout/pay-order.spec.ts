@@ -608,6 +608,26 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(sender.send).not.toHaveBeenCalled();
     });
 
+    it('refunds and fails the order when another user reclaimed a hold after the checkout started', async () => {
+      const { order, holds } = await insertOrder();
+      const otherUserId = randomUUID();
+      await testDbClient(Tables.SeatHold)
+        .where({ id: holds[0].id })
+        .update({ userId: otherUserId, expiresAt: fromNow(10 * 60_000) });
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      await expectRefundedAndFailed(order.id);
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+      const reclaimed = await testDbClient(Tables.SeatHold).where({
+        id: holds[0].id,
+      });
+      expect(reclaimed).toHaveLength(1);
+      expect(reclaimed[0].userId).toBe(otherUserId);
+      expect(sender.send).not.toHaveBeenCalled();
+    });
+
     it('refunds and fails the order when a seat already has an issued ticket of another order', async () => {
       const { order, items } = await insertOrder();
       const sold = ticketFactory.build({
