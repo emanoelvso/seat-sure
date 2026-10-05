@@ -71,7 +71,11 @@ export function EventSeatsView({
   );
   const unavailableIds = new Set(unavailableSeatIds);
   const notice = seatNotice(seats, unavailableIds, quantity);
-  const pickedSeats = seats.filter((seat) => picks.includes(seat.id));
+  // In pick order (PAY-01): checkout gets the seat ids in the order they
+  // were picked, not the layout order `seats` arrives in.
+  const pickedSeats = picks
+    .map((id) => seats.find((seat) => seat.id === id))
+    .filter((seat): seat is Seat => seat !== undefined);
 
   function pick(seat: Seat) {
     setPicks((current) => pickSeat(current, seat, seats, quantity));
@@ -151,6 +155,8 @@ export function EventSeatsView({
       <ReviewSeatsDialog
         open={reviewing}
         onClose={closeReview}
+        eventId={event.id}
+        ticketTypeId={ticketType.id}
         event={event}
         ticketType={ticketType}
         pickedSeats={pickedSeats}
