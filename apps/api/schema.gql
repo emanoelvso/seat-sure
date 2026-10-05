@@ -8,6 +8,24 @@ type Artist {
   name: String!
 }
 
+type CodeDelivery {
+  codeSent: Boolean!
+  resendAvailableAt: DateTime!
+}
+
+input ConfirmPasswordResetCodeInput {
+  code: String!
+  email: String!
+}
+
+type CurrentUser {
+  avatarUrl: String
+  email: String!
+  firstName: String!
+  id: String!
+  lastName: String!
+}
+
 input DateRange {
   from: DateTime!
   to: DateTime
@@ -129,8 +147,39 @@ type HomeSections {
   sports: EventSection
 }
 
+input LogInInput {
+  email: String!
+  password: String!
+  rememberMe: Boolean!
+}
+
+type LogInResult {
+  codeSent: Boolean
+  resendAvailableAt: DateTime
+  session: SessionTokens
+  status: LogInStatus!
+}
+
+enum LogInStatus {
+  SIGNED_IN
+  VERIFICATION_REQUIRED
+}
+
 type Mutation {
+  confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
+  logIn(input: LogInInput!): LogInResult!
+  refreshSession(input: RefreshSessionInput!): SessionTokens!
+  requestPasswordReset(input: RequestPasswordResetInput!): CodeDelivery!
+  resendCode(input: ResendCodeInput!): CodeDelivery!
+  resetPassword(input: ResetPasswordInput!): Boolean!
+  signUp(input: SignUpInput!): SignUpResult!
+  verifyEmail(input: VerifyEmailInput!): SessionTokens!
+}
+
+type PasswordResetGrant {
+  expiresAt: DateTime!
+  resetToken: String!
 }
 
 input PriceRange {
@@ -145,6 +194,30 @@ type Query {
   findTicketTypeSeats(FindTicketTypeSeatsInput: FindTicketTypeSeatsInput!): TicketTypeSeats!
   findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
+  me: CurrentUser!
+}
+
+input RefreshSessionInput {
+  refreshToken: String!
+}
+
+input RequestPasswordResetInput {
+  email: String!
+}
+
+input ResendCodeInput {
+  email: String!
+  purpose: ResendCodePurpose!
+}
+
+enum ResendCodePurpose {
+  RESET_PASSWORD
+  VERIFY_EMAIL
+}
+
+input ResetPasswordInput {
+  newPassword: String!
+  resetToken: String!
 }
 
 type Seat {
@@ -192,6 +265,26 @@ type SeatMapStageShape {
   path: String!
 }
 
+type SessionTokens {
+  accessToken: String!
+  expiresAt: DateTime!
+  persistent: Boolean!
+  refreshToken: String
+}
+
+input SignUpInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  password: String!
+}
+
+type SignUpResult {
+  codeSent: Boolean!
+  email: String!
+  resendAvailableAt: DateTime!
+}
+
 type TicketType {
   currency: String!
   id: String!
@@ -212,4 +305,10 @@ type TicketTypeSeats {
 
 type UnavailableSeats {
   seatIds: [String!]!
+}
+
+input VerifyEmailInput {
+  code: String!
+  email: String!
+  rememberMe: Boolean!
 }

@@ -8,4 +8,10 @@ export enum Tables {
   Seat = 'CatalogSeat',
   SeatHold = 'TicketingSeatHold',
   Ticket = 'TicketingTicket',
+  UserProfileUser = 'UserProfileUser',
+  IdentityUser = 'IdentityUser',
+  IdentityVerificationCode = 'IdentityVerificationCode',
+  IdentitySession = 'IdentitySession',
+  IdentityLoginThrottle = 'IdentityLoginThrottle',
+  IdentityPasswordResetGrant = 'IdentityPasswordResetGrant',
 }

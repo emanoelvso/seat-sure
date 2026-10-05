@@ -1,9 +1,8 @@
 import { Lobster } from "next/font/google";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { HeaderAccount } from "@/components/layouts/header-account";
 import { UsaIcon } from "@/components/icons/usa-icon";
-import { AltArrowDownIcon, BellIcon } from "@solar-icons/react/outline";
-import Image from "next/image";
+import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import { Input } from "@/components/ui/input";
 import { paths } from "@/config/paths";
 import { EVENT_TYPE_LABELS, type EventType } from "@/utils/event-types";
@@ -23,14 +22,12 @@ const NAV_ITEMS = [
 ];
 
 interface HeaderProps {
-  avatarUrl?: string;
   searchMode?: boolean;
   className?: string;
   transparent?: boolean;
 }
 
 export function Header({
-  avatarUrl,
   searchMode = false,
   className,
   transparent = false,
@@ -69,35 +66,12 @@ export function Header({
         </>
       )}
       <div className="flex items-center gap-3">
-        {avatarUrl && (
-          <div
-            className={
-              searchMode
-                ? "bg-neutral-700 rounded-full w-10 h-10 overflow-hidden shrink-0 flex items-center justify-center"
-                : ""
-            }
-          >
-            <BellIcon />
-          </div>
-        )}
         <button className="flex items-center gap-1">
           <UsaIcon />
           <span>Eng</span>
           <AltArrowDownIcon />
         </button>
-        {avatarUrl ? (
-          <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-            <Image
-              className="object-cover w-full h-full"
-              src={avatarUrl}
-              alt="Profile Avatar"
-              width={40}
-              height={40}
-            />
-          </div>
-        ) : (
-          <Button>Signup</Button>
-        )}
+        <HeaderAccount />
       </div>
     </header>
   );

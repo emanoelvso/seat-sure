@@ -85,13 +85,16 @@ One glossary per context, key terms only. The same term can mean something diffe
 
 ### 1. Identity & Access
 
-- **user**: the login identity: email, password hash, and status. Table `users_auth`.
-- **session**: one active login, tied to a refresh token, with its own expiry and revocation.
-- **role**: a permission grant (`admin`, `customer`, ...) assigned to a user.
+- **user**: the login identity: email, password hash, and whether the email is verified. Table `users_auth` (`IdentityUser`).
+- **session**: one sign-in, tied to a refresh token, with its own expiry ("Remember me": 30 days, otherwise 24 hours) and revocation. Requests carry a short-lived access token (JWT) that names the session ([ADR-016](../adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)).
+- **verification code**: a 6-digit, single-use code sent by email to verify the address or to start a password reset. Valid for 10 minutes.
+- **reset grant**: what a confirmed reset code buys: one password change within 10 minutes.
+- **lockout**: after 5 failed logins for an email within 15 minutes, every login for it is refused for 15 minutes.
+- **role**: a permission grant (`admin`, `customer`, ...) assigned to a user. Not built yet.
 
 ### 2. User Profile
 
-- **user**: the person behind an account: display name, avatar, phone, and birth date. Table `users`, a separate row from `users_auth` (Identity & Access) because it changes for different reasons and by a different actor.
+- **user**: the person behind an account: first and last name, avatar, phone, and birth date. Table `users` (`UserProfileUser`), a separate row from `users_auth` (Identity & Access) with the same id, because it changes for different reasons and by a different actor. Created at signup through User Profile's public API.
 - **preferences**: language, timezone, and notification channel choices, stored per user.
 - **address**: a saved, labeled address, one of which can be the default.
 
@@ -144,33 +147,53 @@ Legend: `fk` is a foreign key inside the same context. `ref, no FK` is a plain I
 ### 1. Identity & Access
 
 ```
-users_auth
+users_auth                         -- IdentityUser
   id (uuid, pk)
-  email (unique, citext)
-  password_hash
+  email (unique, stored trimmed + lowercased)
+  password_hash                    -- bcrypt
   email_verified_at
-  status (active|disabled|locked)
   last_login_at
   created_at, updated_at
 
-sessions
-  id (uuid, pk)
+sessions                           -- IdentitySession (ADR-016)
+  id (uuid, pk)                    -- the access token's `sid`
   user_auth_id (fk)
-  refresh_token_hash
-  user_agent, ip
+  refresh_token_hash (unique)      -- SHA-256; replaced on every refresh
+  previous_refresh_token_hash      -- accepted for 30 s after a refresh
+  rotated_at
+  persistent                       -- "Remember me"
   expires_at, revoked_at, created_at
 
-roles                              role_assignments
+verification_codes                 -- IdentityVerificationCode
+  id, user_auth_id (fk)
+  purpose (verify_email|reset_password)
+  code_hash                        -- bcrypt of the 6 digits
+  expires_at                       -- sent + 10 min
+  failed_attempts                  -- the code stops working at 5
+  consumed_at, invalidated_at, created_at
+
+password_reset_grants              -- IdentityPasswordResetGrant
+  id, user_auth_id (fk)
+  token_hash (unique)              -- SHA-256
+  expires_at, used_at
+
+login_throttles                    -- IdentityLoginThrottle
+  id, email (unique)               -- may have no account (no enumeration)
+  failed_count, window_started_at, locked_until
+
+roles                              role_assignments          -- not built yet
   id, name (admin|customer|...)    user_auth_id, role_id, granted_at
 ```
+
+Not built yet from the original sketch: `users_auth.status` (the lockout lives in `login_throttles`), `sessions.user_agent` / `ip`, and roles.
 
 ### 2. User Profile
 
 ```
-users
+users                           -- UserProfileUser
   id (uuid, pk)                 -- 1:1 with users_auth.id (ref Identity & Access, no FK)
+  first_name, last_name         -- from signup, 50 chars max
   display_name
-  full_name
   avatar_url
   phone
   birth_date
@@ -330,7 +353,7 @@ notification_templates
 
 ## Tradeoffs to Revisit
 
-- **User table split (`users_auth` vs `users`)** — cleaner boundary but adds a join on every request. If shipping solo and fast, one `users` table is fine; split when the auth story gets non-trivial.
+- **User table split (`users_auth` vs `users`)** — decided with login/signup: two modules, same id. There is no join per request, because the access token carries the user id ([ADR-016](../adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)); only `me` reads both, through User Profile's public API. Signup writes both without a shared transaction: Identity deletes the new account if the profile insert fails. A crash between the two writes can still leave an account without a profile.
 - **Seat holds vs optimistic locking** — the `seat_holds` table with TTL is simplest. If concurrency gets heavy, move to Redis with expiry.
 - **Geo queries** — start with `(lat, lng)` columns + a bounding-box filter. Move to PostGIS when "near me" becomes a real feature with distance sorting.
 - **Testimonials tied to `event_id`** — nullable lets you keep both site-wide and per-event reviews without two tables.

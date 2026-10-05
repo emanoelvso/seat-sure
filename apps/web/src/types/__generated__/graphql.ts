@@ -2,6 +2,11 @@
 type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
+export type ConfirmPasswordResetCodeInput = {
+  code: string;
+  email: string;
+};
+
 export type DateRange = {
   from: string;
   to?: string | null | undefined;
@@ -39,9 +44,54 @@ export type FindUnavailableSeatsInput = {
   eventId: string;
 };
 
+export type LogInInput = {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+};
+
+export type LogInStatus =
+  | 'SIGNED_IN'
+  | 'VERIFICATION_REQUIRED';
+
 export type PriceRange = {
   max?: number | null | undefined;
   min?: number | null | undefined;
+};
+
+export type RefreshSessionInput = {
+  refreshToken: string;
+};
+
+export type RequestPasswordResetInput = {
+  email: string;
+};
+
+export type ResendCodeInput = {
+  email: string;
+  purpose: ResendCodePurpose;
+};
+
+export type ResendCodePurpose =
+  | 'RESET_PASSWORD'
+  | 'VERIFY_EMAIL';
+
+export type ResetPasswordInput = {
+  newPassword: string;
+  resetToken: string;
+};
+
+export type SignUpInput = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+};
+
+export type VerifyEmailInput = {
+  code: string;
+  email: string;
+  rememberMe: boolean;
 };
 
 export type FindArtistBySlugQueryVariables = Exact<{
@@ -50,6 +100,67 @@ export type FindArtistBySlugQueryVariables = Exact<{
 
 
 export type FindArtistBySlugQuery = { findArtistBySlug: { __typename: 'FindArtist', artist: { __typename: 'Artist', name: string, cover: string, bio: string } | null, eventsByCity: Array<{ __typename: 'EventsByCity', city: string, country: string, events: Array<{ __typename: 'Event', id: string, type: string, name: string, description: string | null, coverImage: string, venue: string, city: string, country: string, date: string, startAt: string, status: string, price: number, category: string, tags: Array<string> | null }> | null }> | null, nearbyEvents: Array<{ __typename: 'Event', id: string, type: string, name: string, description: string | null, coverImage: string, venue: string, city: string, country: string, date: string, startAt: string, status: string, price: number, category: string }> | null, featuredFestival: { __typename: 'Event', id: string, type: string, name: string, description: string | null, coverImage: string, venue: string, city: string, country: string, date: string, startAt: string, status: string, price: number, category: string } | null } };
+
+export type ConfirmPasswordResetCodeMutationVariables = Exact<{
+  input: ConfirmPasswordResetCodeInput;
+}>;
+
+
+export type ConfirmPasswordResetCodeMutation = { confirmPasswordResetCode: { __typename: 'PasswordResetGrant', resetToken: string, expiresAt: string } };
+
+export type LogInMutationVariables = Exact<{
+  input: LogInInput;
+}>;
+
+
+export type LogInMutation = { logIn: { __typename: 'LogInResult', status: LogInStatus, codeSent: boolean | null, resendAvailableAt: string | null, session: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } | null } };
+
+export type MeQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MeQuery = { me: { __typename: 'CurrentUser', id: string, email: string, firstName: string, lastName: string, avatarUrl: string | null } };
+
+export type RefreshSessionMutationVariables = Exact<{
+  input: RefreshSessionInput;
+}>;
+
+
+export type RefreshSessionMutation = { refreshSession: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } };
+
+export type RequestPasswordResetMutationVariables = Exact<{
+  input: RequestPasswordResetInput;
+}>;
+
+
+export type RequestPasswordResetMutation = { requestPasswordReset: { __typename: 'CodeDelivery', codeSent: boolean, resendAvailableAt: string } };
+
+export type ResendCodeMutationVariables = Exact<{
+  input: ResendCodeInput;
+}>;
+
+
+export type ResendCodeMutation = { resendCode: { __typename: 'CodeDelivery', codeSent: boolean, resendAvailableAt: string } };
+
+export type ResetPasswordMutationVariables = Exact<{
+  input: ResetPasswordInput;
+}>;
+
+
+export type ResetPasswordMutation = { resetPassword: boolean };
+
+export type SignUpMutationVariables = Exact<{
+  input: SignUpInput;
+}>;
+
+
+export type SignUpMutation = { signUp: { __typename: 'SignUpResult', email: string, codeSent: boolean, resendAvailableAt: string } };
+
+export type VerifyEmailMutationVariables = Exact<{
+  input: VerifyEmailInput;
+}>;
+
+
+export type VerifyEmailMutation = { verifyEmail: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } };
 
 export type FindEventsQueryVariables = Exact<{
   input?: FindEventsInput | null | undefined;

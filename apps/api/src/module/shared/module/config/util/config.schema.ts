@@ -16,9 +16,26 @@ export const redisSchema = z.object({
   port: z.coerce.number(),
 });
 
-export const configSchema = z.object({
-  env: environmentSchema,
-  port: z.coerce.number().positive().int(),
-  database: databaseSchema,
-  redis: redisSchema,
+export const codeSenderSchema = z.enum(['log']);
+
+export const authSchema = z.object({
+  jwtSecret: z.string().min(32),
+  codeSender: codeSenderSchema.default('log'),
 });
+
+export const configSchema = z
+  .object({
+    env: environmentSchema,
+    port: z.coerce.number().positive().int(),
+    database: databaseSchema,
+    redis: redisSchema,
+    auth: authSchema,
+  })
+  .refine(
+    (config) =>
+      !(config.env === 'production' && config.auth.codeSender === 'log'),
+    {
+      message: 'auth.codeSender cannot be "log" in production',
+      path: ['auth', 'codeSender'],
+    },
+  );

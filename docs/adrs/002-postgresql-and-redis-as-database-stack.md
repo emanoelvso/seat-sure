@@ -1,11 +1,12 @@
 # ADR-002: PostgreSQL and Redis as the Database Stack
 
 - **Date**: 2026-09-10
-- **Status**: Accepted. Superseded in part by [ADR-015](./015-seat-holds-owned-by-ticketing.md): its `SELECT ... FOR UPDATE` seat reservation, described below, is replaced by a hold table unique on (`eventId`, `seatId`) scoped to Ticketing alone.
+- **Status**: Accepted. Superseded in part by [ADR-015](./015-seat-holds-owned-by-ticketing.md): its `SELECT ... FOR UPDATE` seat reservation, described below, is replaced by a hold table unique on (`eventId`, `seatId`) scoped to Ticketing alone. Superseded in part by [ADR-016](./016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md): sessions and the login rate limit are stored in PostgreSQL by the Identity module, not in Redis.
 - **Deciders**: emanoelvso
 - **Tags**: architecture, database, postgresql, redis, caching
 - **Links**:
   - [ADR-015: Seat Holds Owned Entirely by Ticketing](./015-seat-holds-owned-by-ticketing.md)
+  - [ADR-016: Sessions as JWT Access Tokens and Rotating Refresh Tokens in httpOnly Cookies](./016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)
 
 ## Context
 

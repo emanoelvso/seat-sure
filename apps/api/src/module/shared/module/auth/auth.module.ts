@@ -1,20 +1,28 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ClsModule } from 'nestjs-cls';
-
-// TODO: move this to a .env file and config
-export const jwtConstants = {
-  secret: 'secret',
-};
+import { ConfigModule } from '@sharedModules/config/config.module';
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { AuthGuard } from './guard/auth.guard';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     ClsModule.forRoot({ global: true, middleware: { mount: true } }),
-    JwtModule.register({
-      secret: jwtConstants.secret,
+    JwtModule.registerAsync({
       global: true,
-      signOptions: { expiresIn: '60m' },
+      imports: [ConfigModule.forRoot()],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        // No default `expiresIn`: every access token this feature signs
+        // carries its own explicit `exp` (capped at the session's
+        // `expiresAt`), computed from the caller's `now`, never from the
+        // jsonwebtoken library's own clock.
+        secret: configService.get('auth.jwtSecret'),
+      }),
     }),
   ],
+  providers: [AuthGuard],
+  exports: [AuthGuard, ConfigModule],
 })
 export class AuthModule {}
