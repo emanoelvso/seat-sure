@@ -402,6 +402,25 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     );
   });
 
+  it.each(['serviceFeeCents', 'taxCents'])(
+    'rejects a negative %s on insert (PAY-64)',
+    async (column) => {
+      const event = await insertEvent();
+      const ticketType = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'vip',
+        [column]: -1,
+      });
+
+      await expect(
+        testDbClient.batchInsert(Tables.TicketType, [ticketType]),
+      ).rejects.toMatchObject({ code: '23514' });
+      expect(
+        await testDbClient(Tables.TicketType).where({ id: ticketType.id }),
+      ).toHaveLength(0);
+    },
+  );
+
   it("returns exactly the live seats of the ticket type's section on the event's seat map (SEAT-02)", async () => {
     const seatMap = await insertSeatMap('Concentric Arena');
     const otherSeatMap = await insertSeatMap('Football Stadium');
