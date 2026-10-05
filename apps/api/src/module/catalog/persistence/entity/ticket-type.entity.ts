@@ -7,6 +7,8 @@ import { Event } from './event.entity';
 @Check(`"priceCents" >= 0`)
 @Check(`"seatsAvailable" >= 0`)
 @Check(`"maxPerOrder" >= 1`)
+@Check(`"serviceFeeCents" >= 0`)
+@Check(`"taxCents" >= 0`)
 export class TicketType extends DefaultEntity<TicketType> {
   @ManyToOne(() => Event, (event) => event.ticketTypes, {
     onDelete: 'CASCADE',
@@ -23,6 +25,12 @@ export class TicketType extends DefaultEntity<TicketType> {
 
   @Column({ type: 'integer' })
   priceCents: number;
+
+  @Column({ type: 'integer', default: 0 })
+  serviceFeeCents: number;
+
+  @Column({ type: 'integer', default: 0 })
+  taxCents: number;
 
   @Column({ type: 'char', length: 3, default: 'USD' })
   currency: string;

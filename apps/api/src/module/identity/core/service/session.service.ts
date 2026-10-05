@@ -1,6 +1,10 @@
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import {
+  generateOpaqueToken,
+  hashOpaqueToken,
+} from '@identityModule/core/util/opaque-token';
 import { IdentitySession } from '@identityModule/persistence/entity/identity-session.entity';
 import { SessionRepository } from '@identityModule/persistence/repository/session.repository';
 import { Transactional } from 'typeorm-transactional';
@@ -31,8 +35,8 @@ export class SessionService {
     now: Date,
   ): Promise<SessionTokensResult> {
     const sessionId = randomUUID();
-    const refreshToken = this.generateRefreshToken();
-    const refreshTokenHash = this.hashToken(refreshToken);
+    const refreshToken = generateOpaqueToken();
+    const refreshTokenHash = hashOpaqueToken(refreshToken);
     const expiresAt = new Date(
       now.getTime() + (persistent ? THIRTY_DAYS_MS : TWENTY_FOUR_HOURS_MS),
     );
@@ -60,14 +64,14 @@ export class SessionService {
   // unauthenticated.
   @Transactional({ connectionName: 'identity' })
   async rotate(refreshToken: string, now: Date): Promise<SessionTokensResult> {
-    const hash = this.hashToken(refreshToken);
+    const hash = hashOpaqueToken(refreshToken);
     const session = await this.sessionRepository.findByRefreshTokenHash(hash);
 
     if (session) {
       this.assertUsable(session, now);
 
-      const newRefreshToken = this.generateRefreshToken();
-      const newHash = this.hashToken(newRefreshToken);
+      const newRefreshToken = generateOpaqueToken();
+      const newHash = hashOpaqueToken(newRefreshToken);
       await this.sessionRepository.rotate(session.id, {
         refreshTokenHash: newHash,
         previousRefreshTokenHash: hash,
@@ -157,13 +161,5 @@ export class SessionService {
       iat: Math.floor(now.getTime() / 1000),
       exp: Math.floor(cappedExpiryMs / 1000),
     });
-  }
-
-  private generateRefreshToken(): string {
-    return randomBytes(32).toString('base64url');
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 }

@@ -130,6 +130,8 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
                 sectionKey
                 name
                 priceCents
+                serviceFeeCents
+                taxCents
                 currency
                 seatsAvailable
                 maxPerOrder
@@ -266,6 +268,8 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
       sectionKey: 'vip',
       name: 'VIP',
       priceCents: 45000,
+      serviceFeeCents: 6750,
+      taxCents: 3600,
       currency: 'EUR',
       seatsAvailable: 40,
       maxPerOrder: 6,
@@ -276,6 +280,8 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
       sectionKey: 'a',
       name: 'A',
       priceCents: 40000,
+      serviceFeeCents: 5000,
+      taxCents: 2800,
       currency: 'USD',
       seatsAvailable: 120,
       maxPerOrder: 10,
@@ -307,6 +313,8 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
       sectionKey: 'vip',
       name: 'VIP',
       priceCents: 45000,
+      serviceFeeCents: 6750,
+      taxCents: 3600,
       currency: 'EUR',
       seatsAvailable: 40,
       maxPerOrder: 6,
@@ -367,12 +375,51 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
       sectionKey: 'a',
       name: 'A',
       priceCents: 40000,
+      serviceFeeCents: 5000,
+      taxCents: 2800,
       currency: 'USD',
       seatsAvailable: 120,
       maxPerOrder: 10,
       tags: ['best seller'],
     });
   });
+
+  it('defaults serviceFeeCents and taxCents to 0 when the columns are not set on insert (PAY-64)', async () => {
+    const event = await insertEvent();
+    const ticketType = ticketTypeFactory.build({
+      eventId: event.id!,
+      sectionKey: 'vip',
+    }) as { serviceFeeCents?: number; taxCents?: number; id: string };
+    delete ticketType.serviceFeeCents;
+    delete ticketType.taxCents;
+    await testDbClient.batchInsert(Tables.TicketType, [ticketType]);
+
+    const body = await findTicketTypeSeats(event.id!, ticketType.id);
+
+    expect(body.errors).toBeUndefined();
+    expect(body.data.findTicketTypeSeats.ticketType).toEqual(
+      expect.objectContaining({ serviceFeeCents: 0, taxCents: 0 }),
+    );
+  });
+
+  it.each(['serviceFeeCents', 'taxCents'])(
+    'rejects a negative %s on insert (PAY-64)',
+    async (column) => {
+      const event = await insertEvent();
+      const ticketType = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'vip',
+        [column]: -1,
+      });
+
+      await expect(
+        testDbClient.batchInsert(Tables.TicketType, [ticketType]),
+      ).rejects.toMatchObject({ code: '23514' });
+      expect(
+        await testDbClient(Tables.TicketType).where({ id: ticketType.id }),
+      ).toHaveLength(0);
+    },
+  );
 
   it("returns exactly the live seats of the ticket type's section on the event's seat map (SEAT-02)", async () => {
     const seatMap = await insertSeatMap('Concentric Arena');

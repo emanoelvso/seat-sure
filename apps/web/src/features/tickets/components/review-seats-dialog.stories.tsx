@@ -55,6 +55,8 @@ const meta: Meta<typeof ReviewSeatsDialog> = {
   args: {
     open: true,
     onClose: fn(),
+    eventId: "e1",
+    ticketTypeId: "t1",
     event,
     ticketType: vip,
     pickedSeats: [seat("10", 553), seat("09", 499)],
@@ -137,16 +139,35 @@ export const ThreeTickets: Story = {
   },
 };
 
-export const CheckoutUnavailable: Story = {
+const pickedSeatsInOrder = [
+  { __typename: "Seat" as const, id: "s07", row: "4", number: "07", x: 445, y: 190 },
+  { __typename: "Seat" as const, id: "s10", row: "4", number: "10", x: 553, y: 190 },
+];
+
+// PAY-01: "Continue" is a link to checkout with the seats in pick order (07
+// then 10), not sorted by number. Supersedes SEAT-44.
+export const ContinueLink: Story = {
+  args: { pickedSeats: pickedSeatsInOrder },
+  play: async ({ canvas }) => {
+    const inDialog = within(dialog(canvas));
+
+    const continueLink = inDialog.getByRole("link", { name: "Continue" });
+    await expect(continueLink).toHaveAttribute(
+      "href",
+      "/events/e1/tickets/t1/checkout?seats=s07,s10",
+    );
+  },
+};
+
+// PAY-02: the old "not available yet" note is gone. Supersedes SEAT-44.
+export const NoUnavailableNote: Story = {
+  args: { pickedSeats: pickedSeatsInOrder },
   play: async ({ canvas }) => {
     const inDialog = within(dialog(canvas));
 
     await expect(
-      inDialog.getByRole("button", { name: "Continue" }),
-    ).toBeDisabled();
-    await expect(
-      inDialog.getByText("Checkout isn't available yet"),
-    ).toBeVisible();
+      inDialog.queryByText("Checkout isn't available yet"),
+    ).toBeNull();
   },
 };
 

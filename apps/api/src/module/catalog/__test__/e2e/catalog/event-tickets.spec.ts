@@ -127,6 +127,8 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
                 sectionKey
                 name
                 priceCents
+                serviceFeeCents
+                taxCents
                 currency
                 seatsAvailable
                 maxPerOrder
@@ -835,6 +837,8 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
         sectionKey: 'vip',
         name: 'VIP',
         priceCents: 45000,
+        serviceFeeCents: 6750,
+        taxCents: 3600,
         currency: 'EUR',
         seatsAvailable: 40,
         maxPerOrder: 6,
@@ -845,6 +849,8 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
         sectionKey: 'a',
         name: 'A',
         priceCents: 40000,
+        serviceFeeCents: 5000,
+        taxCents: 2800,
         currency: 'USD',
         seatsAvailable: 120,
         maxPerOrder: 10,
@@ -876,6 +882,8 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
             sectionKey: ticketTypeA1.sectionKey,
             name: ticketTypeA1.name,
             priceCents: ticketTypeA1.priceCents,
+            serviceFeeCents: ticketTypeA1.serviceFeeCents,
+            taxCents: ticketTypeA1.taxCents,
             currency: ticketTypeA1.currency,
             seatsAvailable: ticketTypeA1.seatsAvailable,
             maxPerOrder: ticketTypeA1.maxPerOrder,
@@ -886,6 +894,8 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
             sectionKey: ticketTypeA2.sectionKey,
             name: ticketTypeA2.name,
             priceCents: ticketTypeA2.priceCents,
+            serviceFeeCents: ticketTypeA2.serviceFeeCents,
+            taxCents: ticketTypeA2.taxCents,
             currency: ticketTypeA2.currency,
             seatsAvailable: ticketTypeA2.seatsAvailable,
             maxPerOrder: ticketTypeA2.maxPerOrder,
@@ -942,6 +952,29 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.errors).toBeUndefined();
       expect(response.body.data.findEventTickets.ticketTypes[0].tags).toEqual(
         [],
+      );
+    });
+
+    it('defaults serviceFeeCents and taxCents to 0 when the columns are not set on insert (PAY-64)', async () => {
+      const event = buildEvent({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      await testDbClient.batchInsert(Tables.Event, [event]);
+
+      const ticketType = ticketTypeFactory.build({ eventId: event.id! }) as {
+        serviceFeeCents?: number;
+        taxCents?: number;
+      };
+      delete ticketType.serviceFeeCents;
+      delete ticketType.taxCents;
+      await testDbClient.batchInsert(Tables.TicketType, [ticketType]);
+
+      const response = await findEventTickets(event.id!).expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.findEventTickets.ticketTypes[0]).toEqual(
+        expect.objectContaining({ serviceFeeCents: 0, taxCents: 0 }),
       );
     });
   });

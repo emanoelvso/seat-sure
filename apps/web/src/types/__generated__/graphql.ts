@@ -2,6 +2,20 @@
 type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
+export type CardInput = {
+  cvv: string;
+  expiry: string;
+  holder: string;
+  number: string;
+};
+
+export type CheckoutOrderStatus =
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'FAILED'
+  | 'PAID'
+  | 'PENDING';
+
 export type ConfirmPasswordResetCodeInput = {
   code: string;
   email: string;
@@ -20,6 +34,10 @@ export type EventType =
 
 export type FindArtistInput = {
   slug: string;
+};
+
+export type FindCheckoutOrderInput = {
+  orderId: string;
 };
 
 export type FindEventTicketsInput = {
@@ -54,6 +72,11 @@ export type LogInStatus =
   | 'SIGNED_IN'
   | 'VERIFICATION_REQUIRED';
 
+export type PayOrderInput = {
+  card: CardInput;
+  orderId: string;
+};
+
 export type PriceRange = {
   max?: number | null | undefined;
   min?: number | null | undefined;
@@ -86,6 +109,12 @@ export type SignUpInput = {
   firstName: string;
   lastName: string;
   password: string;
+};
+
+export type StartCheckoutInput = {
+  eventId: string;
+  seatIds: Array<string>;
+  ticketTypeId: string;
 };
 
 export type VerifyEmailInput = {
@@ -161,6 +190,27 @@ export type VerifyEmailMutationVariables = Exact<{
 
 
 export type VerifyEmailMutation = { verifyEmail: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } };
+
+export type FindCheckoutOrderQueryVariables = Exact<{
+  input: FindCheckoutOrderInput;
+}>;
+
+
+export type FindCheckoutOrderQuery = { findCheckoutOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }> } | null };
+
+export type PayOrderMutationVariables = Exact<{
+  input: PayOrderInput;
+}>;
+
+
+export type PayOrderMutation = { payOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }> } };
+
+export type StartCheckoutMutationVariables = Exact<{
+  input: StartCheckoutInput;
+}>;
+
+
+export type StartCheckoutMutation = { startCheckout: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }> } };
 
 export type FindEventsQueryVariables = Exact<{
   input?: FindEventsInput | null | undefined;

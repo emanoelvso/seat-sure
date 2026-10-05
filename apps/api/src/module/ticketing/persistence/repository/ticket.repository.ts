@@ -3,7 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DefaultTypeOrmRepository } from '@sharedModules/persistence/typeorm/repository/default-typeorm.repository';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
 import { Ticket } from '@ticketingModule/persistence/entity/ticket.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 // Statuses whose ticket holds its seat. Cancelled and refunded seats can be
 // sold again (AD-014).
@@ -32,5 +32,26 @@ export class TicketRepository extends DefaultTypeOrmRepository<Ticket> {
       .getRawMany<{ seatId: string }>();
 
     return rows.map((row) => row.seatId);
+  }
+
+  // The requested seats that already have a live ticket for the event
+  async findLiveSeatIds(
+    manager: EntityManager,
+    eventId: string,
+    seatIds: string[],
+  ): Promise<string[]> {
+    const rows = await manager
+      .createQueryBuilder(Ticket, 'ticket')
+      .select('ticket.seatId', 'seatId')
+      .where('ticket.eventId = :eventId', { eventId })
+      .andWhere('ticket.seatId IN (:...seatIds)', { seatIds })
+      .andWhere('ticket.status IN (:...statuses)', { statuses: SOLD_STATUSES })
+      .getRawMany<{ seatId: string }>();
+
+    return rows.map((row) => row.seatId);
+  }
+
+  async issue(manager: EntityManager, tickets: Ticket[]): Promise<void> {
+    await manager.insert(Ticket, tickets);
   }
 }

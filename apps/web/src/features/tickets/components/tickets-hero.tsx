@@ -15,7 +15,7 @@ import {
   formatEventLocation,
   formatEventTimeRange,
 } from "@/utils/event-format";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 import {
   TicketsEvent,
   TicketType,

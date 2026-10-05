@@ -1,6 +1,7 @@
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
 import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { OrderItem } from './order-item.entity';
 
 // Event, seat and user are plain ids of other modules, with no foreign key.
 // Only a live ticket (issued, used, transferred) holds its seat, so a cancelled
@@ -26,4 +27,12 @@ export class Ticket extends DefaultEntity<Ticket> {
 
   @Column({ type: 'enum', enum: TicketStatus })
   status: TicketStatus;
+
+  // Null for tickets that weren't bought through a checkout (seeded tickets)
+  @Column({ type: 'uuid', nullable: true })
+  orderItemId: string | null;
+
+  @ManyToOne(() => OrderItem, { nullable: true })
+  @JoinColumn({ name: 'orderItemId' })
+  orderItem?: OrderItem | null;
 }

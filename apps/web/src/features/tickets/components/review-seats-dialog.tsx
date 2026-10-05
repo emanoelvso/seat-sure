@@ -7,15 +7,17 @@ import {
   TicketIcon,
 } from "@solar-icons/react/outline";
 import Image from "next/image";
+import Link from "next/link";
 import { KeyboardEvent, ReactNode, useEffect, useId, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { paths } from "@/config/paths";
 import type {
   TicketsEvent,
   TicketType,
 } from "@/features/tickets/api/find-event-tickets";
 import type { Seat } from "@/features/tickets/api/find-ticket-type-seats";
 import { TicketTags } from "@/features/tickets/components/ticket-summary";
-import { formatPrice } from "@/features/tickets/utils/price";
+import { formatPrice } from "@/utils/price";
 import { byNumber } from "@/features/tickets/utils/seat-picks";
 import {
   formatEventDate,
@@ -28,12 +30,14 @@ interface ReviewSeatsDialogProps {
   open: boolean;
   /** Called once the dialog has closed: "Change Seat", Escape or `close()`. */
   onClose: () => void;
+  eventId: string;
+  ticketTypeId: string;
   event: Pick<
     TicketsEvent,
     "startAt" | "endsAt" | "venue" | "city" | "country"
   >;
   ticketType: Pick<TicketType, "priceCents" | "currency" | "tags">;
-  /** The picked seats, all in one row. */
+  /** The picked seats, all in one row, in pick order. */
   pickedSeats: Seat[];
 }
 
@@ -58,16 +62,23 @@ function Line({ term, value }: { term: string; value: string }) {
 export function ReviewSeatsDialog({
   open,
   onClose,
+  eventId,
+  ticketTypeId,
   event,
   ticketType,
   pickedSeats,
 }: ReviewSeatsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingId = useId();
-  const checkoutNoteId = useId();
   const { priceCents, currency } = ticketType;
   const sorted = [...pickedSeats].sort(byNumber);
   const quantity = pickedSeats.length;
+  // PAY-01: "Continue" hands off to checkout with the seats in pick order.
+  const checkoutHref = paths.checkoutStart.getHref(
+    eventId,
+    ticketTypeId,
+    pickedSeats.map((seat) => seat.id),
+  );
 
   // The native modal gives the backdrop, the focus move and the inert page.
   useEffect(() => {
@@ -147,21 +158,16 @@ export function ReviewSeatsDialog({
           <Line term="Total" value={formatPrice(priceCents * quantity, currency)} />
         </dl>
 
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              onClick={() => dialogRef.current?.close()}
-            >
-              Change Seat
-            </Button>
-            <Button disabled aria-describedby={checkoutNoteId}>
-              Continue
-            </Button>
-          </div>
-          <p id={checkoutNoteId} className="text-right text-sm text-neutral-200">
-            Checkout isn&apos;t available yet
-          </p>
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            variant="outline"
+            onClick={() => dialogRef.current?.close()}
+          >
+            Change Seat
+          </Button>
+          <Link href={checkoutHref} className={buttonVariants()}>
+            Continue
+          </Link>
         </div>
       </div>
     </dialog>

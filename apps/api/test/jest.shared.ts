@@ -9,6 +9,7 @@ export default {
     '^@ticketingModule/(.*)$': '<rootDir>/src/module/ticketing/$1',
     '^@identityModule/(.*)$': '<rootDir>/src/module/identity/$1',
     '^@userProfileModule/(.*)$': '<rootDir>/src/module/user-profile/$1',
+    '^@billingModule/(.*)$': '<rootDir>/src/module/billing/$1',
     '^@sharedModules/(.*)$': '<rootDir>/src/module/shared/module/$1',
     '^@sharedLibs/(.*)$': '<rootDir>/src/module/shared/$1',
     '^@src/(.*)$': '<rootDir>/src/$1',

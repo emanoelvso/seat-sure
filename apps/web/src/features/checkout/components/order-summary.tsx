@@ -1,0 +1,43 @@
+import { formatPrice } from "@/utils/price";
+
+interface OrderSummaryProps {
+  order: {
+    quantity: number;
+    currency: string;
+    unitPriceCents: number;
+    unitServiceFeeCents: number;
+    unitTaxCents: number;
+    totalCents: number;
+  };
+}
+
+function Line({ term, value }: { term: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg bg-neutral-700 px-2 py-1.5 text-neutral-200">
+      <dt>{term}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+// PAY-25: per-ticket prices as "{N} * {unit}" plus the order total.
+export function OrderSummary({ order }: OrderSummaryProps) {
+  const { quantity, currency } = order;
+  const perTicket = (cents: number) =>
+    `${quantity} * ${formatPrice(cents, currency)}`;
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-xl font-bold text-white">Order summary</h2>
+      <dl className="flex flex-col gap-2 rounded-2xl bg-neutral-800 p-4">
+        <Line term="Ticket price" value={perTicket(order.unitPriceCents)} />
+        <Line term="Service fee" value={perTicket(order.unitServiceFeeCents)} />
+        <Line term="Tax" value={perTicket(order.unitTaxCents)} />
+        <div className="flex items-center justify-between gap-4 px-2 py-1.5 font-bold text-white">
+          <dt>Total price</dt>
+          <dd>{formatPrice(order.totalCents, currency)}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}

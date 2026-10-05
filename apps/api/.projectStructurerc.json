@@ -153,6 +153,16 @@
           ]
         },
         {
+          "name": "integration",
+          "children": [
+            {
+              "name": "{kebab-case}",
+              "children": [{ "name": "{kebab-case}.spec.ts" }]
+            },
+            { "name": "{kebab-case}.*.ts" }
+          ]
+        },
+        {
           "name": "factory",
           "children": [
             {
@@ -177,6 +187,7 @@
         },
         { "name": "model", "children": [{ "ruleId": "file_name" }] },
         { "name": "service", "children": [{ "ruleId": "file_name" }] },
+        { "name": "util", "children": [{ "name": "{kebab-case}.ts" }] },
         { "name": "use-case", "ruleId": "use_case_folder" },
         { "name": "exception", "children": [{ "ruleId": "file_name" }] },
         {

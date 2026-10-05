@@ -7,6 +7,8 @@ interface TicketTypeRow {
   sectionKey: string;
   name: string;
   priceCents: number;
+  serviceFeeCents: number;
+  taxCents: number;
   currency: string;
   seatsAvailable: number;
   maxPerOrder: number;
@@ -19,6 +21,8 @@ export const ticketTypeFactory = Factory.Sync.makeFactory<TicketTypeRow>({
   sectionKey: Factory.each(() => faker.string.alphanumeric(5).toLowerCase()),
   name: Factory.each(() => faker.string.alpha(3).toUpperCase()),
   priceCents: Factory.each(() => faker.number.int({ min: 5000, max: 100000 })),
+  serviceFeeCents: 0,
+  taxCents: 0,
   currency: 'USD',
   seatsAvailable: Factory.each(() => faker.number.int({ min: 1, max: 500 })),
   maxPerOrder: 8,
