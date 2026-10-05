@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import {
@@ -11,6 +10,10 @@ import {
   IssueCodeResult,
   VerificationCodeService,
 } from '@identityModule/core/service/verification-code.service';
+import {
+  generateOpaqueToken,
+  hashOpaqueToken,
+} from '@identityModule/core/util/opaque-token';
 import { IdentityPasswordResetGrant } from '@identityModule/persistence/entity/identity-password-reset-grant.entity';
 import { PasswordResetGrantRepository } from '@identityModule/persistence/repository/password-reset-grant.repository';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
@@ -63,8 +66,8 @@ export class PasswordResetService {
       now,
     );
 
-    const resetToken = this.generateToken();
-    const tokenHash = this.hashToken(resetToken);
+    const resetToken = generateOpaqueToken();
+    const tokenHash = hashOpaqueToken(resetToken);
     const expiresAt = new Date(now.getTime() + GRANT_TTL_MS);
 
     await this.passwordResetGrantRepository.save(
@@ -94,7 +97,7 @@ export class PasswordResetService {
       );
     }
 
-    const tokenHash = this.hashToken(resetToken);
+    const tokenHash = hashOpaqueToken(resetToken);
     const grant =
       await this.passwordResetGrantRepository.findByTokenHash(tokenHash);
     if (!grant || grant.usedAt || now.getTime() > grant.expiresAt.getTime()) {
@@ -126,13 +129,5 @@ export class PasswordResetService {
     await this.sessionService.revokeAll(grant.userId, now);
 
     this.logger.log('password-reset', { userId: grant.userId });
-  }
-
-  private generateToken(): string {
-    return randomBytes(32).toString('base64url');
-  }
-
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
   }
 }
