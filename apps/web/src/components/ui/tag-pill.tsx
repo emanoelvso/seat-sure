@@ -7,7 +7,10 @@ const tagPillVariant = cva("inline-flex items-center  rounded-xl", {
       pending: "bg-warning-200/8 text-warning-200",
       success: "bg-success-200/8 text-success-300",
       info: "bg-info-200/8 text-info-300",
-      error: "bg-error-200/8 text-error-300",
+      // SPEC_DEVIATION: Figma's "Tag card" fail state uses error-300
+      // (#F44336), 4.3:1 on its own tint, below WCAG AA.
+      // Reason: error-200 passes the a11y check at the same hue.
+      error: "bg-error-200/8 text-error-200",
     },
     size: {
       xs: "py-1 px-3 text-xs",
