@@ -13,7 +13,7 @@ export function AboutView() {
         <Header transparent />
       </div>
 
-      <main className="flex flex-col pb-36">
+      <main className="flex flex-col pb-32">
         <AboutHero />
         <div className="mt-20">
           <WhyChooseSection />
@@ -24,7 +24,7 @@ export function AboutView() {
         <div className="mt-30">
           <StoryTimeline />
         </div>
-        <div className="mt-40">
+        <div className="mt-41.5">
           <ContactSection />
         </div>
       </main>
