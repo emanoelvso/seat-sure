@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
-import { INestApplication, Module } from '@nestjs/common';
-import { Query, Resolver } from '@nestjs/graphql';
+import { INestApplication } from '@nestjs/common';
 import { TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { UserProfileApi } from '@sharedModules/integration/interface/user-profile-integration.interface';
@@ -10,30 +9,13 @@ import { createNestApp } from '@testInfra/test-e2e.setup';
 import { UserProfileModule } from '@userProfileModule/user-profile.module';
 import { DataSource } from 'typeorm';
 
-// A trivial Query root is required by Nest's code-first GraphQL schema
-// builder; UserProfileModule has no resolver of its own (SPEC_DEVIATION, same
-// as catalog/__test__/e2e/catalog/transactional.spec.ts).
-@Resolver()
-class UserProfileProbeResolver {
-  @Query(() => Boolean)
-  userProfileProbeHealthCheck(): boolean {
-    return true;
-  }
-}
-
-@Module({ providers: [UserProfileProbeResolver] })
-class UserProfileProbeModule {}
-
 describe('UserProfileApi (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
   let userProfileApi: UserProfileApi;
 
   beforeAll(async () => {
-    const nestTestSetup = await createNestApp([
-      UserProfileModule,
-      UserProfileProbeModule,
-    ]);
+    const nestTestSetup = await createNestApp([UserProfileModule]);
     module = nestTestSetup.module;
     app = nestTestSetup.app;
     userProfileApi = module.get<UserProfileApi>(UserProfileApi);
