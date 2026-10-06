@@ -2,6 +2,50 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AccountOrderCounts {
+  all: Int!
+  cancelled: Int!
+  completed: Int!
+  pending: Int!
+}
+
+enum AccountOrderStatus {
+  CANCELLED
+  COMPLETED
+  PENDING
+}
+
+type AccountOrderSummary {
+  createdAt: DateTime!
+  currency: String!
+  eventName: String!
+  id: ID!
+  quantity: Int!
+  status: AccountOrderStatus!
+  totalCents: Int!
+}
+
+type AccountOrdersPage {
+  counts: AccountOrderCounts!
+  items: [AccountOrderSummary!]!
+  page: Int!
+  totalPages: Int!
+}
+
+enum AccountOrdersSort {
+  HIGHEST_AMOUNT
+  LOWEST_AMOUNT
+  NEWEST
+  OLDEST
+}
+
+enum AccountOrdersTab {
+  ALL
+  CANCELLED
+  COMPLETED
+  PENDING
+}
+
 type Artist {
   bio: String!
   cover: String!
@@ -156,6 +200,13 @@ type EventsByCity {
   events: [Event!]
 }
 
+input FindAccountOrdersInput {
+  page: Int!
+  pageSize: Int!
+  sort: AccountOrdersSort! = NEWEST
+  tab: AccountOrdersTab! = ALL
+}
+
 type FindArtist {
   artist: Artist
   eventsByCity: [EventsByCity!]
@@ -254,6 +305,7 @@ input PriceRange {
 }
 
 type Query {
+  findAccountOrders(input: FindAccountOrdersInput!): AccountOrdersPage!
   findArtistBySlug(FindArtistInput: FindArtistInput!): FindArtist!
   findCheckoutOrder(input: FindCheckoutOrderInput!): CheckoutOrder
   findEventTickets(FindEventTicketsInput: FindEventTicketsInput!): EventTickets!

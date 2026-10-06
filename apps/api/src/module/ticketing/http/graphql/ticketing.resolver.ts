@@ -1,11 +1,14 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
+import { AccountOrdersService } from '@ticketingModule/core/service/account-orders.service';
 import { CheckoutService } from '@ticketingModule/core/service/checkout.service';
 import { OrderPaymentService } from '@ticketingModule/core/service/order-payment.service';
 import { TicketingService } from '@ticketingModule/core/service/ticketing.service';
 import { ClsService } from 'nestjs-cls';
+import { AccountOrdersPage } from './type/account-orders.type';
 import { CheckoutOrder } from './type/checkout-order.type';
+import { FindAccountOrdersInput } from './type/find-account-orders-input.type';
 import { FindCheckoutOrderInput } from './type/find-checkout-order-input.type';
 import { FindUnavailableSeatsInput } from './type/find-unavailable-seats-input.type';
 import { PayOrderInput } from './type/pay-order-input.type';
@@ -18,6 +21,7 @@ export class TicketingResolver {
     private readonly ticketingService: TicketingService,
     private readonly checkoutService: CheckoutService,
     private readonly orderPaymentService: OrderPaymentService,
+    private readonly accountOrdersService: AccountOrdersService,
     private readonly clsService: ClsService,
   ) {}
 
@@ -63,6 +67,21 @@ export class TicketingResolver {
       userId: this.clsService.get<string>('userId'),
       orderId,
       card,
+      now: new Date(),
+    });
+  }
+
+  @UseGuards(AuthGuard)
+  @Query(() => AccountOrdersPage)
+  async findAccountOrders(
+    @Args('input') { tab, sort, page, pageSize }: FindAccountOrdersInput,
+  ): Promise<AccountOrdersPage> {
+    return this.accountOrdersService.list({
+      userId: this.clsService.get<string>('userId'),
+      tab,
+      sort,
+      page,
+      pageSize,
       now: new Date(),
     });
   }

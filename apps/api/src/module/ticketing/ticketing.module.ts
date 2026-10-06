@@ -7,6 +7,7 @@ import { LoggerModule } from '@sharedModules/logger/logger.module';
 import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
 import { LogTicketSender } from '@ticketingModule/integration/provider/log-ticket-sender.provider';
 import { TicketingPersistenceModule } from '@ticketingModule/persistence/ticketing-persistence.module';
+import { AccountOrdersService } from './core/service/account-orders.service';
 import { CheckoutService } from './core/service/checkout.service';
 import { OrderPaymentService } from './core/service/order-payment.service';
 import { TicketCodeGenerator } from './core/service/ticket-code-generator.service';
@@ -27,6 +28,7 @@ import { TicketingResolver } from './http/graphql/ticketing.resolver';
     TicketingService,
     CheckoutService,
     OrderPaymentService,
+    AccountOrdersService,
     TicketCodeGenerator,
     { provide: TicketSender, useClass: LogTicketSender },
   ],
