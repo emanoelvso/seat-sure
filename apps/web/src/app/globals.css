@@ -9,6 +9,9 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
+  --text-display: 15rem;
+  --text-display--line-height: 1;
+
   /* Brand Colors */
   --color-primary: #c14fe6;
 
