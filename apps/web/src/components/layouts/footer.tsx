@@ -6,6 +6,7 @@ import { InstagramIcon } from "@/components/icons/instagram-icon";
 import { LinkedinIcon } from "@/components/icons/linkedin-icon";
 import { YoutubeIcon } from "@/components/icons/youtube-icon";
 import { TelegramIcon } from "@/components/icons/telegram-icon";
+import { paths } from "@/config/paths";
 
 const lobster = Lobster({
   subsets: ["latin"],
@@ -16,7 +17,7 @@ export function Footer() {
   return (
     <footer className="flex flex-col items-center justify-center mb-10">
       <Link
-        href=""
+        href={paths.home.getHref()}
         className="flex gap-2 text-primary items-center mb-[2.625rem]"
       >
         <MicrophoneIcon />
@@ -26,16 +27,16 @@ export function Footer() {
       <nav>
         <ul className="flex gap-10 text-white text-base mb-[2.625rem]">
           <li>
-            <Link href="">Home</Link>
+            <Link href={paths.home.getHref()}>Home</Link>
           </li>
           <li>
-            <Link href="">Contact us</Link>
+            <Link href={paths.about.getHref("contact")}>Contact us</Link>
           </li>
           <li>
-            <Link href="">About us</Link>
+            <Link href={paths.about.getHref()}>About us</Link>
           </li>
           <li>
-            <Link href="">Privacy Policy</Link>
+            <Link href={paths.terms.getHref()}>Privacy Policy</Link>
           </li>
         </ul>
       </nav>
