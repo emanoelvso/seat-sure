@@ -23,6 +23,11 @@ export interface ChargeOutcome {
   status: 'succeeded' | 'failed';
 }
 
+export interface BillingPaymentCard {
+  brand: string;
+  last4: string;
+}
+
 export interface BillingApi {
   validateCard(
     card: BillingCardInput,
@@ -30,6 +35,7 @@ export interface BillingApi {
   ): Promise<BillingCardFieldErrors>;
   charge(input: ChargeDto): Promise<ChargeOutcome>;
   refund(paymentId: string): Promise<void>;
+  findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
 }
 
 export const BillingApi = Symbol('BillingApi');

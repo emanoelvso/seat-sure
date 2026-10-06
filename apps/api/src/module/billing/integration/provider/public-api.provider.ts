@@ -3,6 +3,7 @@ import {
   BillingApi,
   BillingCardFieldErrors,
   BillingCardInput,
+  BillingPaymentCard,
   ChargeDto,
   ChargeOutcome,
 } from '@sharedModules/integration/interface/billing-integration.interface';
@@ -25,5 +26,9 @@ export class BillingPublicApiProvider implements BillingApi {
 
   async refund(paymentId: string): Promise<void> {
     return this.billingService.refund(paymentId);
+  }
+
+  async findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null> {
+    return this.billingService.findPaymentCard(paymentId);
   }
 }

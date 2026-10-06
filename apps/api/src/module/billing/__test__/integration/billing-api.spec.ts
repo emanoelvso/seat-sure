@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { billingPaymentFactory } from '@billingModule/__test__/factory/billing-payment.factory';
 import { BillingModule } from '@billingModule/billing.module';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -183,5 +184,35 @@ describe('BillingPublicApiProvider (integration)', () => {
       expect(json).not.toContain('4242424242424242');
       expect(json).not.toContain(card.cvv);
     }
+  });
+
+  describe('findPaymentCard (ORDDETAIL-02)', () => {
+    it('returns the brand and last 4 stored for the payment', async () => {
+      const payment = billingPaymentFactory.build({
+        cardBrand: 'mastercard',
+        cardLast4: '4444',
+      });
+      await testDbClient.batchInsert(Tables.BillingPayment, [payment]);
+
+      const card = await billingApi.findPaymentCard(payment.id);
+
+      expect(card).toEqual({ brand: 'mastercard', last4: '4444' });
+    });
+
+    it('returns null for an unknown payment id', async () => {
+      await testDbClient.batchInsert(Tables.BillingPayment, [
+        billingPaymentFactory.build(),
+      ]);
+
+      await expect(
+        billingApi.findPaymentCard(randomUUID()),
+      ).resolves.toBeNull();
+    });
+
+    it('returns null for a payment id that is not a UUID', async () => {
+      await expect(
+        billingApi.findPaymentCard('not-a-uuid'),
+      ).resolves.toBeNull();
+    });
   });
 });
