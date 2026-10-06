@@ -5,6 +5,7 @@ import {
   accountUser,
   canceledOrderDetail,
 } from "@/testing/account-orders.fixture";
+import { qrCodePath } from "@/testing/qr-code";
 import { AccountOrderDetailView } from "./account-order-detail-view";
 
 const meta: Meta<typeof AccountOrderDetailView> = {
@@ -85,10 +86,15 @@ export const Completed: Story = {
       );
     }
 
-    // AC 5: the QR code of a completed order.
-    await expect(
-      canvas.getByRole("img", { name: "Order QR code" }),
-    ).toBeVisible();
+    // AC 5: the QR code of a completed order encodes the order id, not the
+    // payment id.
+    const qrCode = canvas.getByRole("img", { name: "Order QR code" });
+    await expect(qrCode).toBeVisible();
+    const order = accountOrderDetail();
+    const paths = qrCode.querySelectorAll("svg path");
+    const drawn = paths[paths.length - 1]?.getAttribute("d");
+    await expect(drawn).toBe(qrCodePath(order.id));
+    await expect(drawn).not.toBe(qrCodePath(order.paymentId!));
   },
 };
 

@@ -1,5 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect } from "storybook/test";
+import { qrCodePath } from "@/testing/qr-code";
 import { OrderQrCode } from "./order-qr-code";
 
 const meta: Meta<typeof OrderQrCode> = {
@@ -17,11 +18,14 @@ export default meta;
 type Story = StoryObj<typeof OrderQrCode>;
 
 // ORDDETAIL-02 AC 5: the QR code is one image named "Order QR code", drawn
-// as an SVG.
+// as an SVG that encodes the order id.
 export const Default: Story = {
   play: async ({ canvas }) => {
     const qrCode = canvas.getByRole("img", { name: "Order QR code" });
     await expect(qrCode.querySelector("svg")).not.toBeNull();
-    await expect(qrCode.querySelector("svg path")).not.toBeNull();
+    const paths = qrCode.querySelectorAll("svg path");
+    const drawn = paths[paths.length - 1]?.getAttribute("d");
+    await expect(drawn).toBe(qrCodePath(meta.args!.orderId!));
+    await expect(drawn).not.toBe(qrCodePath("seat-sure"));
   },
 };
