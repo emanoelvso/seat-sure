@@ -22,6 +22,9 @@ export const factory = (): Config => {
       jwtSecret: process.env.JWT_SECRET,
       codeSender: process.env.AUTH_CODE_SENDER || undefined,
     },
+    app: {
+      timeZone: process.env.APP_TIME_ZONE || undefined,
+    },
   });
 
   if (result.success) {

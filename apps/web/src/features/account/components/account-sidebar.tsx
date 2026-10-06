@@ -50,17 +50,41 @@ function DisabledItem({ icon, label }: { icon: Icon; label: string }) {
   );
 }
 
-function isTicketsPath(pathname: string | null) {
-  const ticketsPath = paths.accountTickets.getHref();
+// An item is current on its own path and on anything below it (an order
+// detail keeps "Tickets" current).
+function isCurrentPath(pathname: string | null, itemPath: string) {
+  return pathname === itemPath || !!pathname?.startsWith(`${itemPath}/`);
+}
+
+function NavItem({
+  href,
+  current,
+  icon,
+  label,
+}: {
+  href: string;
+  current: boolean;
+  icon: Icon;
+  label: string;
+}) {
   return (
-    pathname === ticketsPath || !!pathname?.startsWith(`${ticketsPath}/`)
+    <Link
+      href={href}
+      aria-current={current ? "page" : undefined}
+      className={current ? ITEM_CURRENT_CLASS : ITEM_CLASS}
+    >
+      <ItemContent icon={icon} label={label} />
+    </Link>
   );
 }
 
-// Account shell navigation (ACCT-01, ACCT-02): Tickets and Log out work;
-// the unbuilt pages and "See plans" render disabled, with no href.
+// Account shell navigation (ACCT-01, ACCT-02, PROFILE-09): Tickets, Personal
+// info and Log out work; the unbuilt pages and "See plans" render disabled,
+// with no href.
 export function AccountSidebar({ className = "" }: { className?: string }) {
-  const ticketsCurrent = isTicketsPath(usePathname());
+  const pathname = usePathname();
+  const ticketsPath = paths.accountTickets.getHref();
+  const personalInfoPath = paths.accountPersonalInfo.getHref();
 
   return (
     <aside
@@ -74,16 +98,20 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
         <nav aria-label="Account" className="flex flex-col gap-6">
           <ul className="flex flex-col items-start gap-2">
             <li>
-              <Link
-                href={paths.accountTickets.getHref()}
-                aria-current={ticketsCurrent ? "page" : undefined}
-                className={ticketsCurrent ? ITEM_CURRENT_CLASS : ITEM_CLASS}
-              >
-                <ItemContent icon={TicketIcon} label="Tickets" />
-              </Link>
+              <NavItem
+                href={ticketsPath}
+                current={isCurrentPath(pathname, ticketsPath)}
+                icon={TicketIcon}
+                label="Tickets"
+              />
             </li>
             <li>
-              <DisabledItem icon={UserIcon} label="Personal info" />
+              <NavItem
+                href={personalInfoPath}
+                current={isCurrentPath(pathname, personalInfoPath)}
+                icon={UserIcon}
+                label="Personal info"
+              />
             </li>
             <li>
               <DisabledItem icon={WalletIcon} label="Payment" />

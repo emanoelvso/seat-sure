@@ -347,6 +347,7 @@ export type Mutation = {
   resetPassword: Scalars['Boolean']['output'];
   signUp: SignUpResult;
   startCheckout: CheckoutOrder;
+  updateMyProfile: UserProfile;
   verifyEmail: SessionTokens;
 };
 
@@ -401,6 +402,11 @@ export type MutationStartCheckoutArgs = {
 };
 
 
+export type MutationUpdateMyProfileArgs = {
+  input: UpdateMyProfileInput;
+};
+
+
 export type MutationVerifyEmailArgs = {
   input: VerifyEmailInput;
 };
@@ -433,6 +439,7 @@ export type Query = {
   findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
   me: CurrentUser;
+  myProfile: UserProfile;
 };
 
 
@@ -601,6 +608,31 @@ export type TicketTypeSeats = {
 export type UnavailableSeats = {
   __typename: 'UnavailableSeats';
   seatIds: Array<Scalars['String']['output']>;
+};
+
+export type UpdateMyProfileInput = {
+  birthDate: Scalars['String']['input'];
+  city: Scalars['String']['input'];
+  firstName: Scalars['String']['input'];
+  lastName: Scalars['String']['input'];
+  phoneCountryCode: Scalars['String']['input'];
+  phoneNumber: Scalars['String']['input'];
+  state: Scalars['String']['input'];
+  zipCode: Scalars['String']['input'];
+};
+
+export type UserProfile = {
+  __typename: 'UserProfile';
+  avatarUrl: Maybe<Scalars['String']['output']>;
+  birthDate: Maybe<Scalars['String']['output']>;
+  city: Maybe<Scalars['String']['output']>;
+  firstName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lastName: Scalars['String']['output'];
+  phoneCountryCode: Maybe<Scalars['String']['output']>;
+  phoneNumber: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
+  zipCode: Maybe<Scalars['String']['output']>;
 };
 
 export type VerifyEmailInput = {

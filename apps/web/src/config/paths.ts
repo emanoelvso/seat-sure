@@ -70,6 +70,9 @@ export const paths = {
     getHref: (orderId: string) =>
       `/account/tickets/${encodeURIComponent(orderId)}`,
   },
+  accountPersonalInfo: {
+    getHref: () => "/account/personal-info",
+  },
   sessionRefresh: {
     getHref: (redirectTo: string) =>
       `/api/auth/refresh?redirectTo=${encodeURIComponent(redirectTo)}`,
