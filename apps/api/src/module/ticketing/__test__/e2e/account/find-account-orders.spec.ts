@@ -294,6 +294,7 @@ describe('TicketingResolver findAccountOrders (e2e)', () => {
   describe('input validation', () => {
     it.each([
       ['page 0', { page: 0, pageSize: 4 }],
+      ['pageSize 0', { page: 1, pageSize: 0 }],
       ['pageSize 21', { page: 1, pageSize: 21 }],
     ])('rejects %s with BAD_USER_INPUT', async (_, input) => {
       const body = await findAccountOrders(input, tokenFor(userId));
