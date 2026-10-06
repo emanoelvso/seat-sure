@@ -22,7 +22,8 @@ interface SessionResponse {
 // Fetches the signed-in state on mount (AUTH-48) and renders the right
 // header slot for it: a loading placeholder, a Signup link carrying the
 // current page as redirectTo (AUTH-40), or the bell + avatar/initials
-// (AUTH-42, AUTH-43).
+// (AUTH-42, AUTH-43). The avatar links to the account tickets (ACCT-02);
+// logging out lives in the account sidebar.
 export function HeaderAccount() {
   const [session, setSession] = useState<SessionResponse | null>(null);
 
@@ -66,27 +67,26 @@ export function HeaderAccount() {
       <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
         <BellIcon />
       </div>
-      <form action="/api/auth/logout" method="post">
-        <button
-          type="submit"
-          title="Log out"
-          className="w-10 h-10 rounded-full overflow-hidden shrink-0"
-        >
-          {user.avatarUrl ? (
-            <Image
-              className="object-cover w-full h-full"
-              src={user.avatarUrl}
-              alt="Profile Avatar"
-              width={40}
-              height={40}
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center text-white text-sm font-medium">
-              {getInitials(user.firstName, user.lastName, user.email)}
-            </div>
-          )}
-        </button>
-      </form>
+      <Link
+        href={paths.accountTickets.getHref()}
+        aria-label="My account"
+        title="My account"
+        className="w-10 h-10 rounded-full overflow-hidden shrink-0"
+      >
+        {user.avatarUrl ? (
+          <Image
+            className="object-cover w-full h-full"
+            src={user.avatarUrl}
+            alt="Profile Avatar"
+            width={40}
+            height={40}
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center text-white text-sm font-medium">
+            {getInitials(user.firstName, user.lastName, user.email)}
+          </div>
+        )}
+      </Link>
     </>
   );
 }

@@ -45,7 +45,8 @@ export const SignedOut: Story = {
 };
 
 // AUTH-42, AUTH-43: signed in without an avatar falls back to initials, and
-// no Signup link renders.
+// no Signup link renders. ACCT-02: the avatar links to the account tickets
+// and the header no longer holds the logout form.
 export const SignedInWithoutAvatar: Story = {
   beforeEach: () => {
     stubFetch(() =>
@@ -60,9 +61,13 @@ export const SignedInWithoutAvatar: Story = {
       }),
     );
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText("NK")).toBeVisible();
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
+    await expect(
+      canvas.getByRole("link", { name: "My account" }),
+    ).toHaveAttribute("href", "/account/tickets");
+    await expect(canvasElement.querySelector("form")).toBeNull();
   },
 };
 
@@ -83,9 +88,13 @@ export const SignedInWithAvatar: Story = {
       }),
     );
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const avatar = await canvas.findByRole("img", { name: "Profile Avatar" });
     await expect(avatar).toBeVisible();
+    const accountLink = canvas.getByRole("link", { name: "My account" });
+    await expect(accountLink).toHaveAttribute("href", "/account/tickets");
+    await expect(accountLink).toContainElement(avatar);
+    await expect(canvasElement.querySelector("form")).toBeNull();
   },
 };
 
