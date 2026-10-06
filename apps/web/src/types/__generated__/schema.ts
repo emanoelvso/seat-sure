@@ -11,6 +11,89 @@ export type Scalars = {
   DateTime: { input: string; output: string; }
 };
 
+export type AccountOrderCounts = {
+  __typename: 'AccountOrderCounts';
+  all: Scalars['Int']['output'];
+  cancelled: Scalars['Int']['output'];
+  completed: Scalars['Int']['output'];
+  pending: Scalars['Int']['output'];
+};
+
+export type AccountOrderDetail = {
+  __typename: 'AccountOrderDetail';
+  createdAt: Scalars['DateTime']['output'];
+  currency: Scalars['String']['output'];
+  event: AccountOrderEvent;
+  id: Scalars['ID']['output'];
+  items: Array<AccountOrderItem>;
+  paymentCard: Maybe<AccountOrderPaymentCard>;
+  paymentId: Maybe<Scalars['String']['output']>;
+  quantity: Scalars['Int']['output'];
+  serviceFeeCents: Scalars['Int']['output'];
+  status: AccountOrderStatus;
+  taxCents: Scalars['Int']['output'];
+  ticketTypeName: Scalars['String']['output'];
+  totalCents: Scalars['Int']['output'];
+};
+
+export type AccountOrderEvent = {
+  __typename: 'AccountOrderEvent';
+  city: Scalars['String']['output'];
+  country: Scalars['String']['output'];
+  coverImage: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  startAt: Scalars['DateTime']['output'];
+  venue: Scalars['String']['output'];
+};
+
+export type AccountOrderItem = {
+  __typename: 'AccountOrderItem';
+  number: Scalars['String']['output'];
+  row: Scalars['String']['output'];
+};
+
+export type AccountOrderPaymentCard = {
+  __typename: 'AccountOrderPaymentCard';
+  brand: Scalars['String']['output'];
+  last4: Scalars['String']['output'];
+};
+
+export type AccountOrderStatus =
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'PENDING';
+
+export type AccountOrderSummary = {
+  __typename: 'AccountOrderSummary';
+  createdAt: Scalars['DateTime']['output'];
+  currency: Scalars['String']['output'];
+  eventName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  quantity: Scalars['Int']['output'];
+  status: AccountOrderStatus;
+  totalCents: Scalars['Int']['output'];
+};
+
+export type AccountOrdersPage = {
+  __typename: 'AccountOrdersPage';
+  counts: AccountOrderCounts;
+  items: Array<AccountOrderSummary>;
+  page: Scalars['Int']['output'];
+  totalPages: Scalars['Int']['output'];
+};
+
+export type AccountOrdersSort =
+  | 'HIGHEST_AMOUNT'
+  | 'LOWEST_AMOUNT'
+  | 'NEWEST'
+  | 'OLDEST';
+
+export type AccountOrdersTab =
+  | 'ALL'
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'PENDING';
+
 export type Artist = {
   __typename: 'Artist';
   bio: Scalars['String']['output'];
@@ -168,6 +251,17 @@ export type EventsByCity = {
   city: Scalars['String']['output'];
   country: Scalars['String']['output'];
   events: Maybe<Array<Event>>;
+};
+
+export type FindAccountOrderInput = {
+  orderId: Scalars['String']['input'];
+};
+
+export type FindAccountOrdersInput = {
+  page: Scalars['Int']['input'];
+  pageSize: Scalars['Int']['input'];
+  sort?: AccountOrdersSort;
+  tab?: AccountOrdersTab;
 };
 
 export type FindArtist = {
@@ -329,6 +423,8 @@ export type PriceRange = {
 
 export type Query = {
   __typename: 'Query';
+  findAccountOrder: Maybe<AccountOrderDetail>;
+  findAccountOrders: AccountOrdersPage;
   findArtistBySlug: FindArtist;
   findCheckoutOrder: Maybe<CheckoutOrder>;
   findEventTickets: EventTickets;
@@ -337,6 +433,16 @@ export type Query = {
   findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
   me: CurrentUser;
+};
+
+
+export type QueryFindAccountOrderArgs = {
+  input: FindAccountOrderInput;
+};
+
+
+export type QueryFindAccountOrdersArgs = {
+  input: FindAccountOrdersInput;
 };
 
 

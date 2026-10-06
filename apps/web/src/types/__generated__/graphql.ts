@@ -2,6 +2,23 @@
 type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
+export type AccountOrderStatus =
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'PENDING';
+
+export type AccountOrdersSort =
+  | 'HIGHEST_AMOUNT'
+  | 'LOWEST_AMOUNT'
+  | 'NEWEST'
+  | 'OLDEST';
+
+export type AccountOrdersTab =
+  | 'ALL'
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'PENDING';
+
 export type CardInput = {
   cvv: string;
   expiry: string;
@@ -31,6 +48,17 @@ export type EventType =
   | 'FESTIVAL'
   | 'SHOW'
   | 'SPORT';
+
+export type FindAccountOrderInput = {
+  orderId: string;
+};
+
+export type FindAccountOrdersInput = {
+  page: number;
+  pageSize: number;
+  sort?: AccountOrdersSort;
+  tab?: AccountOrdersTab;
+};
 
 export type FindArtistInput = {
   slug: string;
@@ -122,6 +150,20 @@ export type VerifyEmailInput = {
   email: string;
   rememberMe: boolean;
 };
+
+export type FindAccountOrderQueryVariables = Exact<{
+  input: FindAccountOrderInput;
+}>;
+
+
+export type FindAccountOrderQuery = { findAccountOrder: { __typename: 'AccountOrderDetail', id: string, status: AccountOrderStatus, createdAt: string, ticketTypeName: string, quantity: number, currency: string, serviceFeeCents: number, taxCents: number, totalCents: number, paymentId: string | null, event: { __typename: 'AccountOrderEvent', name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, items: Array<{ __typename: 'AccountOrderItem', row: string, number: string }>, paymentCard: { __typename: 'AccountOrderPaymentCard', brand: string, last4: string } | null } | null };
+
+export type FindAccountOrdersQueryVariables = Exact<{
+  input: FindAccountOrdersInput;
+}>;
+
+
+export type FindAccountOrdersQuery = { findAccountOrders: { __typename: 'AccountOrdersPage', page: number, totalPages: number, items: Array<{ __typename: 'AccountOrderSummary', id: string, status: AccountOrderStatus, createdAt: string, eventName: string, quantity: number, currency: string, totalCents: number }>, counts: { __typename: 'AccountOrderCounts', all: number, pending: number, cancelled: number, completed: number } } };
 
 export type FindArtistBySlugQueryVariables = Exact<{
   input: FindArtistInput;
