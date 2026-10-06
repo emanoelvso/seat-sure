@@ -28,7 +28,9 @@ const meta: Meta<typeof BirthDatePicker> = {
   component: BirthDatePicker,
   tags: ["autodocs"],
   parameters: { a11y: { test: "error" } },
-  beforeEach: () => onChange.mockClear(),
+  beforeEach: () => {
+    onChange.mockClear();
+  },
   decorators: [
     (Story) => (
       <div className="w-[548px]">

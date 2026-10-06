@@ -25,7 +25,9 @@ const meta: Meta<typeof PhoneCodeSelect> = {
   component: PhoneCodeSelect,
   tags: ["autodocs"],
   parameters: { a11y: { test: "error" } },
-  beforeEach: () => onChange.mockClear(),
+  beforeEach: () => {
+    onChange.mockClear();
+  },
   render: () => <Controlled />,
 } satisfies Meta<typeof PhoneCodeSelect>;
 

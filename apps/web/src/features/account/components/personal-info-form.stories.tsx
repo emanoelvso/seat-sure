@@ -39,7 +39,9 @@ const meta: Meta<typeof PersonalInfoForm> = {
     today: TODAY,
     onSave,
   },
-  beforeEach: () => onSave.mockClear(),
+  beforeEach: () => {
+    onSave.mockClear();
+  },
   decorators: [
     (Story) => (
       <div className="w-[1128px]">
