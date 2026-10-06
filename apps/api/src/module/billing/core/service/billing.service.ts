@@ -11,6 +11,7 @@ import { BillingException } from '@billingModule/core/exception/billing.exceptio
 import { PaymentStatus } from '@billingModule/core/enum/payment-status.enum';
 import { BillingPayment } from '@billingModule/persistence/entity/billing-payment.entity';
 import { BillingPaymentRepository } from '@billingModule/persistence/repository/billing-payment.repository';
+import { isUUID } from 'class-validator';
 
 export interface ChargeDto {
   userId: string;
@@ -23,6 +24,11 @@ export interface ChargeDto {
 export interface ChargeOutcome {
   paymentId: string;
   status: 'succeeded' | 'failed';
+}
+
+export interface PaymentCard {
+  brand: string;
+  last4: string;
 }
 
 @Injectable()
@@ -98,5 +104,19 @@ export class BillingService {
     payment.status = PaymentStatus.REFUNDED;
     payment.refundedAt = new Date();
     await this.paymentRepository.save(payment);
+  }
+
+  // The card brand and last 4 of a payment, or null for an unknown or a
+  // malformed id (ORDDETAIL-02)
+  async findPaymentCard(paymentId: string): Promise<PaymentCard | null> {
+    if (!isUUID(paymentId)) {
+      return null;
+    }
+
+    const payment = await this.paymentRepository.findOneById(paymentId);
+
+    return payment
+      ? { brand: payment.cardBrand, last4: payment.cardLast4 }
+      : null;
   }
 }

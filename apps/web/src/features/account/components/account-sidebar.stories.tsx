@@ -1,0 +1,105 @@
+import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect } from "storybook/test";
+import { AccountSidebar } from "./account-sidebar";
+
+// a11y "error" makes the addon's violations fail the story (preview.tsx
+// only reports them).
+function atPath(pathname: string) {
+  return {
+    nextjs: { appDirectory: true, navigation: { pathname } },
+    a11y: { test: "error" },
+  };
+}
+
+const meta: Meta<typeof AccountSidebar> = {
+  title: "Features/Account/AccountSidebar",
+  component: AccountSidebar,
+  tags: ["autodocs"],
+  parameters: atPath("/account/tickets"),
+  decorators: [
+    (Story) => (
+      <div className="flex h-[832px]">
+        <Story />
+      </div>
+    ),
+  ],
+} satisfies Meta<typeof AccountSidebar>;
+
+export default meta;
+
+type Story = StoryObj<typeof AccountSidebar>;
+
+const DISABLED_ITEMS = ["Personal info", "Payment", "Notification", "Setting"];
+
+// ACCT-01 AC 1: the logo, the six items and the Upgrade card render.
+export const Default: Story = {
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("link", { name: "SeatSure" }),
+    ).toHaveAttribute("href", "/");
+    await expect(canvas.getByRole("link", { name: "Tickets" })).toBeVisible();
+    for (const name of DISABLED_ITEMS) {
+      await expect(canvas.getByRole("link", { name })).toBeVisible();
+    }
+    await expect(canvas.getByRole("button", { name: "Log out" })).toBeVisible();
+    await expect(canvas.getByText("Upgrade your plan")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "See plans" }),
+    ).toBeVisible();
+  },
+};
+
+// ACCT-01 AC 2: "Tickets" links to the list and is current on the list.
+export const CurrentOnTicketsList: Story = {
+  parameters: atPath("/account/tickets"),
+  play: async ({ canvas }) => {
+    const tickets = canvas.getByRole("link", { name: "Tickets" });
+    await expect(tickets).toHaveAttribute("href", "/account/tickets");
+    await expect(tickets).toHaveAttribute("aria-current", "page");
+  },
+};
+
+// ACCT-01 AC 2: "Tickets" stays current on an order detail page.
+export const CurrentOnTicketDetail: Story = {
+  parameters: atPath("/account/tickets/x"),
+  play: async ({ canvas }) => {
+    const tickets = canvas.getByRole("link", { name: "Tickets" });
+    await expect(tickets).toHaveAttribute("href", "/account/tickets");
+    await expect(tickets).toHaveAttribute("aria-current", "page");
+  },
+};
+
+// ACCT-01 AC 2 (WHILE): outside the tickets pages "Tickets" is not current.
+export const NotCurrentElsewhere: Story = {
+  parameters: atPath("/account/settings"),
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("link", { name: "Tickets" }),
+    ).not.toHaveAttribute("aria-current");
+  },
+};
+
+// ACCT-01 AC 3: the unbuilt items and "See plans" are disabled, with no href.
+export const DisabledItems: Story = {
+  play: async ({ canvas }) => {
+    for (const name of DISABLED_ITEMS) {
+      const item = canvas.getByRole("link", { name });
+      await expect(item).toHaveAttribute("aria-disabled", "true");
+      await expect(item).not.toHaveAttribute("href");
+    }
+    const seePlans = canvas.getByRole("button", { name: "See plans" });
+    await expect(seePlans).toHaveAttribute("aria-disabled", "true");
+    await expect(seePlans).not.toHaveAttribute("href");
+  },
+};
+
+// ACCT-02 AC 4: "Log out" submits POST /api/auth/logout.
+export const LogOut: Story = {
+  play: async ({ canvas }) => {
+    const logOut = canvas.getByRole("button", { name: "Log out" });
+    await expect(logOut).toHaveAttribute("type", "submit");
+    const form = logOut.closest("form");
+    await expect(form).toHaveAttribute("action", "/api/auth/logout");
+    await expect(form).toHaveAttribute("method", "post");
+  },
+};

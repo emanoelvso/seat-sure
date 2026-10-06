@@ -2,6 +2,85 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AccountOrderCounts {
+  all: Int!
+  cancelled: Int!
+  completed: Int!
+  pending: Int!
+}
+
+type AccountOrderDetail {
+  createdAt: DateTime!
+  currency: String!
+  event: AccountOrderEvent!
+  id: ID!
+  items: [AccountOrderItem!]!
+  paymentCard: AccountOrderPaymentCard
+  paymentId: String
+  quantity: Int!
+  serviceFeeCents: Int!
+  status: AccountOrderStatus!
+  taxCents: Int!
+  ticketTypeName: String!
+  totalCents: Int!
+}
+
+type AccountOrderEvent {
+  city: String!
+  country: String!
+  coverImage: String!
+  name: String!
+  startAt: DateTime!
+  venue: String!
+}
+
+type AccountOrderItem {
+  number: String!
+  row: String!
+}
+
+type AccountOrderPaymentCard {
+  brand: String!
+  last4: String!
+}
+
+enum AccountOrderStatus {
+  CANCELLED
+  COMPLETED
+  PENDING
+}
+
+type AccountOrderSummary {
+  createdAt: DateTime!
+  currency: String!
+  eventName: String!
+  id: ID!
+  quantity: Int!
+  status: AccountOrderStatus!
+  totalCents: Int!
+}
+
+type AccountOrdersPage {
+  counts: AccountOrderCounts!
+  items: [AccountOrderSummary!]!
+  page: Int!
+  totalPages: Int!
+}
+
+enum AccountOrdersSort {
+  HIGHEST_AMOUNT
+  LOWEST_AMOUNT
+  NEWEST
+  OLDEST
+}
+
+enum AccountOrdersTab {
+  ALL
+  CANCELLED
+  COMPLETED
+  PENDING
+}
+
 type Artist {
   bio: String!
   cover: String!
@@ -156,6 +235,17 @@ type EventsByCity {
   events: [Event!]
 }
 
+input FindAccountOrderInput {
+  orderId: String!
+}
+
+input FindAccountOrdersInput {
+  page: Int!
+  pageSize: Int!
+  sort: AccountOrdersSort! = NEWEST
+  tab: AccountOrdersTab! = ALL
+}
+
 type FindArtist {
   artist: Artist
   eventsByCity: [EventsByCity!]
@@ -254,6 +344,8 @@ input PriceRange {
 }
 
 type Query {
+  findAccountOrder(input: FindAccountOrderInput!): AccountOrderDetail
+  findAccountOrders(input: FindAccountOrdersInput!): AccountOrdersPage!
   findArtistBySlug(FindArtistInput: FindArtistInput!): FindArtist!
   findCheckoutOrder(input: FindCheckoutOrderInput!): CheckoutOrder
   findEventTickets(FindEventTicketsInput: FindEventTicketsInput!): EventTickets!

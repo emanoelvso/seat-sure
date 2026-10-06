@@ -63,6 +63,13 @@ export const paths = {
     getHref: (orderId: string) =>
       `/checkout/${encodeURIComponent(orderId)}/success`,
   },
+  accountTickets: {
+    getHref: () => "/account/tickets",
+  },
+  accountTicket: {
+    getHref: (orderId: string) =>
+      `/account/tickets/${encodeURIComponent(orderId)}`,
+  },
   sessionRefresh: {
     getHref: (redirectTo: string) =>
       `/api/auth/refresh?redirectTo=${encodeURIComponent(redirectTo)}`,

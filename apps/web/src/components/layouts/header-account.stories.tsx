@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn } from "storybook/test";
+import { expect, fn, userEvent, waitFor } from "storybook/test";
 import { HeaderAccount } from "./header-account";
 import { paths } from "@/config/paths";
 
@@ -45,7 +45,8 @@ export const SignedOut: Story = {
 };
 
 // AUTH-42, AUTH-43: signed in without an avatar falls back to initials, and
-// no Signup link renders.
+// no Signup link renders. ACCT-02: the avatar links to the account tickets
+// and the menu (with the logout form) stays closed until hover or focus.
 export const SignedInWithoutAvatar: Story = {
   beforeEach: () => {
     stubFetch(() =>
@@ -60,9 +61,13 @@ export const SignedInWithoutAvatar: Story = {
       }),
     );
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText("NK")).toBeVisible();
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
+    await expect(
+      canvas.getByRole("link", { name: "My account" }),
+    ).toHaveAttribute("href", "/account/tickets");
+    await expect(canvasElement.querySelector("form")).toBeNull();
   },
 };
 
@@ -83,9 +88,13 @@ export const SignedInWithAvatar: Story = {
       }),
     );
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const avatar = await canvas.findByRole("img", { name: "Profile Avatar" });
     await expect(avatar).toBeVisible();
+    const accountLink = canvas.getByRole("link", { name: "My account" });
+    await expect(accountLink).toHaveAttribute("href", "/account/tickets");
+    await expect(accountLink).toContainElement(avatar);
+    await expect(canvasElement.querySelector("form")).toBeNull();
   },
 };
 
@@ -98,5 +107,54 @@ export const Loading: Story = {
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
     await expect(canvas.queryByRole("img")).toBeNull();
     await expect(canvas.queryByText("NK")).toBeNull();
+  },
+};
+
+// Hovering the avatar opens a menu with a link to the account tickets and a
+// Log out button posting to the logout route; leaving or Escape closes it.
+export const AvatarMenu: Story = {
+  beforeEach: () => {
+    stubFetch(() =>
+      jsonResponse({
+        user: {
+          id: "user-3",
+          email: "lena@example.com",
+          firstName: "Lena",
+          lastName: "Park",
+          avatarUrl: null,
+        },
+      }),
+    );
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const avatar = await canvas.findByRole("link", { name: "My account" });
+    await expect(canvas.queryByRole("link", { name: "My tickets" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Log out" })).toBeNull();
+
+    await userEvent.hover(avatar);
+
+    await expect(
+      await canvas.findByRole("link", { name: "My tickets" }),
+    ).toHaveAttribute("href", "/account/tickets");
+    const logout = canvas.getByRole("button", { name: "Log out" });
+    await expect(logout).toHaveAttribute("type", "submit");
+    const form = canvasElement.querySelector("form");
+    await expect(form).toHaveAttribute("action", "/api/auth/logout");
+    await expect(form).toHaveAttribute("method", "post");
+    await expect(form).toContainElement(logout);
+
+    await userEvent.unhover(avatar);
+    await waitFor(() =>
+      expect(canvas.queryByRole("button", { name: "Log out" })).toBeNull(),
+    );
+
+    await userEvent.tab();
+    await expect(
+      await canvas.findByRole("link", { name: "My tickets" }),
+    ).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(canvas.queryByRole("link", { name: "My tickets" })).toBeNull(),
+    );
   },
 };

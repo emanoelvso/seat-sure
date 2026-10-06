@@ -161,3 +161,21 @@ describe("paths.sessionRefresh", () => {
     );
   });
 });
+
+describe("paths.accountTickets", () => {
+  it("links to the account tickets list (ACCT-02)", () => {
+    expect(paths.accountTickets.getHref()).toBe("/account/tickets");
+  });
+});
+
+describe("paths.accountTicket", () => {
+  it("links to the order detail page (ORDLIST-03)", () => {
+    expect(paths.accountTicket.getHref("order-1")).toBe(
+      "/account/tickets/order-1",
+    );
+  });
+
+  it("encodes a slash in the order id (ORDLIST-03)", () => {
+    expect(paths.accountTicket.getHref("a/b")).toBe("/account/tickets/a%2Fb");
+  });
+});

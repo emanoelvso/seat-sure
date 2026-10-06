@@ -3,8 +3,51 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DefaultTypeOrmRepository } from '@sharedModules/persistence/typeorm/repository/default-typeorm.repository';
 import { OrderItem } from '@ticketingModule/persistence/entity/order-item.entity';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
+import {
+  AccountOrderCountsModel,
+  AccountOrdersSort,
+  AccountOrdersTab,
+} from '@ticketingModule/core/model/account-order.model';
 import { Order } from '@ticketingModule/persistence/entity/order.entity';
 import { DataSource, EntityManager } from 'typeorm';
+
+// Which orders each account tab shows, on the alias `o` (ORDLIST-01). A
+// pending or processing order is listed until it expires by the API clock
+// (`:now`, AD-025). Expired and failed orders are never listed.
+const COMPLETED_CONDITION = 'o.status = :paid';
+const CANCELLED_CONDITION = 'o.status = :cancelled';
+const PENDING_CONDITION = '(o.status IN (:...open) AND o.expiresAt >= :now)';
+
+const TAB_CONDITIONS: Record<AccountOrdersTab, string> = {
+  [AccountOrdersTab.COMPLETED]: COMPLETED_CONDITION,
+  [AccountOrdersTab.CANCELLED]: CANCELLED_CONDITION,
+  [AccountOrdersTab.PENDING]: PENDING_CONDITION,
+  [AccountOrdersTab.ALL]: `(${COMPLETED_CONDITION} OR ${CANCELLED_CONDITION} OR ${PENDING_CONDITION})`,
+};
+
+const tabParameters = (now: Date) => ({
+  paid: OrderStatus.PAID,
+  cancelled: OrderStatus.CANCELLED,
+  open: [OrderStatus.PENDING, OrderStatus.PROCESSING],
+  now,
+});
+
+// Amount sorts break ties by newest first (ORDLIST-04)
+const SORT_ORDERS: Record<
+  AccountOrdersSort,
+  Array<[string, 'ASC' | 'DESC']>
+> = {
+  [AccountOrdersSort.NEWEST]: [['o.createdAt', 'DESC']],
+  [AccountOrdersSort.OLDEST]: [['o.createdAt', 'ASC']],
+  [AccountOrdersSort.HIGHEST_AMOUNT]: [
+    ['o.totalCents', 'DESC'],
+    ['o.createdAt', 'DESC'],
+  ],
+  [AccountOrdersSort.LOWEST_AMOUNT]: [
+    ['o.totalCents', 'ASC'],
+    ['o.createdAt', 'DESC'],
+  ],
+};
 
 @Injectable()
 export class OrderRepository extends DefaultTypeOrmRepository<Order> {
@@ -86,6 +129,78 @@ export class OrderRepository extends DefaultTypeOrmRepository<Order> {
       Order,
       { id: orderId, status: OrderStatus.PENDING },
       { status: OrderStatus.CANCELLED },
+    );
+  }
+
+  // The user's order count per account tab, in one query (ORDLIST-02)
+  async countAccountTabs(
+    userId: string,
+    now: Date,
+  ): Promise<AccountOrderCountsModel> {
+    const counts = await this.entityManager
+      .createQueryBuilder(Order, 'o')
+      .select(`COUNT(*) FILTER (WHERE ${TAB_CONDITIONS.ALL})`, 'all')
+      .addSelect(`COUNT(*) FILTER (WHERE ${TAB_CONDITIONS.PENDING})`, 'pending')
+      .addSelect(
+        `COUNT(*) FILTER (WHERE ${TAB_CONDITIONS.CANCELLED})`,
+        'cancelled',
+      )
+      .addSelect(
+        `COUNT(*) FILTER (WHERE ${TAB_CONDITIONS.COMPLETED})`,
+        'completed',
+      )
+      .where('o.userId = :userId', { userId })
+      .setParameters(tabParameters(now))
+      .getRawOne<Record<keyof AccountOrderCountsModel, string>>();
+
+    return {
+      all: Number(counts?.all ?? 0),
+      pending: Number(counts?.pending ?? 0),
+      cancelled: Number(counts?.cancelled ?? 0),
+      completed: Number(counts?.completed ?? 0),
+    };
+  }
+
+  // One page of the user's orders in a tab, each with its seat count as
+  // `quantity` (ORDLIST-01, ORDLIST-04, ORDLIST-05).
+  // SPEC_DEVIATION: the design names `loadRelationCountAndMap` for the count.
+  // Reason: TypeORM 1.x removed it, so a correlated subquery counts the items.
+  async findAccountPage(
+    userId: string,
+    tab: AccountOrdersTab,
+    sort: AccountOrdersSort,
+    { offset, limit }: { offset: number; limit: number },
+    now: Date,
+  ): Promise<Array<Order & { quantity: number }>> {
+    const query = this.entityManager
+      .createQueryBuilder(Order, 'o')
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select('COUNT(*)')
+            .from(OrderItem, 'i')
+            .where('i.orderId = o.id'),
+        'quantity',
+      )
+      .where('o.userId = :userId', { userId })
+      .andWhere(TAB_CONDITIONS[tab])
+      .setParameters(tabParameters(now))
+      .offset(offset)
+      .limit(limit);
+    for (const [column, direction] of SORT_ORDERS[sort]) {
+      query.addOrderBy(column, direction);
+    }
+
+    const { entities, raw } = await query.getRawAndEntities<{
+      o_id: string;
+      quantity: string;
+    }>();
+    const quantities = new Map(
+      raw.map((row) => [row.o_id, Number(row.quantity)]),
+    );
+
+    return entities.map((order) =>
+      Object.assign(order, { quantity: quantities.get(order.id) ?? 0 }),
     );
   }
 }
