@@ -29,7 +29,7 @@ export default meta;
 
 type Story = StoryObj<typeof AccountSidebar>;
 
-const DISABLED_ITEMS = ["Personal info", "Payment", "Notification", "Setting"];
+const DISABLED_ITEMS = ["Payment", "Notification", "Setting"];
 
 // ACCT-01 AC 1: the logo, the six items and the Upgrade card render.
 export const Default: Story = {
@@ -38,6 +38,9 @@ export const Default: Story = {
       canvas.getByRole("link", { name: "SeatSure" }),
     ).toHaveAttribute("href", "/");
     await expect(canvas.getByRole("link", { name: "Tickets" })).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Personal info" }),
+    ).toBeVisible();
     for (const name of DISABLED_ITEMS) {
       await expect(canvas.getByRole("link", { name })).toBeVisible();
     }
@@ -79,7 +82,42 @@ export const NotCurrentElsewhere: Story = {
   },
 };
 
-// ACCT-01 AC 3: the unbuilt items and "See plans" are disabled, with no href.
+// PROFILE-09 AC 1 and 2: "Personal info" links to the page and is current
+// there, and "Tickets" is not.
+export const CurrentOnPersonalInfo: Story = {
+  parameters: atPath("/account/personal-info"),
+  play: async ({ canvas }) => {
+    const personalInfo = canvas.getByRole("link", { name: "Personal info" });
+    await expect(personalInfo).toHaveAttribute(
+      "href",
+      "/account/personal-info",
+    );
+    await expect(personalInfo).toHaveAttribute("aria-current", "page");
+    await expect(
+      canvas.getByRole("link", { name: "Tickets" }),
+    ).not.toHaveAttribute("aria-current");
+  },
+};
+
+// PROFILE-09 AC 2: on the tickets list the reverse holds, and the link still
+// points at the page.
+export const PersonalInfoNotCurrentOnTickets: Story = {
+  parameters: atPath("/account/tickets"),
+  play: async ({ canvas }) => {
+    const personalInfo = canvas.getByRole("link", { name: "Personal info" });
+    await expect(personalInfo).toHaveAttribute(
+      "href",
+      "/account/personal-info",
+    );
+    await expect(personalInfo).not.toHaveAttribute("aria-current");
+    await expect(canvas.getByRole("link", { name: "Tickets" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  },
+};
+
+// ACCT-01 AC 3 / PROFILE-09 AC 3: the unbuilt items and "See plans" are disabled, with no href.
 export const DisabledItems: Story = {
   play: async ({ canvas }) => {
     for (const name of DISABLED_ITEMS) {
