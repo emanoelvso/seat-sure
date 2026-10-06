@@ -145,6 +145,17 @@ export type StartCheckoutInput = {
   ticketTypeId: string;
 };
 
+export type UpdateMyProfileInput = {
+  birthDate: string;
+  city: string;
+  firstName: string;
+  lastName: string;
+  phoneCountryCode: string;
+  phoneNumber: string;
+  state: string;
+  zipCode: string;
+};
+
 export type VerifyEmailInput = {
   code: string;
   email: string;
@@ -164,6 +175,18 @@ export type FindAccountOrdersQueryVariables = Exact<{
 
 
 export type FindAccountOrdersQuery = { findAccountOrders: { __typename: 'AccountOrdersPage', page: number, totalPages: number, items: Array<{ __typename: 'AccountOrderSummary', id: string, status: AccountOrderStatus, createdAt: string, eventName: string, quantity: number, currency: string, totalCents: number }>, counts: { __typename: 'AccountOrderCounts', all: number, pending: number, cancelled: number, completed: number } } };
+
+export type MyProfileQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MyProfileQuery = { myProfile: { __typename: 'UserProfile', id: string, firstName: string, lastName: string, avatarUrl: string | null, state: string | null, city: string | null, birthDate: string | null, phoneCountryCode: string | null, phoneNumber: string | null, zipCode: string | null } };
+
+export type UpdateMyProfileMutationVariables = Exact<{
+  input: UpdateMyProfileInput;
+}>;
+
+
+export type UpdateMyProfileMutation = { updateMyProfile: { __typename: 'UserProfile', id: string, firstName: string, lastName: string, avatarUrl: string | null, state: string | null, city: string | null, birthDate: string | null, phoneCountryCode: string | null, phoneNumber: string | null, zipCode: string | null } };
 
 export type FindArtistBySlugQueryVariables = Exact<{
   input: FindArtistInput;
