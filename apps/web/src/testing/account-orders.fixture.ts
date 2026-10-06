@@ -1,5 +1,8 @@
 import { zonedIso } from "@/testing/dates";
-import type { FindAccountOrdersQuery } from "@/types/__generated__/graphql";
+import type {
+  FindAccountOrderQuery,
+  FindAccountOrdersQuery,
+} from "@/types/__generated__/graphql";
 
 type AccountOrderSummary =
   FindAccountOrdersQuery["findAccountOrders"]["items"][number];
@@ -68,3 +71,61 @@ export function accountOrdersPage(
     ...overrides,
   };
 }
+
+type AccountOrderDetail = NonNullable<
+  FindAccountOrderQuery["findAccountOrder"]
+>;
+
+// A paid order as findAccountOrder returns it: 2 VIP seats in row 7, $15
+// service fee + $5 tax, $260 in total, paid by Visa 4242.
+export function accountOrderDetail(
+  overrides: Partial<AccountOrderDetail> = {},
+): AccountOrderDetail {
+  return {
+    __typename: "AccountOrderDetail",
+    id: "3f2a9c1b-7d4e-4a2b-9c1d-2e3f4a5b6c7d",
+    status: "COMPLETED",
+    createdAt: zonedIso(2025, 8, 12, 13, 57),
+    event: {
+      __typename: "AccountOrderEvent",
+      name: "Adele Concert",
+      coverImage: "/artist/map.png",
+      venue: "American Airlines Center",
+      city: "Dallas",
+      country: "USA",
+      startAt: zonedIso(2025, 8, 30, 19, 30),
+    },
+    ticketTypeName: "VIP",
+    items: [
+      { __typename: "AccountOrderItem", row: "7", number: "10" },
+      { __typename: "AccountOrderItem", row: "7", number: "07" },
+    ],
+    quantity: 2,
+    currency: "USD",
+    serviceFeeCents: 1500,
+    taxCents: 500,
+    totalCents: 26000,
+    paymentId: "7984bd83-3827-4c1a-9e2f-5a6b7c8d9e0f",
+    paymentCard: {
+      __typename: "AccountOrderPaymentCard",
+      brand: "visa",
+      last4: "4242",
+    },
+    ...overrides,
+  };
+}
+
+// A cancelled order before payment: one seat, no payment id, no card.
+export const canceledOrderDetail = accountOrderDetail({
+  id: "8b1e4d7a-2c3f-4e5a-8b9c-0d1e2f3a4b5c",
+  status: "CANCELLED",
+  items: [{ __typename: "AccountOrderItem", row: "3", number: "04" }],
+  quantity: 1,
+  serviceFeeCents: 750,
+  taxCents: 250,
+  totalCents: 13500,
+  paymentId: null,
+  paymentCard: null,
+});
+
+export const accountUser = { firstName: "Negar", lastName: "Khosravi" };
