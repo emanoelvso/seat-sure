@@ -23,6 +23,25 @@ export const authSchema = z.object({
   codeSender: codeSenderSchema.default('log'),
 });
 
+export const timeZoneSchema = z
+  .string()
+  .default('UTC')
+  .refine(
+    (value) => {
+      try {
+        new Intl.DateTimeFormat('en-CA', { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: 'app.timeZone must be a valid IANA time zone' },
+  );
+
+export const appSchema = z.object({
+  timeZone: timeZoneSchema,
+});
+
 export const configSchema = z
   .object({
     env: environmentSchema,
@@ -30,6 +49,7 @@ export const configSchema = z
     database: databaseSchema,
     redis: redisSchema,
     auth: authSchema,
+    app: appSchema.default({ timeZone: 'UTC' }),
   })
   .refine(
     (config) =>
