@@ -110,6 +110,22 @@ describe("paths.resetPassword", () => {
   });
 });
 
+describe("paths.about", () => {
+  it("links to the about page (NAV-01)", () => {
+    expect(paths.about.getHref()).toBe("/about");
+  });
+
+  it("links to the contact section of the about page (NAV-01)", () => {
+    expect(paths.about.getHref("contact")).toBe("/about#contact");
+  });
+});
+
+describe("paths.terms", () => {
+  it("links to the terms page (NAV-01)", () => {
+    expect(paths.terms.getHref()).toBe("/terms");
+  });
+});
+
 describe("paths.session", () => {
   it("links to the session API route", () => {
     expect(paths.session.getHref()).toBe("/api/auth/session");

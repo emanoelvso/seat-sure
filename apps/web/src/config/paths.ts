@@ -42,6 +42,13 @@ export const paths = {
   resetPassword: {
     getHref: () => "/reset-password",
   },
+  about: {
+    getHref: (section?: "contact") =>
+      section ? `/about#${section}` : "/about",
+  },
+  terms: {
+    getHref: () => "/terms",
+  },
   session: {
     getHref: () => "/api/auth/session",
   },
