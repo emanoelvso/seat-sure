@@ -27,7 +27,7 @@ const supportingTextVariants = cva("flex justify-between text-xs", {
     variant: {
       default: "text-neutral-400",
       success: "text-success-400",
-      error: "text-error-400",
+      error: "text-error-300",
       disabled: "text-neutral-400",
     },
   },
