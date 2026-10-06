@@ -58,6 +58,15 @@ export const PageOfFour: Story = {
       "aria-current",
       "page",
     );
+
+    const next = canvas.getByRole("link", { name: "Next page" });
+    const nextHref = new URL(next.getAttribute("href")!, "http://localhost");
+    await expect(nextHref.pathname).toBe("/account/tickets");
+    await expect(Object.fromEntries(nextHref.searchParams)).toEqual({
+      status: "pending",
+      sort: "oldest",
+      page: "2",
+    });
   },
 };
 

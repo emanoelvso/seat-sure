@@ -59,6 +59,31 @@ export const LastOfThree: Story = {
   },
 };
 
+// ORDLIST-05 AC 12: one page inside each end, both arrows are enabled and
+// link to the neighbouring pages.
+export const MiddleOfThree: Story = {
+  args: { page: 2 },
+  play: async ({ canvas }) => {
+    const previous = canvas.getByRole("link", { name: "Previous page" });
+    await expect(previous).toHaveAttribute("href", "/account/tickets?page=1");
+    await expect(previous).not.toHaveAttribute("aria-disabled");
+
+    const next = canvas.getByRole("link", { name: "Next page" });
+    await expect(next).toHaveAttribute("href", "/account/tickets?page=3");
+    await expect(next).not.toHaveAttribute("aria-disabled");
+
+    await expect(canvas.getByRole("link", { name: "2" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    for (const name of ["1", "3"]) {
+      await expect(canvas.getByRole("link", { name })).not.toHaveAttribute(
+        "aria-current",
+      );
+    }
+  },
+};
+
 // ORDLIST-05 AC 11: with a single page there is no pagination.
 export const SinglePage: Story = {
   args: { page: 1, totalPages: 1 },
