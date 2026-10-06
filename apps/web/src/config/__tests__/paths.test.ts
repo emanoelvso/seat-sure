@@ -179,3 +179,9 @@ describe("paths.accountTicket", () => {
     expect(paths.accountTicket.getHref("a/b")).toBe("/account/tickets/a%2Fb");
   });
 });
+
+describe("paths.accountPersonalInfo", () => {
+  it("links to the account personal info page (PROFILE-02, PROFILE-09)", () => {
+    expect(paths.accountPersonalInfo.getHref()).toBe("/account/personal-info");
+  });
+});
