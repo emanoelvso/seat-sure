@@ -30,7 +30,7 @@ export const Default: Story = {
 
     await expect(
       canvas.getByRole("img", { name: "Concert crowd with raised hands" }),
-    ).toHaveAttribute("src", expect.stringContaining("hero.png"));
+    ).toHaveAttribute("src", expect.stringContaining("hero.jpg"));
 
     await expect(canvasElement).not.toHaveTextContent(/Evenjo/);
   },
