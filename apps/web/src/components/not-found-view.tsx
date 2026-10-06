@@ -8,18 +8,18 @@ export function NotFoundView() {
   return (
     <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden">
       <Image
-        src="/not-found/background.png"
+        src="/not-found/background.jpg"
         alt=""
         fill
-        priority
+        preload
         sizes="100vw"
         className="object-cover object-bottom"
       />
 
       <Header transparent />
 
-      <main className="relative z-10 flex flex-col items-center gap-6 pt-24 text-center">
-        <h1 className="max-w-xl text-3xl font-bold text-neutral-100">
+      <main className="relative z-10 flex flex-col items-center gap-6 pt-25.5 text-center">
+        <h1 className="max-w-141 text-h5 font-bold text-neutral-100">
           Oops! The page you&apos;re looking for doesn&apos;t exist or may have
           been moved.
         </h1>
@@ -31,7 +31,7 @@ export function NotFoundView() {
         </Link>
         <p
           aria-hidden="true"
-          className="mt-24 text-display font-bold text-white"
+          className="mt-8.5 text-display font-bold text-white"
         >
           404
         </p>
