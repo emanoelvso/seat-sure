@@ -12,8 +12,8 @@ function PolicySection({
   children?: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-xl font-bold">{title}</h2>
+    <section className="flex flex-col gap-6">
+      <h2 className="text-xl leading-tight font-bold">{title}</h2>
       <div>
         {intro && <p>{intro}</p>}
         {children}
@@ -28,7 +28,7 @@ function PolicyList({ children }: { children: ReactNode }) {
 
 export function TermsView() {
   return (
-    <div className="flex flex-col gap-14 px-27 pb-25 text-base">
+    <div className="flex flex-col gap-18 px-27 pt-21 pb-25 text-lg leading-tight">
       <h1 className="text-4xl font-bold">Terms &amp; Privacy Policy</h1>
 
       <p>

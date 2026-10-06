@@ -10,7 +10,8 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
-      <Header />
+      {/* Without the default bottom margin; the view sets Figma's top spacing. */}
+      <Header transparent />
       <main>
         <TermsView />
       </main>
