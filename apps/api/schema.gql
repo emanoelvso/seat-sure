@@ -325,6 +325,7 @@ type Mutation {
   resetPassword(input: ResetPasswordInput!): Boolean!
   signUp(input: SignUpInput!): SignUpResult!
   startCheckout(input: StartCheckoutInput!): CheckoutOrder!
+  updateMyProfile(input: UpdateMyProfileInput!): UserProfile!
   verifyEmail(input: VerifyEmailInput!): SessionTokens!
 }
 
@@ -354,6 +355,7 @@ type Query {
   findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
   me: CurrentUser!
+  myProfile: UserProfile!
 }
 
 input RefreshSessionInput {
@@ -472,6 +474,30 @@ type TicketTypeSeats {
 
 type UnavailableSeats {
   seatIds: [String!]!
+}
+
+input UpdateMyProfileInput {
+  birthDate: String!
+  city: String!
+  firstName: String!
+  lastName: String!
+  phoneCountryCode: String!
+  phoneNumber: String!
+  state: String!
+  zipCode: String!
+}
+
+type UserProfile {
+  avatarUrl: String
+  birthDate: String
+  city: String
+  firstName: String!
+  id: ID!
+  lastName: String!
+  phoneCountryCode: String
+  phoneNumber: String
+  state: String
+  zipCode: String
 }
 
 input VerifyEmailInput {

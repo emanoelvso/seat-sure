@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { UserProfileSummary } from '@sharedModules/integration/interface/user-profile-integration.interface';
+import { ConfigService } from '@sharedModules/config/service/config.service';
 import { UserProfileException } from '@userProfileModule/core/exception/user-profile.exception';
+import {
+  UpdateProfileInput,
+  validateProfileUpdate,
+} from '@userProfileModule/core/model/profile-rules.model';
 import { UserProfileModel } from '@userProfileModule/core/model/user-profile.model';
 import { UserProfileUserRepository } from '@userProfileModule/persistence/repository/user-profile-user.repository';
 import { UserProfileUser } from '@userProfileModule/persistence/entity/user-profile-user.entity';
@@ -10,6 +15,7 @@ import { Transactional } from 'typeorm-transactional';
 export class UserProfileService {
   constructor(
     private readonly userProfileUserRepository: UserProfileUserRepository,
+    private readonly configService: ConfigService,
   ) {}
 
   @Transactional({ connectionName: 'user-profile' })
@@ -46,6 +52,47 @@ export class UserProfileService {
     }
 
     return this.toModel(user);
+  }
+
+  // Full replacement of the editable fields, so saving the same input twice
+  // stores the same profile. `now` is a parameter so the "today" bound for the
+  // birth date never depends on the process clock.
+  @Transactional({ connectionName: 'user-profile' })
+  async updateMyProfile(
+    userId: string,
+    input: UpdateProfileInput,
+    now: Date,
+  ): Promise<UserProfileModel> {
+    const today = this.formatToday(now);
+    const { value, fields } = validateProfileUpdate(input, today);
+    if (!value) {
+      throw new UserProfileException(
+        'INVALID_INPUT',
+        'Invalid profile.',
+        fields,
+      );
+    }
+
+    const updated = await this.userProfileUserRepository.updateProfile(
+      userId,
+      value,
+    );
+    if (!updated) {
+      throw new UserProfileException('PROFILE_NOT_FOUND', 'Profile not found.');
+    }
+
+    return this.findMyProfile(userId);
+  }
+
+  // The calendar date of `now` in the app time zone, as 'YYYY-MM-DD'
+  // ('en-CA' formats dates that way).
+  private formatToday(now: Date): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.configService.get('app.timeZone'),
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
   }
 
   private toModel(user: UserProfileUser): UserProfileModel {
