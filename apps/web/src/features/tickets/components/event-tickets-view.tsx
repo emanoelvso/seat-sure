@@ -117,7 +117,7 @@ export function EventTicketsView({
     <>
       <TicketsHero event={event} selected={selected} />
 
-      <div className="flex flex-col gap-6 px-27 pb-25 pt-10 lg:flex-row">
+      <div className="flex flex-col justify-between gap-6 px-27 pb-25 pt-10 lg:flex-row">
         <div className="flex min-w-0 flex-col gap-6 lg:w-[808px] lg:shrink-0">
           <h2 className="border-b border-neutral-700 pb-4 text-xl">Filters</h2>
           <div className="flex flex-wrap gap-2">
