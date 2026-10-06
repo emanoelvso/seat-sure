@@ -9,6 +9,41 @@ type AccountOrderCounts {
   pending: Int!
 }
 
+type AccountOrderDetail {
+  createdAt: DateTime!
+  currency: String!
+  event: AccountOrderEvent!
+  id: ID!
+  items: [AccountOrderItem!]!
+  paymentCard: AccountOrderPaymentCard
+  paymentId: String
+  quantity: Int!
+  serviceFeeCents: Int!
+  status: AccountOrderStatus!
+  taxCents: Int!
+  ticketTypeName: String!
+  totalCents: Int!
+}
+
+type AccountOrderEvent {
+  city: String!
+  country: String!
+  coverImage: String!
+  name: String!
+  startAt: DateTime!
+  venue: String!
+}
+
+type AccountOrderItem {
+  number: String!
+  row: String!
+}
+
+type AccountOrderPaymentCard {
+  brand: String!
+  last4: String!
+}
+
 enum AccountOrderStatus {
   CANCELLED
   COMPLETED
@@ -200,6 +235,10 @@ type EventsByCity {
   events: [Event!]
 }
 
+input FindAccountOrderInput {
+  orderId: String!
+}
+
 input FindAccountOrdersInput {
   page: Int!
   pageSize: Int!
@@ -305,6 +344,7 @@ input PriceRange {
 }
 
 type Query {
+  findAccountOrder(input: FindAccountOrderInput!): AccountOrderDetail
   findAccountOrders(input: FindAccountOrdersInput!): AccountOrdersPage!
   findArtistBySlug(FindArtistInput: FindArtistInput!): FindArtist!
   findCheckoutOrder(input: FindCheckoutOrderInput!): CheckoutOrder

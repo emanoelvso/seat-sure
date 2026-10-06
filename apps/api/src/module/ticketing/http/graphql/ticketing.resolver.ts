@@ -6,8 +6,12 @@ import { CheckoutService } from '@ticketingModule/core/service/checkout.service'
 import { OrderPaymentService } from '@ticketingModule/core/service/order-payment.service';
 import { TicketingService } from '@ticketingModule/core/service/ticketing.service';
 import { ClsService } from 'nestjs-cls';
-import { AccountOrdersPage } from './type/account-orders.type';
+import {
+  AccountOrderDetail,
+  AccountOrdersPage,
+} from './type/account-orders.type';
 import { CheckoutOrder } from './type/checkout-order.type';
+import { FindAccountOrderInput } from './type/find-account-order-input.type';
 import { FindAccountOrdersInput } from './type/find-account-orders-input.type';
 import { FindCheckoutOrderInput } from './type/find-checkout-order-input.type';
 import { FindUnavailableSeatsInput } from './type/find-unavailable-seats-input.type';
@@ -83,6 +87,17 @@ export class TicketingResolver {
       page,
       pageSize,
       now: new Date(),
+    });
+  }
+
+  @UseGuards(AuthGuard)
+  @Query(() => AccountOrderDetail, { nullable: true })
+  async findAccountOrder(
+    @Args('input') { orderId }: FindAccountOrderInput,
+  ): Promise<AccountOrderDetail | null> {
+    return this.accountOrdersService.findOne({
+      userId: this.clsService.get<string>('userId'),
+      orderId,
     });
   }
 }
