@@ -50,11 +50,11 @@ export const Default: Story = {
     await expect(images).toHaveLength(2);
     await expect(images[0]).toHaveAttribute(
       "src",
-      expect.stringContaining("concert-hall.png"),
+      expect.stringContaining("concert-hall.jpg"),
     );
     await expect(images[1]).toHaveAttribute(
       "src",
-      expect.stringContaining("laser-show.png"),
+      expect.stringContaining("laser-show.jpg"),
     );
     for (const image of images) {
       await expect(image.getAttribute("alt")?.trim()).not.toBe("");

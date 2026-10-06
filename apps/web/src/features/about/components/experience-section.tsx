@@ -8,22 +8,23 @@ export function ExperienceSection() {
     >
       <div className="flex items-center justify-between">
         <Image
-          src="/about/concert-hall.png"
+          src="/about/concert-hall.jpg"
           alt="Orchestra performing on stage in a packed, purple-lit concert hall"
-          width={434}
-          height={434}
-          className="rounded-3xl"
+          width={736}
+          height={981}
+          sizes="434px"
+          className="size-108.5 rounded-3xl object-cover"
         />
-        <div className="w-135">
+        <div className="w-136">
           <h2
             id="experience-heading"
-            className="text-3xl leading-tight font-semibold text-white"
+            className="text-section font-bold text-white"
           >
             <span className="block">More Than Just a Ticket</span>
             <span className="sr-only"> — </span>
             <span className="block">The SeatSure Experience</span>
           </h2>
-          <ol className="mt-2 list-decimal pl-7 text-lg leading-10 text-white">
+          <ol className="list-decimal pl-7 text-xl leading-10 font-medium text-white">
             <li>
               Every ticket is the start of a memory, not just entry to an event.
             </li>
@@ -36,7 +37,7 @@ export function ExperienceSection() {
       </div>
 
       <div className="flex items-center justify-between">
-        <ol className="max-w-145 list-decimal pl-6 text-lg leading-8 text-white">
+        <ol className="w-150 list-decimal pl-7 text-xl leading-8 font-medium text-white">
           <li>
             SeatSure ensures a smooth and enjoyable journey from booking to the
             final moment.
@@ -46,11 +47,12 @@ export function ExperienceSection() {
           <li>With SeatSure, every step feels like part of the show.</li>
         </ol>
         <Image
-          src="/about/laser-show.png"
+          src="/about/laser-show.jpg"
           alt="Crowd under purple laser lights at a live show"
-          width={434}
-          height={434}
-          className="rounded-3xl"
+          width={736}
+          height={414}
+          sizes="434px"
+          className="size-108.5 rounded-3xl object-cover"
         />
       </div>
     </section>
