@@ -44,15 +44,16 @@ export const Default: Story = {
     );
 
     // Content images (hero, concert hall, laser show, map) have a non-empty
-    // alt; the four card illustrations are decorative with an empty alt.
+    // alt; the four card illustrations and the phone frame are decorative with
+    // an empty alt.
     const images = [...canvasElement.querySelectorAll("img")];
     const contentImages = images.filter((image) => image.alt.trim() !== "");
     const decorativeImages = images.filter(
       (image) => image.getAttribute("alt") === "",
     );
     await expect(contentImages).toHaveLength(4);
-    await expect(decorativeImages).toHaveLength(4);
-    await expect(images).toHaveLength(8);
+    await expect(decorativeImages).toHaveLength(5);
+    await expect(images).toHaveLength(9);
 
     // The footer's "Contact us" link targets this anchor.
     await expect(canvasElement.querySelector("#contact")).not.toBeNull();

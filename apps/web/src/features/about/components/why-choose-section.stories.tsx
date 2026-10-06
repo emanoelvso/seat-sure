@@ -40,7 +40,8 @@ export const Default: Story = {
 
     // Empty alts make the illustrations presentational, so query them by selector.
     const illustrations = canvasElement.querySelectorAll("img");
-    await expect(illustrations).toHaveLength(4);
+    // Four card illustrations plus the phone frame behind the envelope.
+    await expect(illustrations).toHaveLength(5);
     for (const illustration of illustrations) {
       await expect(illustration).toHaveAttribute("alt", "");
     }

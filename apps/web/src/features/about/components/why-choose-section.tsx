@@ -1,9 +1,12 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
+// The cards are free-form frames in Figma (no auto layout), so their content
+// is placed at Figma's coordinates.
+
 interface FeatureCardProps {
   className?: string;
-  /** Corner classes that place the purple glow, e.g. "-top-24 -right-24". */
+  /** Position of the blurred purple glow, which Figma draws over the card. */
   glowClassName: string;
   children: ReactNode;
 }
@@ -11,39 +14,38 @@ interface FeatureCardProps {
 function FeatureCard({ className, glowClassName, children }: FeatureCardProps) {
   return (
     <li
-      className={`relative isolate h-81 overflow-hidden rounded-3xl bg-section-gradient ${className}`}
+      className={`bg-dust-card relative isolate h-80.75 overflow-hidden rounded-3xl ${className ?? ""}`}
     >
+      {children}
       <div
         aria-hidden="true"
-        className={`absolute -z-10 size-96 rounded-full bg-shade-200/40 blur-3xl ${glowClassName}`}
+        className={`pointer-events-none absolute h-66.5 w-69.5 rounded-full bg-shade-100/50 blur-glow ${glowClassName}`}
       />
-      {children}
     </li>
   );
 }
 
-function FeatureTitle({ children }: { children: ReactNode }) {
-  return <h3 className="text-2xl font-semibold text-white">{children}</h3>;
-}
-
-function FeatureDescription({
+function FeatureText({
   className,
+  title,
   children,
 }: {
-  className?: string;
+  className: string;
+  title: string;
   children: ReactNode;
 }) {
   return (
-    <p className={`text-lg leading-snug text-neutral-100 ${className}`}>
-      {children}
-    </p>
+    <div className={`absolute flex flex-col ${className}`}>
+      <h3 className="text-2xl leading-tight font-bold text-white">{title}</h3>
+      <p className="text-lg leading-tight text-neutral-100">{children}</p>
+    </div>
   );
 }
 
 export function WhyChooseSection() {
   return (
     <section className="flex flex-col items-center px-27">
-      <h2 className="text-3xl font-semibold text-white">
+      <h2 className="text-section font-semibold text-white">
         Why Choose SeatSure?
       </h2>
       <p className="mt-2 text-neutral-200">
@@ -51,88 +53,83 @@ export function WhyChooseSection() {
       </p>
 
       <ul className="mt-12 grid w-full grid-cols-3 gap-6">
-        <FeatureCard
-          className="col-span-2 flex items-center px-12"
-          glowClassName="-top-48 -right-24"
-        >
-          <div className="max-w-sm">
-            <FeatureTitle>Your Ticket is on the Way!</FeatureTitle>
-            <FeatureDescription className="mt-7">
-              We’re sending your ticket straight to your email. Just confirm
-              your name and email below, and you’re all set for an
-              unforgettable experience! 🚀
-            </FeatureDescription>
-          </div>
-          {/* Phone outline behind the envelope illustration. */}
-          <div
-            aria-hidden="true"
-            className="absolute top-16 left-130 h-108 w-56 -rotate-30 rounded-4xl border-2 border-neutral-300"
+        <FeatureCard className="col-span-2" glowClassName="-top-28.25 left-150">
+          <FeatureText
+            className="top-21.5 left-11.5 w-95.75 gap-6"
+            title="Your Ticket is on the Way!"
+          >
+            We’re sending your ticket straight to your email. Just confirm your
+            name and email below, and you’re all set for an unforgettable
+            experience! 🚀
+          </FeatureText>
+          <Image
+            src="/about/phone-frame.svg"
+            alt=""
+            width={344}
+            height={278}
+            className="absolute top-11.25 left-116"
           />
           <Image
-            src="/about/ticket-on-the-way.png"
+            src="/about/ticket-on-the-way.svg"
             alt=""
             width={162}
             height={162}
-            className="absolute top-34 left-140 size-40"
+            className="absolute top-33 left-137.25"
           />
         </FeatureCard>
 
-        <FeatureCard
-          className="flex flex-col px-11.5 pt-5"
-          glowClassName="-right-32 -bottom-48"
-        >
+        <FeatureCard glowClassName="top-44.75 left-60.5">
           <Image
-            src="/about/online-purchasing.png"
+            src="/about/online-purchasing.svg"
             alt=""
             width={120}
             height={120}
-            className="size-30 self-center"
+            className="absolute top-3.75 left-34"
           />
-          <div className="mt-4">
-            <FeatureTitle>Online Ticket Purchasing</FeatureTitle>
-            <FeatureDescription className="mt-4">
-              Allows users to browse events, select seats, and buy tickets
-              instantly via secure payment methods 🎭
-            </FeatureDescription>
-          </div>
+          <FeatureText
+            className="top-37.5 left-11.5 w-79.75 gap-4.5"
+            title="Online Ticket Purchasing"
+          >
+            Allows users to browse events, select seats, and buy tickets
+            instantly via secure payment methods 🎭
+          </FeatureText>
         </FeatureCard>
 
-        <FeatureCard
-          className="flex flex-col px-12 pt-12"
-          glowClassName="-bottom-48 -left-32"
-        >
-          <FeatureTitle>Customer Support</FeatureTitle>
-          <FeatureDescription className="mt-4 max-w-64">
+        <FeatureCard glowClassName="top-41.75 -left-37.25">
+          <FeatureText
+            className="top-9.75 left-11.5 w-66.5 gap-4.5"
+            title="Customer Support"
+          >
             24/7 live chat, email, or phone support for booking issues.🌟
-          </FeatureDescription>
+          </FeatureText>
           <Image
-            src="/about/customer-support.png"
+            src="/about/customer-support.svg"
             alt=""
             width={120}
             height={120}
-            className="mt-auto mr-3 mb-11 size-30 self-end"
+            className="absolute top-39.75 left-53.25"
           />
         </FeatureCard>
 
         <FeatureCard
-          className="col-span-2 flex items-center px-12"
-          glowClassName="-top-48 -left-24"
+          className="col-span-2"
+          glowClassName="-top-23.5 -left-8.25"
         >
-          <div className="max-w-137">
-            <FeatureTitle>Event Discovery</FeatureTitle>
-            <FeatureDescription className="mt-7">
-              Personalized suggestions based on user preferences, location, and
-              past bookings Filters for categories venues, and price ranges. The
-              goal is to detect meaningful occurrences (events) in analysis, or
-              automated responses.💰
-            </FeatureDescription>
-          </div>
+          <FeatureText
+            className="top-22.75 left-11.75 w-138.25 gap-6"
+            title="Event Discovery"
+          >
+            Personalized suggestions based on user preferences, location, and
+            past bookings Filters for categories venues, and price ranges. The
+            goal is to detect meaningful occurrences (events) in analysis, or
+            automated responses.💰
+          </FeatureText>
           <Image
-            src="/about/event-discovery.png"
+            src="/about/event-discovery.svg"
             alt=""
             width={120}
             height={120}
-            className="absolute top-11 right-16 size-30"
+            className="absolute top-11 left-157.75"
           />
         </FeatureCard>
       </ul>
