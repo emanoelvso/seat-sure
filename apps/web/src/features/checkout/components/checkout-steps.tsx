@@ -31,7 +31,7 @@ export function CheckoutSteps({ current }: CheckoutStepsProps) {
   return (
     <nav
       aria-label="Checkout steps"
-      className="flex items-center gap-4 border-b border-neutral-500 pb-4"
+      className="flex items-center justify-center gap-4 border-y border-neutral-500 py-4"
     >
       {STEPS.map(({ step, label, icon }, index) => {
         const isCurrent = step === current;
@@ -41,9 +41,7 @@ export function CheckoutSteps({ current }: CheckoutStepsProps) {
             <span
               aria-current={isCurrent ? "step" : undefined}
               className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium ${
-                isCurrent
-                  ? "border border-primary text-primary"
-                  : "text-neutral-300"
+                isCurrent ? "border border-primary text-primary" : "text-white"
               }`}
             >
               {createElement(icon, { size: 18 })}
@@ -53,7 +51,7 @@ export function CheckoutSteps({ current }: CheckoutStepsProps) {
               <AltArrowRightIcon
                 size={16}
                 aria-hidden="true"
-                className="text-neutral-400"
+                className="text-white"
               />
             )}
           </div>

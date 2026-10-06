@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { Header } from "@/components/layouts/header";
 import { paths } from "@/config/paths";
 import { getCheckoutPageData } from "@/features/checkout/api/get-checkout-page-data";
 import { payOrderAction } from "@/features/checkout/api/pay-order-action";
@@ -22,5 +23,12 @@ export default async function CheckoutOrderPage({
     redirect(paths.checkoutSuccess.getHref(order.id));
   }
 
-  return <CheckoutView order={order} user={user} payAction={payOrderAction} />;
+  return (
+    <>
+      <Header className="!mb-10" />
+      <main className="px-27 pb-25">
+        <CheckoutView order={order} user={user} payAction={payOrderAction} />
+      </main>
+    </>
+  );
 }

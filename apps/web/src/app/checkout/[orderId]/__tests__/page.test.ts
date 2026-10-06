@@ -29,6 +29,11 @@ vi.mock("@/features/checkout/api/pay-order-action", () => ({
 vi.mock("@/features/checkout/components/checkout-view", () => ({
   CheckoutView: vi.fn(),
 }));
+// Loads next/font, which only runs in a Next.js build - the page is only
+// checked for the elements and props it returns.
+vi.mock("@/components/layouts/header", () => ({
+  Header: vi.fn(),
+}));
 
 const mockedGetCheckoutPageData = vi.mocked(getCheckoutPageData);
 
