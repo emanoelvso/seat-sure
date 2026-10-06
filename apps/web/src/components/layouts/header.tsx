@@ -1,15 +1,11 @@
-import { Lobster } from "next/font/google";
 import Link from "next/link";
+import { BrandLogo } from "@/components/layouts/brand-logo";
 import { HeaderAccount } from "@/components/layouts/header-account";
 import { UsaIcon } from "@/components/icons/usa-icon";
 import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import { Input } from "@/components/ui/input";
 import { paths } from "@/config/paths";
 import { EVENT_TYPE_LABELS, type EventType } from "@/utils/event-types";
-const lobster = Lobster({
-  weight: "400",
-  subsets: ["latin"],
-});
 
 const NAV_EVENT_TYPES: EventType[] = ["SHOW", "CONCERT", "SPORT", "FESTIVAL"];
 
@@ -40,12 +36,7 @@ export function Header({
         <Input />
       ) : (
         <>
-          <Link
-            href={paths.home.getHref()}
-            className={`${lobster.className} text-[2.5rem] text-primary`}
-          >
-            SeatSure
-          </Link>
+          <BrandLogo className="text-[2.5rem]" />
 
           <nav>
             <ul className="flex gap-10">
