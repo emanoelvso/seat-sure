@@ -36,3 +36,35 @@ export const pendingOrder = accountOrderSummary({
   status: "PENDING",
   eventName: "Coldplay Concert",
 });
+
+type AccountOrdersPage = FindAccountOrdersQuery["findAccountOrders"];
+
+// One findAccountOrders page. The default is page 1 of 2 in a 7-order account
+// (All tab): four cards, then three on page 2.
+export function accountOrdersPage(
+  overrides: Partial<AccountOrdersPage> = {},
+): AccountOrdersPage {
+  return {
+    __typename: "AccountOrdersPage",
+    items: [
+      completedOrder,
+      canceledOrder,
+      pendingOrder,
+      accountOrderSummary({
+        id: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        eventName: "Travis Scott Concert",
+        quantity: 1,
+      }),
+    ],
+    counts: {
+      __typename: "AccountOrderCounts",
+      all: 7,
+      pending: 4,
+      cancelled: 2,
+      completed: 1,
+    },
+    page: 1,
+    totalPages: 2,
+    ...overrides,
+  };
+}

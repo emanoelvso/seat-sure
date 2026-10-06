@@ -26,13 +26,13 @@ export function OrderCard({ order }: { order: AccountOrderSummary }) {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h2 className="text-base font-bold text-white">
+            <h2 className="text-base leading-[1.2] font-bold text-white">
               {order.eventName}
             </h2>
             {/* SPEC_DEVIATION: Figma colours the code #454545 (neutral-300),
                 1.8:1 on the card and below WCAG AA. Reason: neutral-200, the
                 card's secondary text colour, passes the a11y check. */}
-            <p className="text-base text-neutral-200">
+            <p className="text-base leading-[1.2] text-neutral-200">
               {trackingCode(order.id)}
             </p>
           </div>

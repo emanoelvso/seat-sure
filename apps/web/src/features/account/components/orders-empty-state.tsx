@@ -12,8 +12,10 @@ export function OrdersEmptyState() {
       <Image src="/account/orders-empty.png" alt="" width={250} height={250} />
       <div className="flex w-full flex-col items-center gap-8">
         <div className="flex w-full flex-col items-center gap-6 text-center">
-          <h2 className="text-2xl font-medium text-white">ooops!!!</h2>
-          <p className="text-xl text-neutral-100">
+          <h2 className="text-2xl leading-[1.2] font-medium text-white">
+            ooops!!!
+          </h2>
+          <p className="text-xl leading-[1.2] text-neutral-100">
             You haven&apos;t booked any tickets yet. <br />
             Explore exciting events and secure your spot now!
           </p>
