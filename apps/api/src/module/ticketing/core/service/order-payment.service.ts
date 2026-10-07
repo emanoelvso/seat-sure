@@ -116,11 +116,13 @@ export class OrderPaymentService {
     userId,
     orderId,
     source,
+    saveCard = false,
     now,
   }: {
     userId: string;
     orderId: string;
     source: ChargeSource;
+    saveCard?: boolean;
     now: Date;
   }): Promise<CheckoutOrderModel> {
     if (!isUUID(orderId)) {
@@ -161,7 +163,30 @@ export class OrderPaymentService {
       throw paymentInProgress();
     }
 
-    return this.chargeAndIssue(order, source, now);
+    const paid = await this.chargeAndIssue(order, source, now);
+
+    // Only once the tickets are issued, and only a typed card (CARD-09)
+    if (saveCard && source.type === 'card') {
+      await this.saveCard(order, source.card, now);
+    }
+
+    return paid;
+  }
+
+  // The order is paid whatever happens here, so a failure is only logged,
+  // with the order id and never the card (CARD-09 AC 5)
+  private async saveCard(
+    order: Order,
+    card: BillingCardInput,
+    now: Date,
+  ): Promise<void> {
+    try {
+      await this.billingApi.saveCard(order.userId, card, now);
+    } catch {
+      this.logger.error("Couldn't save the card of a paid order", {
+        orderId: order.id,
+      });
+    }
   }
 
   // Charges the order total, then turns the payment into tickets. A charge

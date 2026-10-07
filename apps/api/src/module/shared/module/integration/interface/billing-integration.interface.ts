@@ -40,6 +40,9 @@ export interface BillingApi {
     now: Date,
   ): Promise<BillingCardFieldErrors>;
   charge(input: ChargeDto): Promise<ChargeOutcome>;
+  // Saves a typed card for the user. A duplicate, the card limit, or a
+  // decline leaves the saved cards as they are and throws nothing.
+  saveCard(userId: string, card: BillingCardInput, now: Date): Promise<void>;
   refund(paymentId: string): Promise<void>;
   findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
 }

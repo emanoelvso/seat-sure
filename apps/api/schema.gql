@@ -347,6 +347,7 @@ type PasswordResetGrant {
 input PayOrderInput {
   card: CardInput
   orderId: String!
+  saveCard: Boolean! = false
   savedCardId: ID
 }
 

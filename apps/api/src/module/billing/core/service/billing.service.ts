@@ -34,6 +34,16 @@ export type ChargeOutcome =
   | { status: 'succeeded' | 'failed'; paymentId: string }
   | { status: 'card_not_found' };
 
+export type SaveCardOutcome = 'saved' | 'duplicate' | 'limit' | 'declined';
+
+const SAVE_CARD_REFUSALS: Partial<
+  Record<BillingException['reason'], SaveCardOutcome>
+> = {
+  DUPLICATE_CARD: 'duplicate',
+  CARD_LIMIT_REACHED: 'limit',
+  CARD_DECLINED: 'declined',
+};
+
 type PaymentDetails = Pick<
   ChargeDto,
   'userId' | 'orderId' | 'amountCents' | 'currency'
@@ -151,6 +161,27 @@ export class BillingService {
     await this.paymentRepository.save(payment);
 
     return { paymentId: payment.id, status: result.status };
+  }
+
+  // Saves a card the user paid with (CARD-09). The expected refusals come
+  // back as an outcome; anything else is thrown.
+  async saveCard(
+    userId: string,
+    card: CardInput,
+    now: Date,
+  ): Promise<SaveCardOutcome> {
+    try {
+      await this.paymentCardService.add(userId, card, now);
+      return 'saved';
+    } catch (error) {
+      if (error instanceof BillingException) {
+        const outcome = SAVE_CARD_REFUSALS[error.reason];
+        if (outcome) {
+          return outcome;
+        }
+      }
+      throw error;
+    }
   }
 
   async refund(paymentId: string): Promise<void> {

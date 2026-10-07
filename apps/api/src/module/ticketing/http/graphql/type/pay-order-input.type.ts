@@ -1,6 +1,11 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 // Shape only: the card rules run in OrderPaymentService, so a bad card comes
 // back as INVALID_CARD with its fields, not BAD_REQUEST (AD-018).
@@ -41,4 +46,10 @@ export class PayOrderInput {
   @IsString()
   @Field(() => ID, { nullable: true })
   savedCardId?: string | null;
+
+  // Save the typed card once the order is paid (CARD-09)
+  @IsOptional()
+  @IsBoolean()
+  @Field({ defaultValue: false })
+  saveCard: boolean;
 }

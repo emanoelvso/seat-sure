@@ -4,6 +4,7 @@ import {
   ChargeInput,
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import { CardInput } from '@billingModule/core/util/card-rules';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
 import { ConfigService } from '@sharedModules/config/service/config.service';
 import { factory } from '@sharedModules/config/util/config.factory';
@@ -52,6 +53,17 @@ const FIND_UNAVAILABLE_SEATS = `
   }
 `;
 
+const MY_PAYMENT_CARDS = `
+  query MyPaymentCards {
+    myPaymentCards {
+      id
+      brand
+      last4
+      isDefault
+    }
+  }
+`;
+
 const VALID_CARD = {
   number: '4242 4242 4242 4242',
   holder: 'Jane Doe',
@@ -73,6 +85,8 @@ describe('TicketingResolver payOrder (e2e)', () => {
   const gateway = {
     charge: jest.fn<ReturnType<PaymentGateway['charge']>, [ChargeInput]>(),
     refund: jest.fn<Promise<void>, [string]>(),
+    tokenize: jest.fn<ReturnType<PaymentGateway['tokenize']>, [CardInput]>(),
+    detach: jest.fn<Promise<void>, [string]>(),
   };
 
   // Records every ticket notice
@@ -114,6 +128,8 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await deleteRows();
     gateway.charge.mockImplementation((input) => simulated.charge(input));
     gateway.refund.mockImplementation(() => simulated.refund());
+    gateway.tokenize.mockImplementation((card) => simulated.tokenize(card));
+    gateway.detach.mockImplementation(() => simulated.detach());
     sender.send.mockResolvedValue(undefined);
   });
 
@@ -691,6 +707,135 @@ describe('TicketingResolver payOrder (e2e)', () => {
         expect((await orderRow(order.id)).status).toBe('pending');
       },
     );
+  });
+
+  describe('saving the card while paying (CARD-09)', () => {
+    const myPaymentCards = async () => {
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .set('Authorization', `Bearer ${tokenFor(userId)}`)
+        .send({ query: MY_PAYMENT_CARDS })
+        .expect(200);
+      return response.body.data.myPaymentCards;
+    };
+
+    it('saves the card as the default when the payment succeeds and it is the first card (AC 3)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(await myPaymentCards()).toEqual([
+        {
+          id: expect.any(String),
+          brand: 'visa',
+          last4: '4242',
+          isDefault: true,
+        },
+      ]);
+    });
+
+    it.each([
+      ['saveCard: false', { saveCard: false }],
+      ['saveCard omitted', {}],
+    ])('saves no card with %s (AC 6)', async (_, saveCard) => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        ...saveCard,
+      });
+
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(await myPaymentCards()).toEqual([]);
+    });
+
+    it('saves no card when the payment is declined (AC 4)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: DECLINED_CARD,
+        saveCard: true,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      expect(await myPaymentCards()).toEqual([]);
+    });
+
+    it('still pays when the card is already saved, and keeps the list unchanged (AC 5)', async () => {
+      const { order: first } = await insertOrder();
+      await payOrderWith({
+        orderId: first.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+      const before = await myPaymentCards();
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(before).toHaveLength(1);
+      expect(await myPaymentCards()).toEqual(before);
+    });
+
+    it('still pays with 5 cards already saved, and keeps the list unchanged (AC 5)', async () => {
+      await testDbClient.batchInsert(
+        Tables.BillingPaymentCard,
+        Array.from({ length: 5 }, (_, index) =>
+          billingPaymentCardFactory.build({
+            userId,
+            isDefault: index === 0,
+            last4: `000${index}`,
+          }),
+        ),
+      );
+      const before = await myPaymentCards();
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(before).toHaveLength(5);
+      expect(await myPaymentCards()).toEqual(before);
+    });
+
+    it('still pays when saving fails, and logs the failure with the order id only (AC 5)', async () => {
+      const { order } = await insertOrder();
+      gateway.tokenize.mockRejectedValueOnce(new Error('gateway unavailable'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(await myPaymentCards()).toEqual([]);
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
+        orderId: order.id,
+      });
+      errorSpy.mockRestore();
+    });
   });
 
   describe('concurrent payments (PAY-45)', () => {
