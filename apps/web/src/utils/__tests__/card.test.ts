@@ -7,7 +7,7 @@ import {
   maskedNumber,
   normalizeNumber,
   validateCard,
-} from "@/features/checkout/utils/card";
+} from "@/utils/card";
 
 // Builds a Luhn-valid digit string of exactly `length`, from a repeating
 // prefix, by appending a computed check digit. Mirrors the API's

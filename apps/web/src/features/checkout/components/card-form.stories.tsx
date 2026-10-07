@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn } from "storybook/test";
-import type { CardInput } from "@/features/checkout/utils/card";
+import type { CardInput } from "@/utils/card";
 import { CardForm } from "./card-form";
 
 const emptyCard: CardInput = { number: "", holder: "", expiry: "", cvv: "" };

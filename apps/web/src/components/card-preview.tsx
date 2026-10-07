@@ -2,7 +2,7 @@ import {
   brandLabel,
   detectBrand,
   maskedNumber,
-} from "@/features/checkout/utils/card";
+} from "@/utils/card";
 
 interface CardPreviewProps {
   number: string;

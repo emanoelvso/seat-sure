@@ -3,7 +3,7 @@ import { expect } from "storybook/test";
 import { CardPreview } from "./card-preview";
 
 const meta: Meta<typeof CardPreview> = {
-  title: "Features/Checkout/CardPreview",
+  title: "Components/CardPreview",
   tags: ["autodocs"],
   component: CardPreview,
   args: { number: "", holder: "", expiry: "" },

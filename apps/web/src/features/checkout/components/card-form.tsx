@@ -4,14 +4,14 @@ import { CheckCircleIcon, EyeClosedIcon, EyeIcon } from "@solar-icons/react/outl
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CardPreview } from "@/features/checkout/components/card-preview";
+import { CardPreview } from "@/components/card-preview";
 import {
   formatCardNumber,
   formatExpiryInput,
   validateCard,
   type CardFieldErrors,
   type CardInput,
-} from "@/features/checkout/utils/card";
+} from "@/utils/card";
 
 type CardField = keyof CardInput;
 

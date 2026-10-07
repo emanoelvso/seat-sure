@@ -28,7 +28,7 @@ import {
   normalizeNumber,
   type CardFieldErrors,
   type CardInput,
-} from "@/features/checkout/utils/card";
+} from "@/utils/card";
 import type { CheckoutOrderStatus } from "@/types/__generated__/graphql";
 import { formatPrice } from "@/utils/price";
 

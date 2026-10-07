@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { NO_SESSION, withAccessToken } from "@/features/auth/api/with-access-token";
 import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
 import { PAY_ORDER } from "@/features/checkout/api/pay-order";
-import { cardSchema } from "@/features/checkout/utils/card-schema";
+import { cardSchema } from "@/utils/card-schema";
 import { paths } from "@/config/paths";
 
 type PayOrderReason =
