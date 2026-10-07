@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import { NotificationType } from '@notificationsModule/core/enum/notification-type.enum';
 import { NotificationsException } from '@notificationsModule/core/exception/notifications.exception';
 import {
+  NotificationModel,
   NotificationsPageModel,
   NotificationsTab,
 } from '@notificationsModule/core/model/notification.model';
@@ -16,6 +18,14 @@ import {
 
 // The page size is the web's choice; the cap bounds the query
 const MAX_PAGE_SIZE = 50;
+
+const toModel = (row: NotificationsNotification): NotificationModel => ({
+  id: row.id,
+  type: row.type,
+  eventName: row.payload.eventName ?? null,
+  createdAt: row.createdAt,
+  readAt: row.readAt,
+});
 
 const TAB_FILTERS: Record<NotificationsTab, NotificationTabFilter> = {
   [NotificationsTab.ALL]: 'all',
@@ -80,16 +90,29 @@ export class NotificationService {
     });
 
     return {
-      items: rows.map((row) => ({
-        id: row.id,
-        type: row.type,
-        eventName: row.payload.eventName ?? null,
-        createdAt: row.createdAt,
-        readAt: row.readAt,
-      })),
+      items: rows.map(toModel),
       counts,
       page: effectivePage,
       totalPages,
     };
+  }
+
+  // Keeps the first read time. A malformed, unknown, or foreign id is
+  // NOTIFICATION_NOT_FOUND and changes nothing.
+  async markRead(
+    userId: string,
+    id: string,
+    now: Date,
+  ): Promise<NotificationModel> {
+    const row = isUUID(id)
+      ? await this.notificationRepository.markRead(userId, id, now)
+      : null;
+    if (!row) {
+      throw new NotificationsException(
+        'NOTIFICATION_NOT_FOUND',
+        'Notification not found.',
+      );
+    }
+    return toModel(row);
   }
 }

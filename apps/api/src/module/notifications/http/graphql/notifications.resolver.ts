@@ -1,10 +1,11 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { NotificationService } from '@notificationsModule/core/service/notification.service';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 import { ClsService } from 'nestjs-cls';
 import { MyNotificationsInput } from './type/my-notifications-input.type';
-import { NotificationsPage } from './type/notification.type';
+import { NotificationIdInput } from './type/notification-id-input.type';
+import { Notification, NotificationsPage } from './type/notification.type';
 
 // The caller is always the session's user: no operation takes a user id
 // (View AC 19)
@@ -23,6 +24,18 @@ export class NotificationsResolver {
     return this.notificationService.list(
       this.clsService.get<string>('userId'),
       input,
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => Notification)
+  async markNotificationRead(
+    @Args('input') input: NotificationIdInput,
+  ): Promise<Notification> {
+    return this.notificationService.markRead(
+      this.clsService.get<string>('userId'),
+      input.id,
+      new Date(),
     );
   }
 }

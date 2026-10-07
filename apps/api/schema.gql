@@ -326,6 +326,7 @@ type Mutation {
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   logIn(input: LogInInput!): LogInResult!
+  markNotificationRead(input: NotificationIdInput!): Notification!
   payOrder(input: PayOrderInput!): CheckoutOrder!
   refreshSession(input: RefreshSessionInput!): SessionTokens!
   removePaymentCard(input: PaymentCardIdInput!): [PaymentCard!]!
@@ -357,6 +358,10 @@ type NotificationCounts {
   all: Int!
   read: Int!
   unread: Int!
+}
+
+input NotificationIdInput {
+  id: String!
 }
 
 enum NotificationType {
