@@ -339,6 +339,17 @@ input PayOrderInput {
   orderId: String!
 }
 
+type PaymentCard {
+  brand: String!
+  expMonth: Int!
+  expYear: Int!
+  expired: Boolean!
+  holder: String!
+  id: ID!
+  isDefault: Boolean!
+  last4: String!
+}
+
 input PriceRange {
   max: Float
   min: Float
@@ -355,6 +366,7 @@ type Query {
   findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
   me: CurrentUser!
+  myPaymentCards: [PaymentCard!]!
   myProfile: UserProfile!
 }
 
