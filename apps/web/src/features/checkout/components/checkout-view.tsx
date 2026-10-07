@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { paths } from "@/config/paths";
+import type { CheckoutPaymentCard } from "@/features/checkout/api/find-checkout-payment-cards";
 import type {
   PayOrderActionInput,
   PayOrderState,
@@ -61,6 +62,8 @@ interface CheckoutViewProps {
     items: { row: string; number: string }[];
   };
   user: { firstName: string; lastName: string; email: string };
+  // The caller's saved cards, default first (CARD-07)
+  cards?: CheckoutPaymentCard[];
   payAction: PayAction;
 }
 

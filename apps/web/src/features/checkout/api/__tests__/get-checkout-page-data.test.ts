@@ -6,6 +6,7 @@ import {
   readAccessToken,
   readRefreshToken,
 } from "@/features/auth/api/session-cookies";
+import { CHECKOUT_PAYMENT_CARDS } from "@/features/checkout/api/find-checkout-payment-cards";
 import { FIND_CHECKOUT_ORDER } from "@/features/checkout/api/find-checkout-order";
 import { getCheckoutPageData } from "@/features/checkout/api/get-checkout-page-data";
 
@@ -69,6 +70,20 @@ const user = {
   avatarUrl: null,
 };
 
+const cards = [
+  {
+    __typename: "PaymentCard" as const,
+    id: "card-1",
+    brand: "visa",
+    last4: "4242",
+    expMonth: 8,
+    expYear: 2030,
+    holder: "Nadia Kahn",
+    isDefault: true,
+    expired: false,
+  },
+];
+
 async function expectRedirectTo(target: string, call: () => Promise<unknown>) {
   await expect(call()).rejects.toBe(REDIRECT_ERROR);
   expect(redirect).toHaveBeenCalledWith(target);
@@ -91,12 +106,15 @@ describe("getCheckoutPageData", () => {
       if (document === ME) {
         return { me: user };
       }
+      if (document === CHECKOUT_PAYMENT_CARDS) {
+        return { myPaymentCards: [] };
+      }
       throw new Error("unexpected document");
     });
 
     const result = await getCheckoutPageData("o1", "/checkout/o1");
 
-    expect(result).toEqual({ order, user });
+    expect(result).toEqual({ order, user, cards: [] });
     expect(mockedFetch).toHaveBeenCalledWith(
       FIND_CHECKOUT_ORDER,
       { input: { orderId: "o1" } },
@@ -146,5 +164,54 @@ describe("getCheckoutPageData", () => {
     mockedFetch.mockRejectedValue(boom);
 
     await expect(getCheckoutPageData("o1", "/checkout/o1")).rejects.toBe(boom);
+  });
+
+  it("returns the saved cards from checkoutPaymentCards with the token (CARD-07 AC 1)", async () => {
+    mockedReadAccessToken.mockResolvedValue("access-token-1");
+    mockedFetch.mockImplementation(async (document) => {
+      if (document === FIND_CHECKOUT_ORDER) return { findCheckoutOrder: order };
+      if (document === ME) return { me: user };
+      if (document === CHECKOUT_PAYMENT_CARDS) return { myPaymentCards: cards };
+      throw new Error("unexpected document");
+    });
+
+    const result = await getCheckoutPageData("o1", "/checkout/o1");
+
+    expect(result).toEqual({ order, user, cards });
+    expect(mockedFetch).toHaveBeenCalledWith(
+      CHECKOUT_PAYMENT_CARDS,
+      {},
+      { revalidate: 0, accessToken: "access-token-1" },
+    );
+  });
+
+  it("falls back to no cards when the cards query fails, and still loads the order (CARD-07 edge case)", async () => {
+    mockedReadAccessToken.mockResolvedValue("access-token-1");
+    mockedFetch.mockImplementation(async (document) => {
+      if (document === FIND_CHECKOUT_ORDER) return { findCheckoutOrder: order };
+      if (document === ME) return { me: user };
+      throw new GraphQLRequestError(
+        "Internal server error",
+        "INTERNAL_SERVER_ERROR",
+      );
+    });
+
+    const result = await getCheckoutPageData("o1", "/checkout/o1");
+
+    expect(result).toEqual({ order, user, cards: [] });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("redirects to the refresh route when only the cards query is UNAUTHENTICATED", async () => {
+    mockedReadAccessToken.mockResolvedValue("access-token-1");
+    mockedFetch.mockImplementation(async (document) => {
+      if (document === FIND_CHECKOUT_ORDER) return { findCheckoutOrder: order };
+      if (document === ME) return { me: user };
+      throw new GraphQLRequestError("Unauthenticated", "UNAUTHENTICATED");
+    });
+
+    await expectRedirectTo("/api/auth/refresh?redirectTo=%2Fcheckout%2Fo1", () =>
+      getCheckoutPageData("o1", "/checkout/o1"),
+    );
   });
 });
