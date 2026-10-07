@@ -758,13 +758,21 @@ describe('TicketingResolver payOrder (e2e)', () => {
     it('saves no card when the payment is declined (AC 4)', async () => {
       const { order } = await insertOrder();
 
+      // A card that tokenizes fine but whose charge is declined, so a save
+      // attempted after a decline would actually store it.
+      gateway.charge.mockResolvedValueOnce({
+        status: 'failed',
+        reason: 'card_declined',
+      });
+
       const body = await payOrderWith({
         orderId: order.id,
-        card: DECLINED_CARD,
+        card: VALID_CARD,
         saveCard: true,
       });
 
       expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      expect(gateway.tokenize).not.toHaveBeenCalled();
       expect(await myPaymentCards()).toEqual([]);
     });
 

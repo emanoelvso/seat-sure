@@ -196,14 +196,16 @@ describe('BillingPublicApiProvider (integration)', () => {
       source: { type: 'card', card },
     });
 
-    const rows: Array<{ json: string }> = await testDbClient(
+    const rows: Array<Record<string, unknown>> = await testDbClient(
       Tables.BillingPayment,
-    ).select(testDbClient.raw('row_to_json("BillingPayment")::text as json'));
+    ).select('*');
 
     expect(rows.length).toBeGreaterThan(0);
-    for (const { json } of rows) {
-      expect(json).not.toContain('4242424242424242');
-      expect(json).not.toContain(card.cvv);
+    for (const row of rows) {
+      for (const value of Object.values(row).map((v) => String(v))) {
+        expect(value).not.toContain('4242424242424242');
+        expect(value).not.toBe(card.cvv);
+      }
     }
   });
 
