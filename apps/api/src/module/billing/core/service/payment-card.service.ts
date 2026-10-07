@@ -15,9 +15,13 @@ import {
 } from '@billingModule/core/util/card-rules';
 import { BillingPaymentCard } from '@billingModule/persistence/entity/billing-payment-card.entity';
 import { BillingPaymentCardRepository } from '@billingModule/persistence/repository/billing-payment-card.repository';
+import { isUUID } from 'class-validator';
 import { DataSource, EntityManager } from 'typeorm';
 
 export const MAX_PAYMENT_CARDS = 5;
+
+const cardNotFound = () =>
+  new BillingException('CARD_NOT_FOUND', 'This card is no longer available.');
 
 // Saved cards (AD-026). The card number and CVV only live in local variables
 // for the gateway call: they never reach a row, a log line, or an error
@@ -114,6 +118,36 @@ export class PaymentCardService {
       await this.gateway.detach(tokenized.token);
       throw error;
     }
+
+    return this.list(userId, now);
+  }
+
+  // Makes the card the caller's only default; the current default is left
+  // as it is (CARD-10 AC 4). An unknown, foreign, or malformed id changes
+  // nothing (CARD-11 AC 10).
+  async setDefault(
+    userId: string,
+    cardId: string,
+    now: Date,
+  ): Promise<PaymentCardModel[]> {
+    if (!isUUID(cardId)) {
+      throw cardNotFound();
+    }
+
+    await this.inUserLock(userId, async (manager) => {
+      const card = await this.paymentCardRepository.findForUser(
+        manager,
+        userId,
+        cardId,
+      );
+      if (!card) {
+        throw cardNotFound();
+      }
+
+      if (!card.isDefault) {
+        await this.paymentCardRepository.moveDefault(manager, userId, cardId);
+      }
+    });
 
     return this.list(userId, now);
   }

@@ -50,4 +50,31 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
   ): Promise<void> {
     await manager.insert(BillingPaymentCard, card);
   }
+
+  async findForUser(
+    manager: EntityManager,
+    userId: string,
+    id: string,
+  ): Promise<BillingPaymentCard | null> {
+    return manager.findOne(BillingPaymentCard, { where: { id, userId } });
+  }
+
+  // Clears the old default before setting the new one, as the partial unique
+  // index allows one default per user at any moment
+  async moveDefault(
+    manager: EntityManager,
+    userId: string,
+    id: string,
+  ): Promise<void> {
+    await manager.update(
+      BillingPaymentCard,
+      { userId, isDefault: true },
+      { isDefault: false },
+    );
+    await manager.update(
+      BillingPaymentCard,
+      { id, userId },
+      { isDefault: true },
+    );
+  }
 }

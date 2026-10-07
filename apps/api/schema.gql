@@ -331,6 +331,7 @@ type Mutation {
   requestPasswordReset(input: RequestPasswordResetInput!): CodeDelivery!
   resendCode(input: ResendCodeInput!): CodeDelivery!
   resetPassword(input: ResetPasswordInput!): Boolean!
+  setDefaultPaymentCard(input: PaymentCardIdInput!): [PaymentCard!]!
   signUp(input: SignUpInput!): SignUpResult!
   startCheckout(input: StartCheckoutInput!): CheckoutOrder!
   updateMyProfile(input: UpdateMyProfileInput!): UserProfile!
@@ -356,6 +357,10 @@ type PaymentCard {
   id: ID!
   isDefault: Boolean!
   last4: String!
+}
+
+input PaymentCardIdInput {
+  id: String!
 }
 
 input PriceRange {
