@@ -5,7 +5,11 @@ import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 import { ClsService } from 'nestjs-cls';
 import { MyNotificationsInput } from './type/my-notifications-input.type';
 import { NotificationIdInput } from './type/notification-id-input.type';
-import { Notification, NotificationsPage } from './type/notification.type';
+import {
+  Notification,
+  NotificationCounts,
+  NotificationsPage,
+} from './type/notification.type';
 
 // The caller is always the session's user: no operation takes a user id
 // (View AC 19)
@@ -35,6 +39,15 @@ export class NotificationsResolver {
     return this.notificationService.markRead(
       this.clsService.get<string>('userId'),
       input.id,
+      new Date(),
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => NotificationCounts)
+  async markAllNotificationsRead(): Promise<NotificationCounts> {
+    return this.notificationService.markAllRead(
+      this.clsService.get<string>('userId'),
       new Date(),
     );
   }

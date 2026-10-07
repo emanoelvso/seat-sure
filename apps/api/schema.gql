@@ -326,6 +326,7 @@ type Mutation {
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   logIn(input: LogInInput!): LogInResult!
+  markAllNotificationsRead: NotificationCounts!
   markNotificationRead(input: NotificationIdInput!): Notification!
   payOrder(input: PayOrderInput!): CheckoutOrder!
   refreshSession(input: RefreshSessionInput!): SessionTokens!

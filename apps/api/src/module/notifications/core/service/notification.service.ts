@@ -3,6 +3,7 @@ import { isUUID } from 'class-validator';
 import { NotificationType } from '@notificationsModule/core/enum/notification-type.enum';
 import { NotificationsException } from '@notificationsModule/core/exception/notifications.exception';
 import {
+  NotificationCountsModel,
   NotificationModel,
   NotificationsPageModel,
   NotificationsTab,
@@ -114,5 +115,15 @@ export class NotificationService {
       );
     }
     return toModel(row);
+  }
+
+  // Marks the user's unread notifications that existed at `now`; one created
+  // meanwhile stays unread. Returns the counts after.
+  async markAllRead(
+    userId: string,
+    now: Date,
+  ): Promise<NotificationCountsModel> {
+    await this.notificationRepository.markAllRead(userId, now);
+    return this.notificationRepository.countTabs(userId);
   }
 }
