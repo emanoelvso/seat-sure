@@ -60,3 +60,67 @@ export const Amex: Story = {
     await expect(canvas.getByText("Card ending in 0005")).toBeInTheDocument();
   },
 };
+
+// CARD-01 AC 4: a saved Visa card shows the Visa logo, its last 4, the
+// holder and the expiry as "MM / YY", from its brand and last 4 alone.
+export const SavedVisa: Story = {
+  args: {
+    brand: "visa",
+    last4: "8557",
+    holder: "Negar Khosravi",
+    expiry: "08/25",
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Credit Card")).toBeVisible();
+    await expect(
+      canvas.getByRole("img", { name: "Visa", hidden: true }),
+    ).toBeVisible();
+    await expect(canvas.getByText("•••• •••• •••• 8557")).toBeVisible();
+    await expect(canvas.getByText("Negar Khosravi")).toBeVisible();
+    await expect(canvas.getByText("08 / 25")).toBeVisible();
+    await expect(canvas.getByText("Card ending in 8557")).toBeInTheDocument();
+  },
+};
+
+// CARD-01 AC 4: a saved card of another brand shows the brand's name.
+export const SavedMastercard: Story = {
+  args: {
+    brand: "mastercard",
+    last4: "4444",
+    holder: "Ada Lovelace",
+    expiry: "01/31",
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Mastercard")).toBeVisible();
+    await expect(
+      canvas.queryByRole("img", { name: "Visa", hidden: true }),
+    ).toBeNull();
+    await expect(canvas.getByText("•••• •••• •••• 4444")).toBeVisible();
+    await expect(canvas.getByText("Ada Lovelace")).toBeVisible();
+    await expect(canvas.getByText("01 / 31")).toBeVisible();
+  },
+};
+
+// The children slot renders inside the card frame, outside the decorative
+// visual, so a badge or a menu button stays accessible.
+export const WithChildren: Story = {
+  args: {
+    brand: "visa",
+    last4: "4242",
+    holder: "Ada Lovelace",
+    expiry: "08/30",
+    children: (
+      <button type="button" className="absolute top-4 right-4">
+        Card options
+      </button>
+    ),
+  },
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", { name: "Card options" });
+    await expect(button).toBeVisible();
+    await expect(button.closest("[aria-hidden='true']")).toBeNull();
+    await expect(
+      button.parentElement?.contains(canvas.getByText("Credit Card")),
+    ).toBe(true);
+  },
+};

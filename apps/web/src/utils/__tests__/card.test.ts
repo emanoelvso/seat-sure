@@ -3,6 +3,7 @@ import {
   brandLabel,
   detectBrand,
   formatCardNumber,
+  formatExpiry,
   formatExpiryInput,
   maskedNumber,
   normalizeNumber,
@@ -52,27 +53,27 @@ const buildCard = (overrides: Partial<Parameters<typeof validateCard>[0]>) => ({
 
 describe("card number (PAY-44)", () => {
   it("passes a Luhn-valid 13-digit number", () => {
-    expect(validateCard(buildCard({ number: luhnValidNumber(13) }), NOW).number).toBe(
-      "",
-    );
+    expect(
+      validateCard(buildCard({ number: luhnValidNumber(13) }), NOW).number,
+    ).toBe("");
   });
 
   it("passes a Luhn-valid 19-digit number", () => {
-    expect(validateCard(buildCard({ number: luhnValidNumber(19) }), NOW).number).toBe(
-      "",
-    );
+    expect(
+      validateCard(buildCard({ number: luhnValidNumber(19) }), NOW).number,
+    ).toBe("");
   });
 
   it("fails a Luhn-valid 12-digit number (too short)", () => {
-    expect(validateCard(buildCard({ number: luhnValidNumber(12) }), NOW).number).toBe(
-      "Enter a valid card number",
-    );
+    expect(
+      validateCard(buildCard({ number: luhnValidNumber(12) }), NOW).number,
+    ).toBe("Enter a valid card number");
   });
 
   it("fails a Luhn-valid 20-digit number (too long)", () => {
-    expect(validateCard(buildCard({ number: luhnValidNumber(20) }), NOW).number).toBe(
-      "Enter a valid card number",
-    );
+    expect(
+      validateCard(buildCard({ number: luhnValidNumber(20) }), NOW).number,
+    ).toBe("Enter a valid card number");
   });
 
   it("fails a Luhn-invalid 16-digit number", () => {
@@ -105,15 +106,15 @@ describe("holder (PAY-44)", () => {
   });
 
   it("passes a 50-character holder", () => {
-    expect(validateCard(buildCard({ holder: "A".repeat(50) }), NOW).holder).toBe(
-      "",
-    );
+    expect(
+      validateCard(buildCard({ holder: "A".repeat(50) }), NOW).holder,
+    ).toBe("");
   });
 
   it("fails a 51-character holder", () => {
-    expect(validateCard(buildCard({ holder: "A".repeat(51) }), NOW).holder).toBe(
-      "Enter the name on the card",
-    );
+    expect(
+      validateCard(buildCard({ holder: "A".repeat(51) }), NOW).holder,
+    ).toBe("Enter the name on the card");
   });
 });
 
@@ -239,12 +240,15 @@ describe("detectBrand / brandLabel", () => {
     ["2221", "mastercard"],
     ["2720", "mastercard"],
     ["2721", "card"],
-  ])("detects %s on the mastercard range edge as %s (PAY-32)", (prefix, brand) => {
-    const number = luhnValidNumber(16, prefix);
+  ])(
+    "detects %s on the mastercard range edge as %s (PAY-32)",
+    (prefix, brand) => {
+      const number = luhnValidNumber(16, prefix);
 
-    expect(validateCard(buildCard({ number }), NOW).number).toBe("");
-    expect(detectBrand(number)).toBe(brand);
-  });
+      expect(validateCard(buildCard({ number }), NOW).number).toBe("");
+      expect(detectBrand(number)).toBe(brand);
+    },
+  );
 
   it("detects amex for a prefix of 34 or 37", () => {
     expect(detectBrand("340000000000000")).toBe("amex");
@@ -260,9 +264,7 @@ describe("detectBrand / brandLabel", () => {
 
 describe("formatCardNumber (PAY-29)", () => {
   it("groups a Visa-length number in blocks of 4", () => {
-    expect(formatCardNumber("4242424242424242")).toBe(
-      "4242 4242 4242 4242",
-    );
+    expect(formatCardNumber("4242424242424242")).toBe("4242 4242 4242 4242");
   });
 
   it("groups an Amex number 4-6-5", () => {
@@ -276,23 +278,17 @@ describe("formatCardNumber (PAY-29)", () => {
   });
 
   it("drops non-digit characters", () => {
-    expect(formatCardNumber("4242-4242-4242-4242")).toBe(
-      "4242 4242 4242 4242",
-    );
+    expect(formatCardNumber("4242-4242-4242-4242")).toBe("4242 4242 4242 4242");
   });
 });
 
 describe("maskedNumber (PAY-32)", () => {
   it("masks every digit but the last 4", () => {
-    expect(maskedNumber("4242424242424242")).toBe(
-      "•••• •••• •••• 4242",
-    );
+    expect(maskedNumber("4242424242424242")).toBe("•••• •••• •••• 4242");
   });
 
   it("masks all 4 groups while fewer than 4 digits are entered", () => {
-    expect(maskedNumber("42")).toBe(
-      "•••• •••• •••• ••••",
-    );
+    expect(maskedNumber("42")).toBe("•••• •••• •••• ••••");
   });
 });
 
@@ -313,5 +309,11 @@ describe("formatExpiryInput", () => {
 describe("normalizeNumber", () => {
   it("strips spaces", () => {
     expect(normalizeNumber("4242 4242 4242 4242")).toBe("4242424242424242");
+  });
+});
+
+describe("formatExpiry", () => {
+  it("formats a saved card's month and 4-digit year as MM/YY (CARD-01 AC 4)", () => {
+    expect(formatExpiry(8, 2025)).toBe("08/25");
   });
 });
