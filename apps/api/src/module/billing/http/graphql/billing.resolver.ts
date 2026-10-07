@@ -1,8 +1,9 @@
 import { UseGuards } from '@nestjs/common';
-import { Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 import { ClsService } from 'nestjs-cls';
+import { AddPaymentCardInput } from './type/add-payment-card-input.type';
 import { PaymentCard } from './type/payment-card.type';
 
 // The caller is always the session's user: no operation takes a user id
@@ -19,6 +20,18 @@ export class BillingResolver {
   async myPaymentCards(): Promise<PaymentCard[]> {
     return this.paymentCardService.list(
       this.clsService.get<string>('userId'),
+      new Date(),
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => [PaymentCard])
+  async addPaymentCard(
+    @Args('input') input: AddPaymentCardInput,
+  ): Promise<PaymentCard[]> {
+    return this.paymentCardService.add(
+      this.clsService.get<string>('userId'),
+      input,
       new Date(),
     );
   }

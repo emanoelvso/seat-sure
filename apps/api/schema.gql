@@ -81,6 +81,13 @@ enum AccountOrdersTab {
   PENDING
 }
 
+input AddPaymentCardInput {
+  cvv: String!
+  expiry: String!
+  holder: String!
+  number: String!
+}
+
 type Artist {
   bio: String!
   cover: String!
@@ -315,6 +322,7 @@ enum LogInStatus {
 }
 
 type Mutation {
+  addPaymentCard(input: AddPaymentCardInput!): [PaymentCard!]!
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   logIn(input: LogInInput!): LogInResult!

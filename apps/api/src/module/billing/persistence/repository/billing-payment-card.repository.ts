@@ -29,4 +29,25 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
   async hardDelete(manager: EntityManager, id: string): Promise<void> {
     await manager.delete(BillingPaymentCard, { id });
   }
+
+  async countForUser(manager: EntityManager, userId: string): Promise<number> {
+    return manager.count(BillingPaymentCard, { where: { userId } });
+  }
+
+  async hasFingerprint(
+    manager: EntityManager,
+    userId: string,
+    fingerprint: string,
+  ): Promise<boolean> {
+    return manager.exists(BillingPaymentCard, {
+      where: { userId, fingerprint },
+    });
+  }
+
+  async insert(
+    manager: EntityManager,
+    card: BillingPaymentCard,
+  ): Promise<void> {
+    await manager.insert(BillingPaymentCard, card);
+  }
 }
