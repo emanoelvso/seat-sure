@@ -185,3 +185,9 @@ describe("paths.accountPersonalInfo", () => {
     expect(paths.accountPersonalInfo.getHref()).toBe("/account/personal-info");
   });
 });
+
+describe("paths.accountPayment", () => {
+  it("links to the account payment page (CARD-02, CARD-12)", () => {
+    expect(paths.accountPayment.getHref()).toBe("/account/payment");
+  });
+});
