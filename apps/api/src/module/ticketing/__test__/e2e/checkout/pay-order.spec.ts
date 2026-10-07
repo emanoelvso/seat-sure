@@ -6,6 +6,7 @@ import {
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { CardInput } from '@billingModule/core/util/card-rules';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
+import { NotificationsPublicApiProvider } from '@notificationsModule/integration/provider/public-api.provider';
 import { ConfigService } from '@sharedModules/config/service/config.service';
 import { factory } from '@sharedModules/config/util/config.factory';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -102,6 +103,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await testDbClient(Tables.Order).del();
     await testDbClient(Tables.BillingPayment).del();
     await testDbClient(Tables.BillingPaymentCard).del();
+    await testDbClient(Tables.NotificationsNotification).del();
   };
 
   beforeAll(async () => {
@@ -143,6 +145,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       'billing',
       'identity',
       'user-profile',
+      'notifications',
     ]) {
       const dataSource = module.get<DataSource>(getDataSourceToken(name));
       if (dataSource.isInitialized) {
@@ -855,6 +858,71 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect((await orderRow(order.id)).status).toBe('paid');
       expect(await myPaymentCards()).toEqual([]);
       expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
+        orderId: order.id,
+      });
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('purchase notification (NOTIF-02, NOTIF-04)', () => {
+    const notificationsOf = () =>
+      testDbClient(Tables.NotificationsNotification).where({ userId });
+
+    it('stores one unread purchase confirmed for the buyer with the order as its source and the event name (NOTIF-02 AC 2)', async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      const rows = await notificationsOf();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId,
+        type: 'purchase_confirmed',
+        channel: 'in_app',
+        sourceId: order.id,
+        payload: { eventName: 'Coldplay: Music of the Spheres' },
+        readAt: null,
+      });
+    });
+
+    it('stores no purchase notification when the seats were lost and the charge was refunded', async () => {
+      const { order, holds } = await insertOrder();
+      await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      expect(await notificationsOf()).toHaveLength(0);
+    });
+
+    it('still answers PAID and logs only the user id, type, and order id when storing fails (NOTIF-04 AC 7, 8)', async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+      jest
+        .spyOn(
+          NotificationsPublicApiProvider.prototype,
+          'notifyPurchaseConfirmed',
+        )
+        .mockRejectedValueOnce(new Error('notification boom'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId }),
+      ).toHaveLength(2);
+      expect(await notificationsOf()).toHaveLength(0);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith("Couldn't store the notification", {
+        userId,
+        type: 'purchase_confirmed',
         orderId: order.id,
       });
       errorSpy.mockRestore();

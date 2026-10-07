@@ -6,6 +6,7 @@ import {
   ChargeSource,
 } from '@sharedModules/integration/interface/billing-integration.interface';
 import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
+import { NotificationsApi } from '@sharedModules/integration/interface/notifications-integration.interface';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { TicketSender } from '@ticketingModule/core/adapter/ticket-sender.adapter.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
@@ -109,6 +110,8 @@ export class OrderPaymentService {
     private readonly identityApi: IdentityApi,
     @Inject(TicketSender)
     private readonly ticketSender: TicketSender,
+    @Inject(NotificationsApi)
+    private readonly notificationsApi: NotificationsApi,
     private readonly logger: AppLogger,
   ) {}
 
@@ -251,6 +254,14 @@ export class OrderPaymentService {
       throw seatsUnavailable();
     }
     await this.sendTickets(order, codes);
+    await this.notify(order, 'purchase_confirmed', () =>
+      this.notificationsApi.notifyPurchaseConfirmed({
+        userId: order.userId,
+        orderId: order.id,
+        eventName: order.eventName,
+        now,
+      }),
+    );
     order.status = OrderStatus.PAID;
     order.paidAt = now;
     order.paymentId = charge.paymentId;
@@ -370,6 +381,24 @@ export class OrderPaymentService {
     } catch (exception) {
       this.logger.error("Couldn't send the tickets", {
         exception,
+        orderId: order.id,
+      });
+    }
+  }
+
+  // The order is paid whatever happens here, so a failure is only logged,
+  // with the user id, type, and order id and never the notification (NOTIF-04)
+  private async notify(
+    order: Order,
+    type: 'purchase_confirmed',
+    send: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await send();
+    } catch {
+      this.logger.error("Couldn't store the notification", {
+        userId: order.userId,
+        type,
         orderId: order.id,
       });
     }
