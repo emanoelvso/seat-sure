@@ -66,7 +66,11 @@ export class BillingService {
       );
     }
 
-    const result = await this.gateway.charge({ amountCents, currency, card });
+    const result = await this.gateway.charge({
+      amountCents,
+      currency,
+      source: { type: 'card', card },
+    });
 
     const payment = new BillingPayment({
       userId,

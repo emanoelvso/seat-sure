@@ -4,6 +4,8 @@ import {
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { factory } from '@sharedModules/config/util/config.factory';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -66,7 +68,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
   // Records every charge and delegates to the simulated gateway, so
   // 4000 0000 0000 0002 is still declined. The implementations are set in
   // beforeEach because the Jest config resets mocks between tests.
-  const simulated = new SimulatedPaymentGateway();
+  const simulated = new SimulatedPaymentGateway(new ConfigService(factory()));
   const gateway = {
     charge: jest.fn<ReturnType<PaymentGateway['charge']>, [ChargeInput]>(),
     refund: jest.fn<Promise<void>, [string]>(),
