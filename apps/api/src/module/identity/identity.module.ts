@@ -15,12 +15,14 @@ import { IdentityPublicApiProvider } from '@identityModule/integration/provider/
 import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
 import { AuthModule } from '@sharedModules/auth/auth.module';
 import { LoggerModule } from '@sharedModules/logger/logger.module';
+import { NotificationsModule } from '@notificationsModule/notifications.module';
 import { UserProfileModule } from '@userProfileModule/user-profile.module';
 
 @Module({
   imports: [
     IdentityPersistenceModule,
     UserProfileModule,
+    NotificationsModule,
     LoggerModule,
     AuthModule,
   ],

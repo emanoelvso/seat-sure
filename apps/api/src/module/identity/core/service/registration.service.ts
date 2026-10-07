@@ -20,6 +20,7 @@ import {
 } from '@identityModule/core/service/session.service';
 import { IdentityUser } from '@identityModule/persistence/entity/identity-user.entity';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
+import { NotificationsApi } from '@sharedModules/integration/interface/notifications-integration.interface';
 import { UserProfileApi } from '@sharedModules/integration/interface/user-profile-integration.interface';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { QueryFailedError } from 'typeorm';
@@ -45,6 +46,8 @@ export class RegistrationService {
   constructor(
     private readonly userRepository: UserRepository,
     @Inject(UserProfileApi) private readonly userProfileApi: UserProfileApi,
+    @Inject(NotificationsApi)
+    private readonly notificationsApi: NotificationsApi,
     private readonly verificationCodeService: VerificationCodeService,
     private readonly sessionService: SessionService,
     @Inject(SecurityAlertSender)
@@ -91,9 +94,24 @@ export class RegistrationService {
     const { codeSent, resendAvailableAt } =
       await this.verificationCodeService.issue(user, 'verify_email', now);
 
+    await this.notifyWelcome(user.id, now);
+
     this.logger.log('signup', { userId: user.id });
 
     return { email: user.email, codeSent, resendAvailableAt };
+  }
+
+  // The account exists whatever happens here, so a failure is only logged,
+  // with the user id and type and never the notification (NOTIF-04)
+  private async notifyWelcome(userId: string, now: Date): Promise<void> {
+    try {
+      await this.notificationsApi.notifyWelcome({ userId, now });
+    } catch {
+      this.logger.error("Couldn't store the notification", {
+        userId,
+        type: 'welcome',
+      });
+    }
   }
 
   @Transactional({ connectionName: 'identity' })
