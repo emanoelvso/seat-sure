@@ -76,6 +76,9 @@ export const paths = {
   accountPayment: {
     getHref: () => "/account/payment",
   },
+  accountNotifications: {
+    getHref: () => "/account/notifications",
+  },
   sessionRefresh: {
     getHref: (redirectTo: string) =>
       `/api/auth/refresh?redirectTo=${encodeURIComponent(redirectTo)}`,
