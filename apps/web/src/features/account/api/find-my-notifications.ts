@@ -32,3 +32,4 @@ export const MY_NOTIFICATIONS: TypedDocumentNode<
 
 export type NotificationsPage = MyNotificationsQuery["myNotifications"];
 export type NotificationItem = NotificationsPage["items"][number];
+export type NotificationCounts = NotificationsPage["counts"];
