@@ -12,14 +12,16 @@ type PayOrderReason =
   | "SEATS_UNAVAILABLE"
   | "ORDER_EXPIRED"
   | "INVALID_CARD"
+  | "CARD_NOT_FOUND"
   | "GENERIC";
 
 // The reasons the API can pass straight through as-is (PAY-50, PAY-51,
-// PAY-61). Anything else becomes GENERIC (PAY-53).
+// PAY-61, CARD-08 AC 9). Anything else becomes GENERIC (PAY-53).
 const PASSTHROUGH_REASONS = new Set<string>([
   "CARD_DECLINED",
   "SEATS_UNAVAILABLE",
   "ORDER_EXPIRED",
+  "CARD_NOT_FOUND",
 ]);
 
 export interface PayOrderState {
@@ -27,34 +29,46 @@ export interface PayOrderState {
   fields?: Record<string, string>;
 }
 
-export interface PayOrderActionInput {
-  orderId: string;
-  card: {
-    number: string;
-    holder: string;
-    expiry: string;
-    cvv: string;
-  };
-}
+// A typed card (optionally saved after the payment, CARD-09) or a saved
+// card's id (CARD-08).
+export type PayOrderActionInput =
+  | {
+      orderId: string;
+      card: {
+        number: string;
+        holder: string;
+        expiry: string;
+        cvv: string;
+      };
+      saveCard?: boolean;
+    }
+  | { orderId: string; savedCardId: string };
 
 // PAY-36, PAY-48, PAY-50..53, PAY-61: client validation first (no API
 // call on an invalid card), then withAccessToken(PAY_ORDER). The returned
 // state never carries the card's number, CVV or expiry (PAY-36) - only the
-// reason and, for INVALID_CARD, the field error messages.
+// reason and, for INVALID_CARD, the field error messages. A saved card has
+// nothing to validate here: the API checks it belongs to the caller.
 export async function payOrderAction(
   _prevState: PayOrderState,
   input: PayOrderActionInput,
 ): Promise<PayOrderState> {
-  const parsed = cardSchema.safeParse(input.card);
-  if (!parsed.success) {
-    const fields: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const field = issue.path[0];
-      if (typeof field === "string" && !fields[field]) {
-        fields[field] = issue.message;
+  let source;
+  if ("savedCardId" in input) {
+    source = { savedCardId: input.savedCardId };
+  } else {
+    const parsed = cardSchema.safeParse(input.card);
+    if (!parsed.success) {
+      const fields: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0];
+        if (typeof field === "string" && !fields[field]) {
+          fields[field] = issue.message;
+        }
       }
+      return { reason: "INVALID_CARD", fields };
     }
-    return { reason: "INVALID_CARD", fields };
+    source = { card: parsed.data, saveCard: input.saveCard };
   }
 
   let result;
@@ -62,7 +76,7 @@ export async function payOrderAction(
     result = await withAccessToken((accessToken) =>
       graphqlServerFetch(
         PAY_ORDER,
-        { input: { orderId: input.orderId, card: parsed.data } },
+        { input: { orderId: input.orderId, ...source } },
         { revalidate: 0, accessToken },
       ),
     );

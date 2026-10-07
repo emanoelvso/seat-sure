@@ -158,4 +158,79 @@ describe("payOrderAction", () => {
     expect(serialized).not.toContain(validCard.number);
     expect(serialized).not.toContain(validCard.cvv);
   });
+
+  describe("with a saved card (CARD-08)", () => {
+    const savedInput = { orderId: "order-1", savedCardId: "card-1" };
+
+    it("sends savedCardId and no card, then navigates to the success page on PAID (AC 8)", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockResolvedValueOnce({ payOrder: { id: "order-1" } });
+
+      await expect(payOrderAction(initialState, savedInput)).rejects.toBe(
+        REDIRECT_ERROR,
+      );
+
+      expect(redirect).toHaveBeenCalledWith("/checkout/order-1/success");
+      expect(mockedFetch).toHaveBeenCalledTimes(1);
+      const [, variables] = mockedFetch.mock.calls[0];
+      expect(variables).toStrictEqual({
+        input: { orderId: "order-1", savedCardId: "card-1" },
+      });
+    });
+
+    it("maps CARD_NOT_FOUND to its own reason (AC 9)", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockRejectedValueOnce(
+        new GraphQLRequestError("gone", "BAD_USER_INPUT", "CARD_NOT_FOUND"),
+      );
+
+      const result = await payOrderAction(initialState, savedInput);
+
+      expect(result).toEqual({ reason: "CARD_NOT_FOUND" });
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("passes CARD_DECLINED through (AC 10)", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockRejectedValueOnce(
+        new GraphQLRequestError("declined", "BAD_USER_INPUT", "CARD_DECLINED"),
+      );
+
+      const result = await payOrderAction(initialState, savedInput);
+
+      expect(result).toEqual({ reason: "CARD_DECLINED" });
+    });
+  });
+
+  describe("with a typed card and saveCard (CARD-09)", () => {
+    it.each([true, false])(
+      "sends the card with saveCard: %s as given",
+      async (saveCard) => {
+        mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+        mockedFetch.mockResolvedValueOnce({ payOrder: { id: "order-1" } });
+
+        await expect(
+          payOrderAction(initialState, { ...buildInput(), saveCard }),
+        ).rejects.toBe(REDIRECT_ERROR);
+
+        const [, variables] = mockedFetch.mock.calls[0];
+        expect(variables).toStrictEqual({
+          input: { orderId: "order-1", card: validCard, saveCard },
+        });
+      },
+    );
+
+    it("still validates the card first and makes no API call when it is invalid", async () => {
+      const result = await payOrderAction(initialState, {
+        ...buildInput({ number: "1", holder: "Jane Doe", expiry: "12/99", cvv: "999" }),
+        saveCard: true,
+      });
+
+      expect(result).toEqual({
+        reason: "INVALID_CARD",
+        fields: { number: "Enter a valid card number" },
+      });
+      expect(mockedWithAccessToken).not.toHaveBeenCalled();
+    });
+  });
 });
