@@ -776,6 +776,21 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(await myPaymentCards()).toEqual([]);
     });
 
+    it('saves no card when the seats were lost after the charge (CARD-09 AC 4)', async () => {
+      const { order, holds } = await insertOrder();
+      await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      expect(gateway.tokenize).not.toHaveBeenCalled();
+      expect(await myPaymentCards()).toEqual([]);
+    });
+
     it('still pays when the card is already saved, and keeps the list unchanged (AC 5)', async () => {
       const { order: first } = await insertOrder();
       await payOrderWith({
