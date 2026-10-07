@@ -94,6 +94,13 @@ export type AccountOrdersTab =
   | 'COMPLETED'
   | 'PENDING';
 
+export type AddPaymentCardInput = {
+  cvv: Scalars['String']['input'];
+  expiry: Scalars['String']['input'];
+  holder: Scalars['String']['input'];
+  number: Scalars['String']['input'];
+};
+
 export type Artist = {
   __typename: 'Artist';
   bio: Scalars['String']['output'];
@@ -337,18 +344,26 @@ export type LogInStatus =
 
 export type Mutation = {
   __typename: 'Mutation';
+  addPaymentCard: Array<PaymentCard>;
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
   logIn: LogInResult;
   payOrder: CheckoutOrder;
   refreshSession: SessionTokens;
+  removePaymentCard: Array<PaymentCard>;
   requestPasswordReset: CodeDelivery;
   resendCode: CodeDelivery;
   resetPassword: Scalars['Boolean']['output'];
+  setDefaultPaymentCard: Array<PaymentCard>;
   signUp: SignUpResult;
   startCheckout: CheckoutOrder;
   updateMyProfile: UserProfile;
   verifyEmail: SessionTokens;
+};
+
+
+export type MutationAddPaymentCardArgs = {
+  input: AddPaymentCardInput;
 };
 
 
@@ -377,6 +392,11 @@ export type MutationRefreshSessionArgs = {
 };
 
 
+export type MutationRemovePaymentCardArgs = {
+  input: PaymentCardIdInput;
+};
+
+
 export type MutationRequestPasswordResetArgs = {
   input: RequestPasswordResetInput;
 };
@@ -389,6 +409,11 @@ export type MutationResendCodeArgs = {
 
 export type MutationResetPasswordArgs = {
   input: ResetPasswordInput;
+};
+
+
+export type MutationSetDefaultPaymentCardArgs = {
+  input: PaymentCardIdInput;
 };
 
 
@@ -418,8 +443,26 @@ export type PasswordResetGrant = {
 };
 
 export type PayOrderInput = {
-  card: CardInput;
+  card?: InputMaybe<CardInput>;
   orderId: Scalars['String']['input'];
+  saveCard?: Scalars['Boolean']['input'];
+  savedCardId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+export type PaymentCard = {
+  __typename: 'PaymentCard';
+  brand: Scalars['String']['output'];
+  expMonth: Scalars['Int']['output'];
+  expYear: Scalars['Int']['output'];
+  expired: Scalars['Boolean']['output'];
+  holder: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  isDefault: Scalars['Boolean']['output'];
+  last4: Scalars['String']['output'];
+};
+
+export type PaymentCardIdInput = {
+  id: Scalars['String']['input'];
 };
 
 export type PriceRange = {
@@ -439,6 +482,7 @@ export type Query = {
   findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
   me: CurrentUser;
+  myPaymentCards: Array<PaymentCard>;
   myProfile: UserProfile;
 };
 

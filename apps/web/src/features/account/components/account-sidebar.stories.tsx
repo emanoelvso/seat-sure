@@ -29,7 +29,8 @@ export default meta;
 
 type Story = StoryObj<typeof AccountSidebar>;
 
-const DISABLED_ITEMS = ["Payment", "Notification", "Setting"];
+// CARD-12 AC 3: "Payment" became a link; the rest stay disabled.
+const DISABLED_ITEMS = ["Notification", "Setting"];
 
 // ACCT-01 AC 1: the logo, the six items and the Upgrade card render.
 export const Default: Story = {
@@ -41,6 +42,7 @@ export const Default: Story = {
     await expect(
       canvas.getByRole("link", { name: "Personal info" }),
     ).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Payment" })).toBeVisible();
     for (const name of DISABLED_ITEMS) {
       await expect(canvas.getByRole("link", { name })).toBeVisible();
     }
@@ -128,6 +130,33 @@ export const DisabledItems: Story = {
     const seePlans = canvas.getByRole("button", { name: "See plans" });
     await expect(seePlans).toHaveAttribute("aria-disabled", "true");
     await expect(seePlans).not.toHaveAttribute("href");
+  },
+};
+
+// CARD-12 AC 1 and 2: "Payment" links to the page and is the only current
+// item there.
+export const CurrentOnPayment: Story = {
+  parameters: atPath("/account/payment"),
+  play: async ({ canvas }) => {
+    const payment = canvas.getByRole("link", { name: "Payment" });
+    await expect(payment).toHaveAttribute("href", "/account/payment");
+    await expect(payment).toHaveAttribute("aria-current", "page");
+    await expect(payment).not.toHaveAttribute("aria-disabled");
+    const current = canvas
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-current") === "page");
+    await expect(current).toEqual([payment]);
+  },
+};
+
+// CARD-12 AC 2 (WHILE): elsewhere "Payment" is not current but still links
+// to the page.
+export const PaymentNotCurrentOnTickets: Story = {
+  parameters: atPath("/account/tickets"),
+  play: async ({ canvas }) => {
+    const payment = canvas.getByRole("link", { name: "Payment" });
+    await expect(payment).toHaveAttribute("href", "/account/payment");
+    await expect(payment).not.toHaveAttribute("aria-current");
   },
 };
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { validateCard } from "@/features/checkout/utils/card";
+import { validateCard } from "@/utils/card";
 
 // AD-019: built on card.ts's rules rather than re-expressing them, so the
 // pay action's field errors always match the preview/form validation.

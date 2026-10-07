@@ -83,7 +83,7 @@ const isValidHolder = (holder: string): boolean => {
   return trimmed.length >= 2 && trimmed.length <= 50;
 };
 
-const parseExpiry = (
+export const parseExpiry = (
   expiry: string,
 ): { month: number; year: number } | null => {
   const match = /^(\d{2})\/(\d{2})$/.exec(expiry);

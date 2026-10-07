@@ -19,6 +19,13 @@ export type AccountOrdersTab =
   | 'COMPLETED'
   | 'PENDING';
 
+export type AddPaymentCardInput = {
+  cvv: string;
+  expiry: string;
+  holder: string;
+  number: string;
+};
+
 export type CardInput = {
   cvv: string;
   expiry: string;
@@ -101,8 +108,14 @@ export type LogInStatus =
   | 'VERIFICATION_REQUIRED';
 
 export type PayOrderInput = {
-  card: CardInput;
+  card?: CardInput | null | undefined;
   orderId: string;
+  saveCard?: boolean;
+  savedCardId?: string | number | null | undefined;
+};
+
+export type PaymentCardIdInput = {
+  id: string;
 };
 
 export type PriceRange = {
@@ -162,6 +175,13 @@ export type VerifyEmailInput = {
   rememberMe: boolean;
 };
 
+export type AddPaymentCardMutationVariables = Exact<{
+  input: AddPaymentCardInput;
+}>;
+
+
+export type AddPaymentCardMutation = { addPaymentCard: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
+
 export type FindAccountOrderQueryVariables = Exact<{
   input: FindAccountOrderInput;
 }>;
@@ -176,10 +196,29 @@ export type FindAccountOrdersQueryVariables = Exact<{
 
 export type FindAccountOrdersQuery = { findAccountOrders: { __typename: 'AccountOrdersPage', page: number, totalPages: number, items: Array<{ __typename: 'AccountOrderSummary', id: string, status: AccountOrderStatus, createdAt: string, eventName: string, quantity: number, currency: string, totalCents: number }>, counts: { __typename: 'AccountOrderCounts', all: number, pending: number, cancelled: number, completed: number } } };
 
+export type MyPaymentCardsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MyPaymentCardsQuery = { myPaymentCards: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
+
 export type MyProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type MyProfileQuery = { myProfile: { __typename: 'UserProfile', id: string, firstName: string, lastName: string, avatarUrl: string | null, state: string | null, city: string | null, birthDate: string | null, phoneCountryCode: string | null, phoneNumber: string | null, zipCode: string | null } };
+
+export type RemovePaymentCardMutationVariables = Exact<{
+  input: PaymentCardIdInput;
+}>;
+
+
+export type RemovePaymentCardMutation = { removePaymentCard: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
+
+export type SetDefaultPaymentCardMutationVariables = Exact<{
+  input: PaymentCardIdInput;
+}>;
+
+
+export type SetDefaultPaymentCardMutation = { setDefaultPaymentCard: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
 
 export type UpdateMyProfileMutationVariables = Exact<{
   input: UpdateMyProfileInput;
@@ -262,6 +301,11 @@ export type FindCheckoutOrderQueryVariables = Exact<{
 
 
 export type FindCheckoutOrderQuery = { findCheckoutOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }> } | null };
+
+export type CheckoutPaymentCardsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type CheckoutPaymentCardsQuery = { myPaymentCards: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
 
 export type PayOrderMutationVariables = Exact<{
   input: PayOrderInput;

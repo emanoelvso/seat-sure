@@ -14,7 +14,10 @@ export default async function CheckoutOrderPage({
 }) {
   const { orderId } = await params;
   const currentPath = paths.checkout.getHref(orderId);
-  const { order, user } = await getCheckoutPageData(orderId, currentPath);
+  const { order, user, cards } = await getCheckoutPageData(
+    orderId,
+    currentPath,
+  );
 
   if (!order) notFound();
 
@@ -27,7 +30,12 @@ export default async function CheckoutOrderPage({
     <>
       <Header className="!mb-10" />
       <main className="px-27 pb-25">
-        <CheckoutView order={order} user={user} payAction={payOrderAction} />
+        <CheckoutView
+          order={order}
+          user={user}
+          cards={cards}
+          payAction={payOrderAction}
+        />
       </main>
     </>
   );
