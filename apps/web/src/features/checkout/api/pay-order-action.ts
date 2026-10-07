@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { NO_SESSION, withAccessToken } from "@/features/auth/api/with-access-token";
 import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
@@ -82,6 +83,8 @@ export async function payOrderAction(
     );
   } catch (error) {
     if (error instanceof GraphQLRequestError && error.reason) {
+      // CARD-08 AC 9: the saved card is gone; reload the page's card list.
+      if (error.reason === "CARD_NOT_FOUND") refresh();
       if (PASSTHROUGH_REASONS.has(error.reason)) {
         return { reason: error.reason as PayOrderReason };
       }

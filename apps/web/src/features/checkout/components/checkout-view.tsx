@@ -13,6 +13,7 @@ import type {
   PayOrderActionInput,
   PayOrderState,
 } from "@/features/checkout/api/pay-order-action";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CardForm } from "@/features/checkout/components/card-form";
 import { CheckoutEventCard } from "@/features/checkout/components/checkout-event-card";
 import {
@@ -23,6 +24,10 @@ import { CountdownTimer } from "@/features/checkout/components/countdown-timer";
 import { FanProtectCard } from "@/features/checkout/components/fan-protect-card";
 import { OrderSummary } from "@/features/checkout/components/order-summary";
 import { ReviewStep } from "@/features/checkout/components/review-step";
+import {
+  NEW_CARD,
+  SavedCardPicker,
+} from "@/features/checkout/components/saved-card-picker";
 import { TicketsStep } from "@/features/checkout/components/tickets-step";
 import { TimeOutDialog } from "@/features/checkout/components/time-out-dialog";
 import {
@@ -69,22 +74,50 @@ interface CheckoutViewProps {
 
 const emptyCard: CardInput = { number: "", holder: "", expiry: "", cvv: "" };
 const initialPayState: PayOrderState = {};
+const MAX_SAVED_CARDS = 5;
+const CARD_NOT_FOUND_ERROR =
+  "This card is no longer available. Choose another payment method.";
 
 // PAY-18, PAY-24, PAY-33..36, PAY-51, PAY-52, PAY-58, PAY-60, PAY-61: the
 // /checkout/[orderId] client view. The step and the card live only in React
 // state - never in storage or the URL (PAY-36) - so a reload starts over on
 // the Tickets step with an empty card.
-export function CheckoutView({ order, user, payAction }: CheckoutViewProps) {
+// CARD-07..09: with saved cards the Payment step opens on the picker; "New
+// card" (or no saved cards) shows the summary and the card form as before,
+// with the opt-in "Save this card" box and, when there are saved cards, a
+// way back to the picker. The chosen source is what "Pay" sends.
+export function CheckoutView({
+  order,
+  user,
+  cards = [],
+  payAction,
+}: CheckoutViewProps) {
   const [step, setStep] = useState<CheckoutStep>("tickets");
   const [card, setCard] = useState<CardInput>(emptyCard);
   const [fieldErrors, setFieldErrors] = useState<Partial<CardFieldErrors>>();
   const [timerExpired, setTimerExpired] = useState(false);
+  const [usePicker, setUsePicker] = useState(true);
+  const [savedCardId, setSavedCardId] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(false);
+  const [pickerError, setPickerError] = useState("");
 
   const [payState, dispatchPay, paying] = useActionState(
     async (state: PayOrderState, input: PayOrderActionInput) => {
       const result = await payAction(state, input);
       if (result.reason === "INVALID_CARD") {
         setFieldErrors(result.fields);
+        setStep("payment");
+      }
+      if (result.reason === "CARD_NOT_FOUND") {
+        // CARD-08 AC 9: back to the picker. The action has already refreshed
+        // the router, so `cards` arrives reloaded.
+        // SPEC_DEVIATION: design.md calls router.refresh() here.
+        // Reason: useRouter needs a mounted app router, which the existing
+        // CheckoutView stories don't provide; next/cache refresh() in the
+        // Server Action reloads the same page data.
+        setSavedCardId(null);
+        setUsePicker(true);
+        setPickerError(CARD_NOT_FOUND_ERROR);
         setStep("payment");
       }
       return result;
@@ -111,16 +144,40 @@ export function CheckoutView({ order, user, payAction }: CheckoutViewProps) {
     setFieldErrors(undefined);
   }
 
+  function handlePickerConfirm(choice: string) {
+    setPickerError("");
+    if (choice === NEW_CARD) {
+      setSavedCardId(null);
+      setUsePicker(false);
+      return;
+    }
+    setSavedCardId(choice);
+    setStep("review");
+  }
+
+  function handleCardSubmit() {
+    setSavedCardId(null);
+    setStep("review");
+  }
+
   // Dispatched from a click, not a <form action>, so it needs a transition
-  // for `paying` to update.
+  // for `paying` to update. `saveCard` is only sent when checked; the API
+  // defaults it to false.
   function handlePay() {
     startTransition(() =>
-      dispatchPay({
-        orderId: order.id,
-        card: { ...card, number: normalizeNumber(card.number) },
-      }),
+      dispatchPay(
+        savedCardId
+          ? { orderId: order.id, savedCardId }
+          : {
+              orderId: order.id,
+              card: { ...card, number: normalizeNumber(card.number) },
+              ...(saveCard && { saveCard: true }),
+            },
+      ),
     );
   }
+
+  const showPicker = usePicker && cards.length > 0;
 
   const reviewError =
     payState.reason === "CARD_DECLINED" || payState.reason === "GENERIC"
@@ -164,14 +221,41 @@ export function CheckoutView({ order, user, payAction }: CheckoutViewProps) {
                   onConfirm={() => setStep("payment")}
                 />
               )}
-              {step === "payment" && (
+              {step === "payment" && showPicker && (
+                <SavedCardPicker
+                  cards={cards}
+                  error={pickerError || undefined}
+                  onConfirm={handlePickerConfirm}
+                />
+              )}
+              {step === "payment" && !showPicker && (
                 <>
                   <OrderSummary order={order} />
                   <CardForm
                     value={card}
                     onChange={handleCardChange}
                     errors={fieldErrors}
-                    onSubmit={() => setStep("review")}
+                    onSubmit={handleCardSubmit}
+                    footer={
+                      <div className="flex flex-col items-start gap-4">
+                        {cards.length < MAX_SAVED_CARDS && (
+                          <Checkbox
+                            label="Save this card for future payments"
+                            checked={saveCard}
+                            onCheckedChange={setSaveCard}
+                          />
+                        )}
+                        {cards.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setUsePicker(true)}
+                            className="cursor-pointer text-base text-tint-400 underline hover:text-tint-300"
+                          >
+                            Use a saved card
+                          </button>
+                        )}
+                      </div>
+                    }
                   />
                 </>
               )}

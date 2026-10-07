@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleIcon, EyeClosedIcon, EyeIcon } from "@solar-icons/react/outline";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CardPreview } from "@/components/card-preview";
@@ -21,6 +21,8 @@ interface CardFormProps {
   /** Field errors returned by the server (PAY-52). */
   errors?: Partial<CardFieldErrors>;
   onSubmit: () => void;
+  /** Rendered under the fields, above "Review order" (CARD-07, CARD-09). */
+  footer?: ReactNode;
 }
 
 const FORMATTERS: Record<CardField, (raw: string) => string> = {
@@ -33,7 +35,7 @@ const FORMATTERS: Record<CardField, (raw: string) => string> = {
 // PAY-26..32: the controlled card form under a live card preview. A field's
 // own error shows once it loses focus with a non-empty value; server errors
 // show as given.
-export function CardForm({ value, onChange, errors, onSubmit }: CardFormProps) {
+export function CardForm({ value, onChange, errors, onSubmit, footer }: CardFormProps) {
   const [blurred, setBlurred] = useState<Partial<Record<CardField, boolean>>>({});
   const [cvvVisible, setCvvVisible] = useState(false);
   const clientErrors = validateCard(value, new Date());
@@ -106,6 +108,7 @@ export function CardForm({ value, onChange, errors, onSubmit }: CardFormProps) {
           />
         </div>
       </div>
+      {footer}
       <Button type="submit" size="xl" disabled={!isValid}>
         Review order
       </Button>

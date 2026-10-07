@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
 import { NO_SESSION, withAccessToken } from "@/features/auth/api/with-access-token";
@@ -18,6 +19,7 @@ vi.mock("next/navigation", () => ({
     throw REDIRECT_ERROR;
   }),
 }));
+vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 vi.mock("@/lib/graphql-server", async () => {
   const actual = await vi.importActual<typeof import("@/lib/graphql-server")>(
     "@/lib/graphql-server",
@@ -60,6 +62,7 @@ describe("payOrderAction", () => {
     mockedFetch.mockReset();
     mockedWithAccessToken.mockReset();
     vi.mocked(redirect).mockClear();
+    vi.mocked(refresh).mockClear();
   });
 
   it("navigates to the success page on success (PAY-48)", async () => {
@@ -188,6 +191,28 @@ describe("payOrderAction", () => {
 
       expect(result).toEqual({ reason: "CARD_NOT_FOUND" });
       expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("refreshes the page data on CARD_NOT_FOUND so the picker gets the reloaded list (AC 9)", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockRejectedValueOnce(
+        new GraphQLRequestError("gone", "BAD_USER_INPUT", "CARD_NOT_FOUND"),
+      );
+
+      await payOrderAction(initialState, savedInput);
+
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not refresh on other failures", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockRejectedValueOnce(
+        new GraphQLRequestError("declined", "BAD_USER_INPUT", "CARD_DECLINED"),
+      );
+
+      await payOrderAction(initialState, savedInput);
+
+      expect(refresh).not.toHaveBeenCalled();
     });
 
     it("passes CARD_DECLINED through (AC 10)", async () => {
