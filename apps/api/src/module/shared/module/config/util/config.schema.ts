@@ -23,6 +23,10 @@ export const authSchema = z.object({
   codeSender: codeSenderSchema.default('log'),
 });
 
+export const billingSchema = z.object({
+  fingerprintSecret: z.string().min(32),
+});
+
 export const timeZoneSchema = z
   .string()
   .default('UTC')
@@ -49,6 +53,7 @@ export const configSchema = z
     database: databaseSchema,
     redis: redisSchema,
     auth: authSchema,
+    billing: billingSchema,
     app: appSchema.default({ timeZone: 'UTC' }),
   })
   .refine(
