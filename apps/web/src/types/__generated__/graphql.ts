@@ -107,6 +107,26 @@ export type LogInStatus =
   | 'SIGNED_IN'
   | 'VERIFICATION_REQUIRED';
 
+export type MyNotificationsInput = {
+  page: number;
+  pageSize: number;
+  tab?: NotificationsTab;
+};
+
+export type NotificationIdInput = {
+  id: string;
+};
+
+export type NotificationType =
+  | 'PAYMENT_UNSUCCESSFUL'
+  | 'PURCHASE_CONFIRMED'
+  | 'WELCOME';
+
+export type NotificationsTab =
+  | 'ALL'
+  | 'READ'
+  | 'UNREAD';
+
 export type PayOrderInput = {
   card?: CardInput | null | undefined;
   orderId: string;
@@ -196,6 +216,13 @@ export type FindAccountOrdersQueryVariables = Exact<{
 
 export type FindAccountOrdersQuery = { findAccountOrders: { __typename: 'AccountOrdersPage', page: number, totalPages: number, items: Array<{ __typename: 'AccountOrderSummary', id: string, status: AccountOrderStatus, createdAt: string, eventName: string, quantity: number, currency: string, totalCents: number }>, counts: { __typename: 'AccountOrderCounts', all: number, pending: number, cancelled: number, completed: number } } };
 
+export type MyNotificationsQueryVariables = Exact<{
+  input: MyNotificationsInput;
+}>;
+
+
+export type MyNotificationsQuery = { myNotifications: { __typename: 'NotificationsPage', page: number, totalPages: number, items: Array<{ __typename: 'Notification', id: string, type: NotificationType, eventName: string | null, createdAt: string, readAt: string | null }>, counts: { __typename: 'NotificationCounts', all: number, unread: number, read: number } } };
+
 export type MyPaymentCardsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -205,6 +232,18 @@ export type MyProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type MyProfileQuery = { myProfile: { __typename: 'UserProfile', id: string, firstName: string, lastName: string, avatarUrl: string | null, state: string | null, city: string | null, birthDate: string | null, phoneCountryCode: string | null, phoneNumber: string | null, zipCode: string | null } };
+
+export type MarkAllNotificationsReadMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MarkAllNotificationsReadMutation = { markAllNotificationsRead: { __typename: 'NotificationCounts', all: number, unread: number, read: number } };
+
+export type MarkNotificationReadMutationVariables = Exact<{
+  input: NotificationIdInput;
+}>;
+
+
+export type MarkNotificationReadMutation = { markNotificationRead: { __typename: 'Notification', id: string, readAt: string | null } };
 
 export type RemovePaymentCardMutationVariables = Exact<{
   input: PaymentCardIdInput;
