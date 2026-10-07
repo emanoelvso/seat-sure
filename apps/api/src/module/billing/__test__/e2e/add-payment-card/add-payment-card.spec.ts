@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
+import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import { BillingModule } from '@billingModule/billing.module';
 import { Tables } from '@testInfra/enum/table.enum';
@@ -58,6 +59,7 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
   let jwtService: JwtService;
+  let gateway: PaymentGateway;
 
   const userId = randomUUID();
   const otherUserId = randomUUID();
@@ -67,10 +69,25 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
     module = nestTestSetup.module;
     app = nestTestSetup.app;
     jwtService = module.get(JwtService);
+    gateway = module.get<PaymentGateway>(PaymentGateway);
   });
+
+  // The token the gateway handed out for the add under test
+  const issuedToken = async (tokenize: jest.SpyInstance) => {
+    const outcome = await (tokenize.mock.results[
+      tokenize.mock.results.length - 1
+    ]?.value as Promise<{
+      token?: string;
+    }>);
+    return outcome.token;
+  };
 
   beforeEach(async () => {
     await testDbClient(Tables.BillingPaymentCard).del();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(async () => {
@@ -111,6 +128,8 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
 
   describe('a valid card', () => {
     it('saves it and returns the list with the new card as the default when it is the first (CARD-03 AC 2, 4)', async () => {
+      const detach = jest.spyOn(gateway, 'detach');
+
       const body = await addPaymentCard(VISA, tokenFor(userId));
 
       expect(body.errors).toBeUndefined();
@@ -126,6 +145,7 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
           expired: false,
         },
       ]);
+      expect(detach).not.toHaveBeenCalled();
       const rows = await storedRows();
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
@@ -222,6 +242,8 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
   describe('DUPLICATE_CARD (CARD-04 AC 9)', () => {
     it('rejects the same number again with fields.number "This card is already saved."', async () => {
       await addPaymentCard(VISA, tokenFor(userId));
+      const tokenize = jest.spyOn(gateway, 'tokenize');
+      const detach = jest.spyOn(gateway, 'detach');
 
       const body = await addPaymentCard(
         { ...VISA, number: '4242424242424242', holder: 'Someone Else' },
@@ -232,6 +254,9 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
       expect(error?.reason).toBe('DUPLICATE_CARD');
       expect(error?.fields).toEqual({ number: 'This card is already saved.' });
       expect(await storedRows()).toHaveLength(1);
+      // The rejected add must not leave its token at the gateway
+      expect(detach).toHaveBeenCalledTimes(1);
+      expect(detach).toHaveBeenCalledWith(await issuedToken(tokenize));
     });
 
     it('allows the same number for another user', async () => {
@@ -270,6 +295,9 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
         ...billingPaymentCardFactory.buildList(4, { userId, last4: '0001' }),
       ]);
 
+      const tokenize = jest.spyOn(gateway, 'tokenize');
+      const detach = jest.spyOn(gateway, 'detach');
+
       const body = await addPaymentCard(VISA, tokenFor(userId));
 
       expect(errorOf(body)?.reason).toBe('CARD_LIMIT_REACHED');
@@ -277,6 +305,8 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
       const rows = await storedRows();
       expect(rows).toHaveLength(5);
       expect(rows.map((row) => row.last4)).not.toContain('4242');
+      expect(detach).toHaveBeenCalledTimes(1);
+      expect(detach).toHaveBeenCalledWith(await issuedToken(tokenize));
     });
 
     it('stores exactly 5 when two adds race at 4 cards (edge case)', async () => {
