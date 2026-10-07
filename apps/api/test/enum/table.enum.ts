@@ -17,4 +17,5 @@ export enum Tables {
   IdentityLoginThrottle = 'IdentityLoginThrottle',
   IdentityPasswordResetGrant = 'IdentityPasswordResetGrant',
   BillingPayment = 'BillingPayment',
+  BillingPaymentCard = 'BillingPaymentCard',
 }
