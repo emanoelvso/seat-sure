@@ -218,6 +218,14 @@ export class OrderPaymentService {
         break;
       case 'failed':
         await this.orderRepository.releasePayment(order.id);
+        await this.notify(order, 'payment_unsuccessful', () =>
+          this.notificationsApi.notifyPaymentUnsuccessful({
+            userId: order.userId,
+            paymentId: charge.paymentId,
+            eventName: order.eventName,
+            now,
+          }),
+        );
         throw new TicketingException(
           'CARD_DECLINED',
           'Your card was declined. Try another card.',
@@ -386,11 +394,12 @@ export class OrderPaymentService {
     }
   }
 
-  // The order is paid whatever happens here, so a failure is only logged,
-  // with the user id, type, and order id and never the notification (NOTIF-04)
+  // A notification is a side effect: the payment's outcome is whatever it
+  // would be without it, so a failure is only logged, with the user id, type,
+  // and order id and never the notification (NOTIF-04)
   private async notify(
     order: Order,
-    type: 'purchase_confirmed',
+    type: 'purchase_confirmed' | 'payment_unsuccessful',
     send: () => Promise<void>,
   ): Promise<void> {
     try {
