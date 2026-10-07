@@ -19,6 +19,6 @@ export const notificationFactory = Factory.Sync.makeFactory<NotificationRow>({
   type: 'purchase_confirmed',
   channel: 'in_app',
   sourceId: Factory.each(() => faker.string.uuid()),
-  payload: { eventName: 'Rock in Rio' },
+  payload: {},
   readAt: null,
 });

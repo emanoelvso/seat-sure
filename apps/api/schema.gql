@@ -339,6 +339,45 @@ type Mutation {
   verifyEmail(input: VerifyEmailInput!): SessionTokens!
 }
 
+input MyNotificationsInput {
+  page: Int!
+  pageSize: Int!
+  tab: NotificationsTab! = ALL
+}
+
+type Notification {
+  createdAt: DateTime!
+  eventName: String
+  id: ID!
+  readAt: DateTime
+  type: NotificationType!
+}
+
+type NotificationCounts {
+  all: Int!
+  read: Int!
+  unread: Int!
+}
+
+enum NotificationType {
+  PAYMENT_UNSUCCESSFUL
+  PURCHASE_CONFIRMED
+  WELCOME
+}
+
+type NotificationsPage {
+  counts: NotificationCounts!
+  items: [Notification!]!
+  page: Int!
+  totalPages: Int!
+}
+
+enum NotificationsTab {
+  ALL
+  READ
+  UNREAD
+}
+
 type PasswordResetGrant {
   expiresAt: DateTime!
   resetToken: String!
@@ -382,6 +421,7 @@ type Query {
   findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
   me: CurrentUser!
+  myNotifications(input: MyNotificationsInput!): NotificationsPage!
   myPaymentCards: [PaymentCard!]!
   myProfile: UserProfile!
 }
