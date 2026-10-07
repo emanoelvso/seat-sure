@@ -345,8 +345,9 @@ type PasswordResetGrant {
 }
 
 input PayOrderInput {
-  card: CardInput!
+  card: CardInput
   orderId: String!
+  savedCardId: ID
 }
 
 type PaymentCard {

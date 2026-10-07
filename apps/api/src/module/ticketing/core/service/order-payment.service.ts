@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import {
   BillingApi,
   BillingCardInput,
+  ChargeSource,
 } from '@sharedModules/integration/interface/billing-integration.interface';
 import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
@@ -29,6 +30,21 @@ const seatsUnavailable = () =>
     'SEATS_UNAVAILABLE',
     'Some of your seats were just taken. Pick your seats again.',
   );
+
+// The charge source of a payOrder input: exactly one of a typed card and a
+// saved card id. The web maps this failure to its generic message.
+export const toChargeSource = (
+  card: BillingCardInput | null | undefined,
+  savedCardId: string | null | undefined,
+): ChargeSource => {
+  if (card && savedCardId == null) {
+    return { type: 'card', card };
+  }
+  if (!card && savedCardId != null) {
+    return { type: 'savedCard', savedCardId };
+  }
+  throw new TicketingException('INVALID_CARD', 'Choose a payment method.');
+};
 
 // Attempts at issuing with fresh ticket codes when a code is already taken
 const MAX_ISSUE_ATTEMPTS = 3;
@@ -99,12 +115,12 @@ export class OrderPaymentService {
   async pay({
     userId,
     orderId,
-    card,
+    source,
     now,
   }: {
     userId: string;
     orderId: string;
-    card: BillingCardInput;
+    source: ChargeSource;
     now: Date;
   }): Promise<CheckoutOrderModel> {
     if (!isUUID(orderId)) {
@@ -120,18 +136,21 @@ export class OrderPaymentService {
     const order = await findOrder();
     assertPayable(order, now);
 
-    // Only the invalid fields, so the client marks exactly those (PAY-44)
-    const fields = Object.fromEntries(
-      Object.entries(await this.billingApi.validateCard(card, now)).filter(
-        ([, message]) => message !== '',
-      ),
-    );
-    if (Object.keys(fields).length > 0) {
-      throw new TicketingException(
-        'INVALID_CARD',
-        'Check your card details.',
-        fields,
+    // A typed card only: a saved card passed the rules when it was saved.
+    // Only the invalid fields, so the client marks exactly those (PAY-44).
+    if (source.type === 'card') {
+      const fields = Object.fromEntries(
+        Object.entries(
+          await this.billingApi.validateCard(source.card, now),
+        ).filter(([, message]) => message !== ''),
       );
+      if (Object.keys(fields).length > 0) {
+        throw new TicketingException(
+          'INVALID_CARD',
+          'Check your card details.',
+          fields,
+        );
+      }
     }
 
     // A concurrent call may have claimed, paid or let the order expire in
@@ -142,14 +161,14 @@ export class OrderPaymentService {
       throw paymentInProgress();
     }
 
-    return this.chargeAndIssue(order, card, now);
+    return this.chargeAndIssue(order, source, now);
   }
 
   // Charges the order total, then turns the payment into tickets. A charge
   // that fails leaves the order pending so the buyer can retry (PAY-40).
   private async chargeAndIssue(
     order: Order,
-    card: BillingCardInput,
+    source: ChargeSource,
     now: Date,
   ): Promise<CheckoutOrderModel> {
     let charge: Awaited<ReturnType<BillingApi['charge']>>;
@@ -159,7 +178,7 @@ export class OrderPaymentService {
         orderId: order.id,
         amountCents: order.totalCents,
         currency: order.currency,
-        source: { type: 'card', card },
+        source,
       });
     } catch {
       await this.orderRepository.releasePayment(order.id);
@@ -176,9 +195,13 @@ export class OrderPaymentService {
           'Your card was declined. Try another card.',
         );
       case 'card_not_found':
-        // Only a saved-card source gets this outcome
+        // The saved card was removed or isn't the caller's: nothing was
+        // charged, and the order stays payable (CARD-08 AC 9)
         await this.orderRepository.releasePayment(order.id);
-        throw new Error("We couldn't process your payment.");
+        throw new TicketingException(
+          'CARD_NOT_FOUND',
+          'This card is no longer available.',
+        );
       default: {
         const unhandled: never = charge;
         throw new Error(`Unhandled charge outcome: ${String(unhandled)}`);

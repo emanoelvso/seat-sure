@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import {
   ChargeInput,
   PaymentGateway,
@@ -86,6 +87,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await testDbClient(Tables.OrderItem).del();
     await testDbClient(Tables.Order).del();
     await testDbClient(Tables.BillingPayment).del();
+    await testDbClient(Tables.BillingPaymentCard).del();
   };
 
   beforeAll(async () => {
@@ -158,10 +160,24 @@ describe('TicketingResolver payOrder (e2e)', () => {
     return response.body;
   };
 
+  // payOrder with any input shape: a saved card id, or both or neither source
+  const payOrderWith = async (input: Record<string, unknown>) => {
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .set('Authorization', `Bearer ${tokenFor(userId)}`)
+      .send({ query: PAY_ORDER, variables: { input } })
+      .expect(200);
+    return response.body;
+  };
+
   const errorOf = (body: {
     errors?: {
       extensions: {
-        originalError?: { reason?: string; fields?: Record<string, string> };
+        originalError?: {
+          reason?: string;
+          message?: string;
+          fields?: Record<string, string>;
+        };
       };
     }[];
   }) => body.errors?.[0]?.extensions.originalError;
@@ -557,6 +573,124 @@ describe('TicketingResolver payOrder (e2e)', () => {
     for (const spy of spies) {
       spy.mockRestore();
     }
+  });
+
+  describe('a saved card (CARD-08)', () => {
+    const insertSavedCard = async (
+      overrides: Parameters<typeof billingPaymentCardFactory.build>[0] = {},
+    ) => {
+      const card = billingPaymentCardFactory.build({ userId, ...overrides });
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [card]);
+      return card;
+    };
+
+    it("pays the order, issues the tickets, and records the saved card's brand and last 4 (AC 8, 11)", async () => {
+      const { order } = await insertOrder();
+      const savedCard = await insertSavedCard({
+        brand: 'mastercard',
+        last4: '4444',
+      });
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId }),
+      ).toHaveLength(2);
+      const payments = await paymentsOf(order.id);
+      expect(payments).toHaveLength(1);
+      expect(payments[0]).toMatchObject({
+        status: 'succeeded',
+        amountCents: 110700,
+        cardBrand: 'mastercard',
+        cardLast4: '4444',
+      });
+      expect(gateway.charge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 110700,
+          source: { type: 'token', token: savedCard.providerToken },
+        }),
+      );
+    });
+
+    it.each([
+      [
+        "another user's card",
+        async () => (await insertSavedCard({ userId: randomUUID() })).id,
+      ],
+      [
+        'a removed card',
+        async () => {
+          const card = await insertSavedCard();
+          await testDbClient(Tables.BillingPaymentCard)
+            .where({ id: card.id })
+            .del();
+          return card.id;
+        },
+      ],
+    ])(
+      'fails %s with CARD_NOT_FOUND, charges nothing, and leaves the order payable (AC 9)',
+      async (_, savedCardIdOf) => {
+        const { order } = await insertOrder();
+        const savedCardId = await savedCardIdOf();
+
+        const body = await payOrderWith({ orderId: order.id, savedCardId });
+
+        expect(errorOf(body)?.reason).toBe('CARD_NOT_FOUND');
+        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(await paymentsOf(order.id)).toHaveLength(0);
+        expect((await orderRow(order.id)).status).toBe('pending');
+
+        const retried = await payOrder(order.id);
+
+        expect(retried.errors).toBeUndefined();
+        expect(retried.data.payOrder.status).toBe('PAID');
+      },
+    );
+
+    it('fails with CARD_DECLINED when the saved card is declined, leaving the order pending (AC 10)', async () => {
+      const { order } = await insertOrder();
+      const savedCard = await insertSavedCard({
+        providerToken: `sim_pm_decline_${randomUUID()}`,
+        last4: '0341',
+      });
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      expect((await orderRow(order.id)).status).toBe('pending');
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+    });
+
+    it.each([
+      [
+        'both a card and a saved card id',
+        { card: VALID_CARD, savedCardId: randomUUID() },
+      ],
+      ['neither a card nor a saved card id', {}],
+    ])(
+      'fails %s with INVALID_CARD "Choose a payment method." and no fields, without charging',
+      async (_, source) => {
+        const { order } = await insertOrder();
+
+        const body = await payOrderWith({ orderId: order.id, ...source });
+
+        const error = errorOf(body);
+        expect(error?.reason).toBe('INVALID_CARD');
+        expect(error?.message).toBe('Choose a payment method.');
+        expect(error?.fields).toBeUndefined();
+        expect(gateway.charge).not.toHaveBeenCalled();
+        expect((await orderRow(order.id)).status).toBe('pending');
+      },
+    );
   });
 
   describe('concurrent payments (PAY-45)', () => {
