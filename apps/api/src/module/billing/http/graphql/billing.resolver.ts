@@ -48,4 +48,16 @@ export class BillingResolver {
       new Date(),
     );
   }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => [PaymentCard])
+  async removePaymentCard(
+    @Args('input') input: PaymentCardIdInput,
+  ): Promise<PaymentCard[]> {
+    return this.paymentCardService.remove(
+      this.clsService.get<string>('userId'),
+      input.id,
+      new Date(),
+    );
+  }
 }

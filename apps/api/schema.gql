@@ -328,6 +328,7 @@ type Mutation {
   logIn(input: LogInInput!): LogInResult!
   payOrder(input: PayOrderInput!): CheckoutOrder!
   refreshSession(input: RefreshSessionInput!): SessionTokens!
+  removePaymentCard(input: PaymentCardIdInput!): [PaymentCard!]!
   requestPasswordReset(input: RequestPasswordResetInput!): CodeDelivery!
   resendCode(input: ResendCodeInput!): CodeDelivery!
   resetPassword(input: ResetPasswordInput!): Boolean!

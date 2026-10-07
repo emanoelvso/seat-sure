@@ -16,6 +16,7 @@ import {
 import { BillingPaymentCard } from '@billingModule/persistence/entity/billing-payment-card.entity';
 import { BillingPaymentCardRepository } from '@billingModule/persistence/repository/billing-payment-card.repository';
 import { isUUID } from 'class-validator';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DataSource, EntityManager } from 'typeorm';
 
 export const MAX_PAYMENT_CARDS = 5;
@@ -32,6 +33,7 @@ export class PaymentCardService {
     private readonly paymentCardRepository: BillingPaymentCardRepository,
     @Inject(PaymentGateway) private readonly gateway: PaymentGateway,
     @InjectDataSource('billing') private readonly dataSource: DataSource,
+    private readonly logger: AppLogger,
   ) {}
 
   // The caller's cards, default first, then oldest saved first (CARD-01 AC 3)
@@ -148,6 +150,61 @@ export class PaymentCardService {
         await this.paymentCardRepository.moveDefault(manager, userId, cardId);
       }
     });
+
+    return this.list(userId, now);
+  }
+
+  // Hard-deletes the card, so its token row is really gone and the same card
+  // can be saved again (CARD-10 AC 7). Removing the default promotes the
+  // oldest remaining card (AC 8). An unknown, foreign, or malformed id changes
+  // nothing (CARD-11 AC 10).
+  async remove(
+    userId: string,
+    cardId: string,
+    now: Date,
+  ): Promise<PaymentCardModel[]> {
+    if (!isUUID(cardId)) {
+      throw cardNotFound();
+    }
+
+    const removed = await this.inUserLock(userId, async (manager) => {
+      const card = await this.paymentCardRepository.findForUser(
+        manager,
+        userId,
+        cardId,
+      );
+      if (!card) {
+        throw cardNotFound();
+      }
+
+      await this.paymentCardRepository.hardDelete(manager, cardId);
+
+      if (card.isDefault) {
+        const [oldest] = await this.paymentCardRepository.listForUser(
+          userId,
+          manager,
+        );
+        if (oldest) {
+          await this.paymentCardRepository.moveDefault(
+            manager,
+            userId,
+            oldest.id,
+          );
+        }
+      }
+
+      return card;
+    });
+
+    // After the commit: the row is gone whatever the gateway says. The log
+    // names the card id only, never the token (CARD-06 AC 17).
+    try {
+      await this.gateway.detach(removed.providerToken);
+    } catch {
+      this.logger.error("Couldn't detach a removed payment card", {
+        cardId,
+      });
+    }
 
     return this.list(userId, now);
   }

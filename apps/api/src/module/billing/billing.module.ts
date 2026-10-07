@@ -7,10 +7,11 @@ import { SimulatedPaymentGateway } from '@billingModule/integration/provider/sim
 import { BillingPublicApiProvider } from '@billingModule/integration/provider/public-api.provider';
 import { BillingPersistenceModule } from '@billingModule/persistence/billing-persistence.module';
 import { AuthModule } from '@sharedModules/auth/auth.module';
+import { LoggerModule } from '@sharedModules/logger/logger.module';
 import { BillingApi } from '@sharedModules/integration/interface/billing-integration.interface';
 
 @Module({
-  imports: [BillingPersistenceModule, AuthModule],
+  imports: [BillingPersistenceModule, AuthModule, LoggerModule],
   providers: [
     { provide: PaymentGateway, useClass: SimulatedPaymentGateway },
     BillingService,
