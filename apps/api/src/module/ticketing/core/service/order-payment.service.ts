@@ -159,19 +159,30 @@ export class OrderPaymentService {
         orderId: order.id,
         amountCents: order.totalCents,
         currency: order.currency,
-        card,
+        source: { type: 'card', card },
       });
     } catch {
       await this.orderRepository.releasePayment(order.id);
       throw new Error("We couldn't process your payment.");
     }
 
-    if (charge.status === 'failed') {
-      await this.orderRepository.releasePayment(order.id);
-      throw new TicketingException(
-        'CARD_DECLINED',
-        'Your card was declined. Try another card.',
-      );
+    switch (charge.status) {
+      case 'succeeded':
+        break;
+      case 'failed':
+        await this.orderRepository.releasePayment(order.id);
+        throw new TicketingException(
+          'CARD_DECLINED',
+          'Your card was declined. Try another card.',
+        );
+      case 'card_not_found':
+        // Only a saved-card source gets this outcome
+        await this.orderRepository.releasePayment(order.id);
+        throw new Error("We couldn't process your payment.");
+      default: {
+        const unhandled: never = charge;
+        throw new Error(`Unhandled charge outcome: ${String(unhandled)}`);
+      }
     }
 
     let codes: string[];

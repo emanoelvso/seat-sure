@@ -209,6 +209,23 @@ export class PaymentCardService {
     return this.list(userId, now);
   }
 
+  // The caller's card, for a charge; null for an unknown, foreign, or
+  // malformed id (CARD-08 AC 9)
+  async findOwned(
+    userId: string,
+    cardId: string,
+  ): Promise<BillingPaymentCard | null> {
+    if (!isUUID(cardId)) {
+      return null;
+    }
+
+    return this.paymentCardRepository.findForUser(
+      this.dataSource.manager,
+      userId,
+      cardId,
+    );
+  }
+
   // Serializes one user's add / set default / remove, so the card limit and
   // the single default hold under concurrent requests
   private async inUserLock<T>(
