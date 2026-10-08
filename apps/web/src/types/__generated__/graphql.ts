@@ -189,6 +189,15 @@ export type UpdateMyProfileInput = {
   zipCode: string;
 };
 
+export type UpdateMySettingsInput = {
+  emailNotifications?: boolean | null | undefined;
+  eventReminders?: boolean | null | undefined;
+  exclusiveOffers?: boolean | null | undefined;
+  language?: string | null | undefined;
+  pushNotifications?: boolean | null | undefined;
+  ticketAvailability?: boolean | null | undefined;
+};
+
 export type VerifyEmailInput = {
   code: string;
   email: string;
@@ -270,6 +279,13 @@ export type UpdateMyProfileMutationVariables = Exact<{
 
 
 export type UpdateMyProfileMutation = { updateMyProfile: { __typename: 'UserProfile', id: string, firstName: string, lastName: string, avatarUrl: string | null, state: string | null, city: string | null, birthDate: string | null, phoneCountryCode: string | null, phoneNumber: string | null, zipCode: string | null } };
+
+export type UpdateMySettingsMutationVariables = Exact<{
+  input: UpdateMySettingsInput;
+}>;
+
+
+export type UpdateMySettingsMutation = { updateMySettings: { __typename: 'AccountSettings', eventReminders: boolean, exclusiveOffers: boolean, ticketAvailability: boolean, emailNotifications: boolean, pushNotifications: boolean, language: string } };
 
 export type FindArtistBySlugQueryVariables = Exact<{
   input: FindArtistInput;
