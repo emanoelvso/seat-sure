@@ -81,6 +81,15 @@ enum AccountOrdersTab {
   PENDING
 }
 
+type AccountSettings {
+  emailNotifications: Boolean!
+  eventReminders: Boolean!
+  exclusiveOffers: Boolean!
+  language: String!
+  pushNotifications: Boolean!
+  ticketAvailability: Boolean!
+}
+
 input AddPaymentCardInput {
   cvv: String!
   expiry: String!
@@ -338,6 +347,7 @@ type Mutation {
   signUp(input: SignUpInput!): SignUpResult!
   startCheckout(input: StartCheckoutInput!): CheckoutOrder!
   updateMyProfile(input: UpdateMyProfileInput!): UserProfile!
+  updateMySettings(input: UpdateMySettingsInput!): AccountSettings!
   verifyEmail(input: VerifyEmailInput!): SessionTokens!
 }
 
@@ -430,6 +440,7 @@ type Query {
   myNotifications(input: MyNotificationsInput!): NotificationsPage!
   myPaymentCards: [PaymentCard!]!
   myProfile: UserProfile!
+  mySettings: AccountSettings!
 }
 
 input RefreshSessionInput {
@@ -559,6 +570,15 @@ input UpdateMyProfileInput {
   phoneNumber: String!
   state: String!
   zipCode: String!
+}
+
+input UpdateMySettingsInput {
+  emailNotifications: Boolean
+  eventReminders: Boolean
+  exclusiveOffers: Boolean
+  language: String
+  pushNotifications: Boolean
+  ticketAvailability: Boolean
 }
 
 type UserProfile {
