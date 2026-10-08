@@ -326,6 +326,8 @@ type Mutation {
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   logIn(input: LogInInput!): LogInResult!
+  markAllNotificationsRead: NotificationCounts!
+  markNotificationRead(input: NotificationIdInput!): Notification!
   payOrder(input: PayOrderInput!): CheckoutOrder!
   refreshSession(input: RefreshSessionInput!): SessionTokens!
   removePaymentCard(input: PaymentCardIdInput!): [PaymentCard!]!
@@ -337,6 +339,49 @@ type Mutation {
   startCheckout(input: StartCheckoutInput!): CheckoutOrder!
   updateMyProfile(input: UpdateMyProfileInput!): UserProfile!
   verifyEmail(input: VerifyEmailInput!): SessionTokens!
+}
+
+input MyNotificationsInput {
+  page: Int!
+  pageSize: Int!
+  tab: NotificationsTab! = ALL
+}
+
+type Notification {
+  createdAt: DateTime!
+  eventName: String
+  id: ID!
+  readAt: DateTime
+  type: NotificationType!
+}
+
+type NotificationCounts {
+  all: Int!
+  read: Int!
+  unread: Int!
+}
+
+input NotificationIdInput {
+  id: String!
+}
+
+enum NotificationType {
+  PAYMENT_UNSUCCESSFUL
+  PURCHASE_CONFIRMED
+  WELCOME
+}
+
+type NotificationsPage {
+  counts: NotificationCounts!
+  items: [Notification!]!
+  page: Int!
+  totalPages: Int!
+}
+
+enum NotificationsTab {
+  ALL
+  READ
+  UNREAD
 }
 
 type PasswordResetGrant {
@@ -382,6 +427,7 @@ type Query {
   findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
   me: CurrentUser!
+  myNotifications(input: MyNotificationsInput!): NotificationsPage!
   myPaymentCards: [PaymentCard!]!
   myProfile: UserProfile!
 }

@@ -27,6 +27,7 @@
       "@identityModule/*": ["./src/module/identity/*"],
       "@userProfileModule/*": ["./src/module/user-profile/*"],
       "@billingModule/*": ["./src/module/billing/*"],
+      "@notificationsModule/*": ["./src/module/notifications/*"],
       "@sharedModules/*": ["./src/module/shared/module/*"],
       "@sharedLibs/*": ["./src/module/shared/*"],
       "@testInfra/*": ["./test/*"],

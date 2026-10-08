@@ -103,6 +103,7 @@ describe('RequestPasswordReset (e2e)', () => {
     await testDbClient(Tables.IdentityVerificationCode).del();
     await testDbClient(Tables.IdentityUser).del();
     await testDbClient(Tables.UserProfileUser).del();
+    await testDbClient(Tables.NotificationsNotification).del();
   });
 
   afterAll(async () => {
@@ -111,6 +112,7 @@ describe('RequestPasswordReset (e2e)', () => {
     await testDbClient(Tables.IdentityVerificationCode).del();
     await testDbClient(Tables.IdentityUser).del();
     await testDbClient(Tables.UserProfileUser).del();
+    await testDbClient(Tables.NotificationsNotification).del();
     await testDbClient.destroy();
     const identityDs = module.get<DataSource>(getDataSourceToken('identity'));
     if (identityDs.isInitialized) {
@@ -121,6 +123,12 @@ describe('RequestPasswordReset (e2e)', () => {
     );
     if (profileDs.isInitialized) {
       await profileDs.destroy();
+    }
+    const notificationsDs = module.get<DataSource>(
+      getDataSourceToken('notifications'),
+    );
+    if (notificationsDs.isInitialized) {
+      await notificationsDs.destroy();
     }
     await app.getHttpServer().close();
   });
