@@ -29,8 +29,8 @@ export default meta;
 
 type Story = StoryObj<typeof AccountSidebar>;
 
-// CARD-12 AC 3: "Payment" became a link; the rest stay disabled.
-const DISABLED_ITEMS = ["Notification", "Setting"];
+// NOTIF-13: Notification is implemented; Setting remains disabled.
+const DISABLED_ITEMS = ["Setting"];
 
 // ACCT-01 AC 1: the logo, the six items and the Upgrade card render.
 export const Default: Story = {
@@ -168,5 +168,43 @@ export const LogOut: Story = {
     const form = logOut.closest("form");
     await expect(form).toHaveAttribute("action", "/api/auth/logout");
     await expect(form).toHaveAttribute("method", "post");
+  },
+};
+
+// NOTIF-13 AC1/2: Notification links to its page and is the current item.
+export const NotificationCurrent: Story = {
+  parameters: atPath("/account/notifications"),
+  play: async ({ canvas }) => {
+    const notification = canvas.getByRole("link", { name: "Notification" });
+    await expect(notification).toHaveAttribute(
+      "href",
+      "/account/notifications",
+    );
+    await expect(notification).toHaveAttribute("aria-current", "page");
+    await expect(notification).not.toHaveAttribute("aria-disabled");
+    await expect(notification).toHaveClass("text-tint-400");
+    const current = canvas
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-current") === "page");
+    await expect(current).toEqual([notification]);
+    await expect(canvas.getByRole("link", { name: "Setting" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await expect(
+      canvas.getByRole("link", { name: "Setting" }),
+    ).not.toHaveAttribute("href");
+  },
+};
+
+export const NotificationNotCurrent: Story = {
+  parameters: atPath("/account/tickets"),
+  play: async ({ canvas }) => {
+    const notification = canvas.getByRole("link", { name: "Notification" });
+    await expect(notification).toHaveAttribute(
+      "href",
+      "/account/notifications",
+    );
+    await expect(notification).not.toHaveAttribute("aria-current");
   },
 };

@@ -29,6 +29,12 @@ describe('IdentityPublicApiProvider.findAccountEmail (integration)', () => {
     if (dataSource.isInitialized) {
       await dataSource.destroy();
     }
+    const notificationsDs = module.get<DataSource>(
+      getDataSourceToken('notifications'),
+    );
+    if (notificationsDs.isInitialized) {
+      await notificationsDs.destroy();
+    }
     await app.getHttpServer().close();
   });
 
