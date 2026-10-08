@@ -36,6 +36,7 @@ export const SignedOut: Story = {
   },
   play: async ({ canvas }) => {
     const link = await canvas.findByRole("link", { name: "Signup" });
+    await expect(canvas.queryByRole("link", { name: "Notifications" })).toBeNull();
     const redirectTo = `${window.location.pathname}${window.location.search}`;
     await expect(link).toHaveAttribute(
       "href",
@@ -63,6 +64,11 @@ export const SignedInWithoutAvatar: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText("NK")).toBeVisible();
+    const notifications = canvas.getByRole("link", { name: "Notifications" });
+    await expect(notifications).toHaveAttribute("href", "/account/notifications");
+    await expect(notifications).toBeVisible();
+    await userEvent.tab();
+    await expect(notifications).toHaveFocus();
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
     await expect(canvas.getByRole("link", { name: "Account" })).toHaveAttribute(
       "href",
@@ -108,6 +114,7 @@ export const Loading: Story = {
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
     await expect(canvas.queryByRole("img")).toBeNull();
     await expect(canvas.queryByText("NK")).toBeNull();
+    await expect(canvas.queryByRole("link", { name: "Notifications" })).toBeNull();
   },
 };
 
@@ -159,6 +166,8 @@ export const AvatarMenu: Story = {
       expect(canvas.queryByRole("button", { name: "Log out" })).toBeNull(),
     );
 
+    await userEvent.tab();
+    await expect(canvas.getByRole("link", { name: "Notifications" })).toHaveFocus();
     await userEvent.tab();
     await expect(
       await canvas.findByRole("link", { name: "Tickets" }),

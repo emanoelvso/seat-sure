@@ -77,9 +77,13 @@ export function HeaderAccount() {
 
   return (
     <>
-      <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
-        <BellIcon />
-      </div>
+      <Link
+        href={paths.accountNotifications.getHref()}
+        aria-label="Notifications"
+        className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <BellIcon aria-hidden="true" />
+      </Link>
       <div
         className="relative shrink-0"
         onMouseEnter={() => setMenuOpen(true)}
