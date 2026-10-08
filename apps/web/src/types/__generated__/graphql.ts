@@ -233,6 +233,11 @@ export type MyProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MyProfileQuery = { myProfile: { __typename: 'UserProfile', id: string, firstName: string, lastName: string, avatarUrl: string | null, state: string | null, city: string | null, birthDate: string | null, phoneCountryCode: string | null, phoneNumber: string | null, zipCode: string | null } };
 
+export type MySettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MySettingsQuery = { mySettings: { __typename: 'AccountSettings', eventReminders: boolean, exclusiveOffers: boolean, ticketAvailability: boolean, emailNotifications: boolean, pushNotifications: boolean, language: string } };
+
 export type MarkAllNotificationsReadMutationVariables = Exact<{ [key: string]: never; }>;
 
 
