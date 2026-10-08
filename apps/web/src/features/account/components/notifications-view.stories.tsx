@@ -267,3 +267,29 @@ export const ReadSuccess: Story = {
     await expect(args.markReadAction).toHaveBeenCalledTimes(1);
   },
 };
+
+// Mark all AC1: the double-check is decorative (the button has the text
+// name), visibly rendered at Figma 5011:121416's 24px on both shown tabs.
+export const MarkAllIconOnAll: Story = {
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", { name: "Mark All as Read" });
+    const icon = button.querySelector("svg");
+    await expect(icon).not.toBeNull();
+    await expect(icon).toBeVisible();
+    await expect(icon).toHaveAttribute("aria-hidden", "true");
+    await expect(icon?.getBoundingClientRect().width).toBe(24);
+    await expect(icon?.getBoundingClientRect().height).toBe(24);
+    await expect(icon?.querySelectorAll("path")).toHaveLength(2);
+    await expect(icon?.querySelector("path")?.getAttribute("d")).toContain(
+      "M15.4933 6.93502",
+    );
+    await expect(
+      icon?.querySelectorAll("path")[1]?.getAttribute("d"),
+    ).toContain("M20.5175 7.01946");
+  },
+};
+
+export const MarkAllIconOnUnread: Story = {
+  ...MarkAllIconOnAll,
+  args: { params: { tab: "unread", page: 1 } },
+};

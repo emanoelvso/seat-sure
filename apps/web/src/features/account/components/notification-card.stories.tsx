@@ -132,14 +132,23 @@ export const ShowsTitleBodyAndTimestamp: Story = {
   },
 };
 
-// Read AC 10: the card carries the Hover variant's gradient fill on hover
-// (the Storybook test runner can't drive :hover, so the story checks the
-// hover rule exists and that the resting card has no gradient).
+// Read AC 10: native browser pointer movement activates the CSS :hover
+// state. Check the rendered gradient stops from the approved card metadata.
 export const HoverShowsGradient: Story = {
   args: { body: SHORT_BODY },
   play: async ({ canvas }) => {
     const card = canvas.getByRole("button");
     await expect(getComputedStyle(card).backgroundImage).toBe("none");
     await expect(card.className).toContain("hover:bg-[linear-gradient(90deg,");
+    const { page } = await import("vitest/browser");
+    const pointer = page.elementLocator(card);
+    await pointer.hover();
+    await waitFor(() =>
+      expect(getComputedStyle(card).backgroundImage).toBe(
+        "linear-gradient(90deg, rgba(193, 79, 230, 0.15), rgba(27, 27, 27, 0))",
+      ),
+    );
+    await pointer.unhover();
+    await expect(getComputedStyle(card).backgroundImage).toBe("none");
   },
 };
