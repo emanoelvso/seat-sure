@@ -10,6 +10,7 @@ import { UserProfileModel } from '@userProfileModule/core/model/user-profile.mod
 import { UserProfileUserRepository } from '@userProfileModule/persistence/repository/user-profile-user.repository';
 import { UserProfileUser } from '@userProfileModule/persistence/entity/user-profile-user.entity';
 import { Transactional } from 'typeorm-transactional';
+import { AccountSettingsModel } from '@userProfileModule/core/model/account-settings.model';
 
 @Injectable()
 export class UserProfileService {
@@ -52,6 +53,21 @@ export class UserProfileService {
     }
 
     return this.toModel(user);
+  }
+
+  async findMySettings(userId: string): Promise<AccountSettingsModel> {
+    const user = await this.userProfileUserRepository.findOneById(userId);
+    if (!user) {
+      throw new UserProfileException('PROFILE_NOT_FOUND', 'Profile not found.');
+    }
+    return {
+      eventReminders: user.eventReminders,
+      exclusiveOffers: user.exclusiveOffers,
+      ticketAvailability: user.ticketAvailability,
+      emailNotifications: user.emailNotifications,
+      pushNotifications: user.pushNotifications,
+      language: user.language,
+    };
   }
 
   // Full replacement of the editable fields, so saving the same input twice
