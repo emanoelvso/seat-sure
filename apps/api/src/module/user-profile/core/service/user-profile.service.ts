@@ -10,7 +10,10 @@ import { UserProfileModel } from '@userProfileModule/core/model/user-profile.mod
 import { UserProfileUserRepository } from '@userProfileModule/persistence/repository/user-profile-user.repository';
 import { UserProfileUser } from '@userProfileModule/persistence/entity/user-profile-user.entity';
 import { Transactional } from 'typeorm-transactional';
-import { AccountSettingsModel } from '@userProfileModule/core/model/account-settings.model';
+import {
+  AccountSettingsModel,
+  settingsPatchSchema,
+} from '@userProfileModule/core/model/account-settings.model';
 
 @Injectable()
 export class UserProfileService {
@@ -68,6 +71,28 @@ export class UserProfileService {
       pushNotifications: user.pushNotifications,
       language: user.language,
     };
+  }
+
+  @Transactional({ connectionName: 'user-profile' })
+  async updateMySettings(
+    userId: string,
+    input: unknown,
+  ): Promise<AccountSettingsModel> {
+    const parsed = settingsPatchSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new UserProfileException(
+        'INVALID_INPUT',
+        'Choose one valid setting.',
+      );
+    }
+    const updated = await this.userProfileUserRepository.updateSettings(
+      userId,
+      parsed.data,
+    );
+    if (!updated) {
+      throw new UserProfileException('PROFILE_NOT_FOUND', 'Profile not found.');
+    }
+    return this.findMySettings(userId);
   }
 
   // Full replacement of the editable fields, so saving the same input twice
