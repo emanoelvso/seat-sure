@@ -11,6 +11,7 @@ import {
 } from "@/features/account/api/notification-actions";
 import { notificationCopy } from "@/features/account/utils/notification-copy";
 import { notificationTimestamp } from "@/features/account/utils/notification-format";
+import { NOTIFICATIONS_CHANGED } from "@/utils/notification-events";
 import {
   type AccountNotificationsSearchParams,
   serializeAccountNotificationsSearchParams,
@@ -67,6 +68,8 @@ export function NotificationsView({
         read: value.read - 1,
       }));
       setError(result.error);
+    } else {
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
     }
     pending.current.delete(id);
   }
@@ -85,7 +88,10 @@ export function NotificationsView({
       setReadIds(previousIds);
       setCounts(previousCounts);
       setError(result.error);
-    } else setCounts(result.counts);
+    } else {
+      setCounts(result.counts);
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+    }
     markingAll.current = false;
   }
 

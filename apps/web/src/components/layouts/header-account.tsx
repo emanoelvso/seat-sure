@@ -4,13 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  BellIcon,
   Logout2Icon,
   TicketIcon,
   UserIcon,
 } from "@solar-icons/react/outline";
 import { paths } from "@/config/paths";
 import { getInitials } from "@/utils/initials";
+import { HeaderNotifications } from "./header-notifications";
 
 // Figma "Profile menu" 5011:120934: 250px panel, 16px padding and gap, items
 // 40px high with 16px side padding and a 24px icon.
@@ -77,13 +77,7 @@ export function HeaderAccount() {
 
   return (
     <>
-      <Link
-        href={paths.accountNotifications.getHref()}
-        aria-label="Notifications"
-        className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <BellIcon aria-hidden="true" />
-      </Link>
+      <HeaderNotifications />
       <div
         className="relative shrink-0"
         onMouseEnter={() => setMenuOpen(true)}

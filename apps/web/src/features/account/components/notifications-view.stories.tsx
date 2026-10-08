@@ -3,6 +3,7 @@ import { expect, fn, userEvent, waitFor, within, spyOn } from "storybook/test";
 import type { NotificationType } from "@/types/__generated__/schema";
 import { env } from "@/config/env";
 import { NotificationsView } from "./notifications-view";
+import { HeaderNotifications } from "@/components/layouts/header-notifications";
 
 const ERROR = "Something went wrong. Please try again.";
 const items = [
@@ -292,4 +293,38 @@ export const MarkAllIconOnAll: Story = {
 export const MarkAllIconOnUnread: Story = {
   ...MarkAllIconOnAll,
   args: { params: { tab: "unread", page: 1 } },
+};
+
+let headerUnread = 2;
+export const UpdatesHeaderCount: Story = {
+  beforeEach: () => {
+    headerUnread = 2;
+    const previous = window.fetch;
+    window.fetch = fn(async () => Response.json({ unread: headerUnread }));
+    return () => { window.fetch = previous; };
+  },
+  args: {
+    markReadAction: fn(async () => {
+      headerUnread = 1;
+      return { ok: true as const };
+    }),
+    markAllReadAction: fn(async () => {
+      headerUnread = 0;
+      return { counts: { ...data.counts, unread: 0, read: 3 } };
+    }),
+  },
+  render: (args) => (
+    <>
+      <HeaderNotifications />
+      <NotificationsView {...args} />
+    </>
+  ),
+  play: async ({ canvas }) => {
+    await canvas.findByRole("link", { name: "Notifications, 2 unread" });
+    await userEvent.click(canvas.getByRole("button", { name: /Welcome to SeatSure/ }));
+    await expect(await canvas.findByRole("link", { name: "Notifications, 1 unread" })).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Mark All as Read" }));
+    await expect(await canvas.findByRole("link", { name: /^Notifications$/ })).toBeVisible();
+    await expect(canvas.queryByRole("link", { name: /Notifications, .* unread/ })).toBeNull();
+  },
 };

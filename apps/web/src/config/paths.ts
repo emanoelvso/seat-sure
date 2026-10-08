@@ -52,6 +52,9 @@ export const paths = {
   session: {
     getHref: () => "/api/auth/session",
   },
+  notificationsUnreadCount: {
+    getHref: () => "/api/notifications/unread-count",
+  },
   checkoutStart: {
     getHref: (eventId: string, ticketTypeId: string, seatIds: string[]) =>
       `/events/${encodeURIComponent(eventId)}/tickets/${encodeURIComponent(ticketTypeId)}/checkout?seats=${seatIds.map(encodeURIComponent).join(",")}`,
