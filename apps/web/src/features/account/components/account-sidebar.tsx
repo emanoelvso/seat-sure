@@ -18,11 +18,13 @@ import { Button } from "@/components/ui/button";
 import { paths } from "@/config/paths";
 
 const ITEM_LAYOUT_CLASS =
-  "flex h-10 items-center justify-center px-4 py-2 text-base";
+  "flex h-10 w-full items-center justify-center px-4 py-2 text-base lg:w-auto";
 const ITEM_CLASS = `${ITEM_LAYOUT_CLASS} text-white`;
 // Figma's gradient transform scales x by 7.43, so the fill fades out over
 // the first 1/7.43 (13.46%) of the item. The 4px left stroke sits inside.
-const ITEM_CURRENT_CLASS = `${ITEM_LAYOUT_CLASS} text-tint-400 bg-linear-to-r from-primary/60 to-neutral-800/0 to-[13.46%] shadow-[inset_4px_0_0_var(--color-tint-400)]`;
+// Minimize=on (4117:57200) has two overlaid fills, each 40% opaque with
+// 60%-alpha stops. The second transform spans 1.923% to 27.691%.
+const ITEM_CURRENT_CLASS = `${ITEM_LAYOUT_CLASS} text-tint-400 bg-linear-to-r from-primary/60 to-neutral-800/0 to-[13.46%] [box-shadow:inset_4px_0_0_var(--color-tint-400)] max-lg:[background-image:linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_0%,transparent_13.46%),linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_1.923%,transparent_27.691%)]`;
 
 // Card frame: #181319 fill, 1px inside stroke fading from #1D1A1E (58%) to
 // #B271C8 at the bottom, and the glow + stars exported from Figma. The
@@ -35,9 +37,9 @@ const UPGRADE_CARD_BACKGROUND = [
 
 function ItemContent({ icon: ItemIcon, label }: { icon: Icon; label: string }) {
   return (
-    <span className="flex w-40 items-center gap-2">
-      <ItemIcon size={24} />
-      {label}
+    <span className="flex items-center justify-center gap-2 lg:w-40 lg:justify-start">
+      <ItemIcon size={24} aria-hidden="true" />
+      <span className="hidden lg:inline">{label}</span>
     </span>
   );
 }
@@ -62,6 +64,8 @@ function NavItem({
   return (
     <Link
       href={href}
+      aria-label={label}
+      title={label}
       aria-current={current ? "page" : undefined}
       className={current ? ITEM_CURRENT_CLASS : ITEM_CLASS}
     >
@@ -81,15 +85,16 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
 
   return (
     <aside
-      className={`flex w-60 shrink-0 flex-col justify-between gap-[46px] overflow-hidden rounded-3xl bg-neutral-1000 p-4 ${className}`}
+      className={`flex w-24 shrink-0 flex-col rounded-3xl bg-neutral-1000 py-4 lg:w-60 lg:justify-between lg:gap-[46px] lg:overflow-hidden lg:px-4 ${className}`}
     >
-      <div className="flex flex-col gap-8">
-        <div className="flex items-center justify-center gap-2 border-b border-neutral-700 pb-4">
-          <BrandLogo className="grow text-center text-[2.5rem] leading-[1.25]" />
+      <div className="flex w-full flex-col gap-[35px] lg:gap-8">
+        <div className="flex h-[60px] flex-col items-center justify-between lg:h-auto lg:flex-row lg:justify-center lg:gap-2 lg:border-b lg:border-neutral-700 lg:pb-4">
+          <BrandLogo className="text-center text-[29px] leading-[37px] max-lg:tracking-tighter lg:grow lg:text-[2.5rem] lg:leading-[1.25]" />
+          <hr className="w-16 border-neutral-700 lg:hidden" />
         </div>
 
-        <nav aria-label="Account" className="flex flex-col gap-6">
-          <ul className="flex flex-col items-start gap-2">
+        <nav aria-label="Account" className="flex flex-col gap-5 lg:gap-6">
+          <ul className="flex flex-col gap-2 lg:items-start">
             <li>
               <NavItem
                 href={ticketsPath}
@@ -124,9 +129,9 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
             </li>
           </ul>
 
-          <div className="flex flex-col gap-4">
-            <hr className="border-neutral-700" />
-            <ul className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-[18px] pt-[3px] lg:items-stretch lg:gap-4 lg:pt-0">
+            <hr className="w-16 border-neutral-700 lg:w-auto" />
+            <ul className="flex w-full flex-col gap-2 lg:items-start">
               <li>
                 <NavItem
                   href={settingsPath}
@@ -139,6 +144,8 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
                 <form action="/api/auth/logout" method="post">
                   <button
                     type="submit"
+                    aria-label="Log out"
+                    title="Log out"
                     className={`${ITEM_CLASS} cursor-pointer`}
                   >
                     <ItemContent icon={Logout2Icon} label="Log out" />
@@ -151,7 +158,7 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
       </div>
 
       <div
-        className="flex h-[149px] flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-transparent p-[15px]"
+        className="hidden h-[149px] flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-transparent p-[15px] lg:flex"
         style={{ background: UPGRADE_CARD_BACKGROUND }}
       >
         <div className="flex w-full flex-col gap-2">
