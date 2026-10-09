@@ -4,7 +4,7 @@ config:
 ---
 erDiagram
     USER ||--o{ ORDER : places
-    USER ||--o{ PAYMENT_METHOD : owns
+    USER ||--o{ PAYMENT_CARD : saves
     USER ||--o{ TICKET : holds
 
     VENUE ||--o{ SEAT_MAP : "has configurations"
@@ -28,7 +28,6 @@ erDiagram
     USER ||--o{ SEAT_HOLD : "held by"
 
     ORDER_ITEM ||--o| TICKET : "issued as"
-    PAYMENT_METHOD ||--o{ PAYMENT : "used for"
     ORDER ||--o| PAYMENT : "paid by"
     PAYMENT ||--o{ REFUND : "refunded via"
 
@@ -120,15 +119,19 @@ erDiagram
         string code UK
         enum status
     }
-    PAYMENT_METHOD {
+    PAYMENT_CARD {
         uuid id PK
         uuid userId FK
         string provider
+        string brand
+        string last4
+        bool isDefault
     }
     PAYMENT {
         uuid id PK
         uuid orderId FK
-        uuid paymentMethodId FK
+        string cardBrand "snapshot"
+        string cardLast4 "snapshot"
         int amountCents
         enum status
     }

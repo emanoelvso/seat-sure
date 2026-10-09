@@ -11,7 +11,7 @@ graph TB
         UP[User Profile<br/>profile · preferences · addresses]
         CAT[Catalog<br/>events · artists · venues · seat maps]
         TKT[Ticketing<br/>orders · seat holds · tickets]
-        BIL[Billing<br/>payment methods · payments · refunds]
+        BIL[Billing<br/>payment cards · payments · refunds]
         SP[Social Proof<br/>testimonials]
         NOT[Notifications<br/>in-app · email · templates]
     end
@@ -120,7 +120,8 @@ One glossary per context, key terms only. The same term can mean something diffe
 
 - **user**: the account being charged. A plain reference to User Profile.
 - **order**: not owned here. A plain reference to Ticketing's order being paid.
-- **payment method**: a stored way to charge a user (card, wallet), through a provider.
+- **payment method**: a stored way to charge a user, through a provider. Only cards exist today.
+- **payment card**: a card saved for a user. Billing keeps the gateway token and display data (brand, last 4, expiry, holder), never the number or CVV ([ADR-020](../adrs/020-saved-cards-as-gateway-tokens.md)).
 - **payment**: one charge attempt against an order, with a status independent of the order's own status.
 - **refund**: money returned against a completed payment.
 
@@ -297,13 +298,15 @@ tickets                            -- issued after payment
 ### 5. Billing
 
 ```
-payment_methods
+payment_cards                      -- BillingPaymentCard
   id
   user_id (ref User Profile, no FK)
-  provider (stripe|mercadopago|...)
-  provider_customer_id
-  brand, last4, exp_month, exp_year
-  is_default, created_at
+  provider                         -- 'simulated' today
+  provider_token                   -- never returned or logged
+  fingerprint                      -- HMAC of the number, unique per user, never returned
+  brand, last4, exp_month, exp_year, holder
+  is_default                       -- at most one per user (partial unique index)
+  created_at, updated_at           -- hard delete, no deleted_at
 
 payments
   id
@@ -312,7 +315,7 @@ payments
   provider, provider_payment_id
   amount_cents, currency
   status (requires_action|processing|succeeded|failed|refunded)
-  method_snapshot (jsonb)
+  card_brand, card_last4           -- snapshot; survives the card being removed
   created_at, updated_at
 
 refunds
@@ -369,7 +372,7 @@ Legend: solid lines are in-context FKs; dotted lines (`..`) are cross-context re
 ```mermaid
 erDiagram
     USER ||..o{ ORDER : "places (ref, no FK)"
-    USER ||..o{ PAYMENT_METHOD : "owns (ref, no FK)"
+    USER ||..o{ PAYMENT_CARD : "saves (ref, no FK)"
     USER ||..o{ TICKET : "holds (ref, no FK)"
 
     VENUE ||--o{ SEAT_MAP : "has configurations"
@@ -393,7 +396,6 @@ erDiagram
     USER ||..o{ SEAT_HOLD : "held by (ref, no FK)"
 
     ORDER_ITEM ||--o| TICKET : "issued as"
-    PAYMENT_METHOD ||--o{ PAYMENT : "used for"
     ORDER ||..o| PAYMENT : "paid by (ref, no FK)"
     PAYMENT ||--o{ REFUND : "refunded via"
 
@@ -489,15 +491,19 @@ erDiagram
         string code UK
         enum status
     }
-    PAYMENT_METHOD {
+    PAYMENT_CARD {
         uuid id PK
         uuid userId "ref, no FK"
         string provider
+        string brand
+        string last4
+        bool isDefault
     }
     PAYMENT {
         uuid id PK
         uuid orderId "ref, no FK"
-        uuid paymentMethodId FK
+        string cardBrand "snapshot"
+        string cardLast4 "snapshot"
         int amountCents
         enum status
     }
