@@ -29,8 +29,7 @@ export default meta;
 
 type Story = StoryObj<typeof AccountSidebar>;
 
-// NOTIF-13: Notification is implemented; Setting remains disabled.
-const DISABLED_ITEMS = ["Setting"];
+// SET-01 enables the last account page; only the plan button remains disabled.
 
 // ACCT-01 AC 1: the logo, the six items and the Upgrade card render.
 export const Default: Story = {
@@ -43,9 +42,10 @@ export const Default: Story = {
       canvas.getByRole("link", { name: "Personal info" }),
     ).toBeVisible();
     await expect(canvas.getByRole("link", { name: "Payment" })).toBeVisible();
-    for (const name of DISABLED_ITEMS) {
-      await expect(canvas.getByRole("link", { name })).toBeVisible();
-    }
+    await expect(canvas.getByRole("link", { name: "Setting" })).toHaveAttribute(
+      "href",
+      "/account/settings",
+    );
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeVisible();
     await expect(canvas.getByText("Upgrade your plan")).toBeVisible();
     await expect(
@@ -122,11 +122,9 @@ export const PersonalInfoNotCurrentOnTickets: Story = {
 // ACCT-01 AC 3 / PROFILE-09 AC 3: the unbuilt items and "See plans" are disabled, with no href.
 export const DisabledItems: Story = {
   play: async ({ canvas }) => {
-    for (const name of DISABLED_ITEMS) {
-      const item = canvas.getByRole("link", { name });
-      await expect(item).toHaveAttribute("aria-disabled", "true");
-      await expect(item).not.toHaveAttribute("href");
-    }
+    const setting = canvas.getByRole("link", { name: "Setting" });
+    await expect(setting).not.toHaveAttribute("aria-disabled");
+    await expect(setting).toHaveAttribute("href", "/account/settings");
     const seePlans = canvas.getByRole("button", { name: "See plans" });
     await expect(seePlans).toHaveAttribute("aria-disabled", "true");
     await expect(seePlans).not.toHaveAttribute("href");
@@ -187,13 +185,16 @@ export const NotificationCurrent: Story = {
       .getAllByRole("link")
       .filter((link) => link.getAttribute("aria-current") === "page");
     await expect(current).toEqual([notification]);
+    await expect(
+      canvas.getByRole("link", { name: "Setting" }),
+    ).not.toHaveAttribute("aria-disabled");
     await expect(canvas.getByRole("link", { name: "Setting" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
+      "href",
+      "/account/settings",
     );
     await expect(
       canvas.getByRole("link", { name: "Setting" }),
-    ).not.toHaveAttribute("href");
+    ).not.toHaveAttribute("aria-current");
   },
 };
 
@@ -206,5 +207,21 @@ export const NotificationNotCurrent: Story = {
       "/account/notifications",
     );
     await expect(notification).not.toHaveAttribute("aria-current");
+  },
+};
+
+export const SettingsCurrent: Story = {
+  parameters: atPath("/account/settings"),
+  play: async ({ canvas }) => {
+    const setting = canvas.getByRole("link", { name: "Setting" });
+    await expect(setting).toHaveAttribute("href", "/account/settings");
+    await expect(setting).toHaveAttribute("aria-current", "page");
+    await expect(setting).not.toHaveAttribute("aria-disabled");
+    await expect(setting).toHaveClass("text-tint-400");
+    await expect(
+      canvas
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("aria-current") === "page"),
+    ).toEqual([setting]);
   },
 };
