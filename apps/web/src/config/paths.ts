@@ -82,6 +82,9 @@ export const paths = {
   accountNotifications: {
     getHref: () => "/account/notifications",
   },
+  accountSettings: {
+    getHref: () => "/account/settings",
+  },
   sessionRefresh: {
     getHref: (redirectTo: string) =>
       `/api/auth/refresh?redirectTo=${encodeURIComponent(redirectTo)}`,

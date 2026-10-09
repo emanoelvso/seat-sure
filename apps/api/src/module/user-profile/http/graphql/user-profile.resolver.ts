@@ -5,6 +5,8 @@ import { UserProfileService } from '@userProfileModule/core/service/user-profile
 import { ClsService } from 'nestjs-cls';
 import { UpdateMyProfileInput } from './type/update-my-profile-input.type';
 import { UserProfile } from './type/user-profile.type';
+import { AccountSettings } from './type/account-settings.type';
+import { UpdateMySettingsInput } from './type/update-my-settings-input.type';
 
 @Resolver()
 export class UserProfileResolver {
@@ -12,6 +14,25 @@ export class UserProfileResolver {
     private readonly userProfileService: UserProfileService,
     private readonly clsService: ClsService,
   ) {}
+
+  @UseGuards(AuthGuard)
+  @Query(() => AccountSettings)
+  async mySettings(): Promise<AccountSettings> {
+    return this.userProfileService.findMySettings(
+      this.clsService.get<string>('userId'),
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => AccountSettings)
+  async updateMySettings(
+    @Args('input') input: UpdateMySettingsInput,
+  ): Promise<AccountSettings> {
+    return this.userProfileService.updateMySettings(
+      this.clsService.get<string>('userId'),
+      input,
+    );
+  }
 
   @UseGuards(AuthGuard)
   @Query(() => UserProfile)
