@@ -226,3 +226,34 @@ export const DistinctControlledSidebars: Story = {
     await expect(sidebars[1].getBoundingClientRect().width).toBe(240);
   },
 };
+
+// This is server-produced HTML inserted without hydration. It verifies that
+// CSS owns the first-paint default, including the control's accessible state.
+export const ServerRenderedResponsiveDefault: Story = {
+  tags: ["!dev", "!autodocs"],
+  render: () => {
+    const original = usePathname.getMockImplementation()!;
+    let html: string;
+    try {
+      usePathname.mockReturnValue("/account/tickets");
+      html = renderToStaticMarkup(<AccountSidebar className="h-[832px]" />);
+    } finally {
+      usePathname.mockImplementation(original);
+    }
+    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  },
+  play: async (context) => {
+    const { page } = await import("vitest/browser");
+    const sidebar = context.canvas.getByRole("complementary");
+    for (const width of [1023, 1024, 1440, 375]) {
+      await page.viewport(width, 900);
+      await waitFor(() => expect(sidebar.getBoundingClientRect().width).toBe(width < 1024 ? 96 : 240));
+      if (width < 1024) await MinimizedAtBoundary.play!(context);
+      else await ExpandedAtBoundary.play!(context);
+      await checkToggle(context, width >= 1024);
+      await expect(context.canvas.queryByRole("button", {
+        name: width < 1024 ? "Collapse sidebar" : "Expand sidebar",
+      })).toBeNull();
+    }
+  },
+};

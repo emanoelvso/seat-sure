@@ -21,13 +21,13 @@ import { Button } from "@/components/ui/button";
 import { paths } from "@/config/paths";
 
 const ITEM_LAYOUT_CLASS =
-  "flex h-10 w-full items-center justify-center px-4 py-2 text-base group-data-[expanded=true]/sidebar:w-auto";
+  "flex h-10 w-full items-center justify-center px-4 py-2 text-base @min-[200px]/sidebar:w-auto";
 const ITEM_CLASS = `${ITEM_LAYOUT_CLASS} text-white`;
 // Figma's gradient transform scales x by 7.43, so the fill fades out over
 // the first 1/7.43 (13.46%) of the item. The 4px left stroke sits inside.
 // Minimize=on (4117:57200) has two overlaid fills, each 40% opaque with
 // 60%-alpha stops. The second transform spans 1.923% to 27.691%.
-const ITEM_CURRENT_CLASS = `${ITEM_LAYOUT_CLASS} text-tint-400 bg-linear-to-r from-primary/60 to-neutral-800/0 to-[13.46%] [box-shadow:inset_4px_0_0_var(--color-tint-400)] group-data-[expanded=false]/sidebar:[background-image:linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_0%,transparent_13.46%),linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_1.923%,transparent_27.691%)]`;
+const ITEM_CURRENT_CLASS = `${ITEM_LAYOUT_CLASS} text-tint-400 bg-linear-to-r from-primary/60 to-neutral-800/0 to-[13.46%] [box-shadow:inset_4px_0_0_var(--color-tint-400)] @max-[200px]/sidebar:[background-image:linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_0%,transparent_13.46%),linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_1.923%,transparent_27.691%)]`;
 
 // Card frame: #181319 fill, 1px inside stroke fading from #1D1A1E (58%) to
 // #B271C8 at the bottom, and the glow + stars exported from Figma. The
@@ -40,9 +40,9 @@ const UPGRADE_CARD_BACKGROUND = [
 
 function ItemContent({ icon: ItemIcon, label }: { icon: Icon; label: string }) {
   return (
-    <span className="flex items-center justify-center gap-2 group-data-[expanded=true]/sidebar:w-40 group-data-[expanded=true]/sidebar:justify-start">
+    <span className="flex items-center justify-center gap-2 @min-[200px]/sidebar:w-40 @min-[200px]/sidebar:justify-start">
       <ItemIcon size={24} aria-hidden="true" />
-      <span className="hidden group-data-[expanded=true]/sidebar:inline">{label}</span>
+      <span className="hidden @min-[200px]/sidebar:inline">{label}</span>
     </span>
   );
 }
@@ -90,7 +90,7 @@ function isExpandedViewport() {
 }
 
 function serverExpandedViewport() {
-  return false;
+  return null;
 }
 
 // Account shell navigation. SET-01 enables Setting; See plans stays disabled.
@@ -104,8 +104,31 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
   );
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
   const expanded = manualExpanded ?? autoExpanded;
-  const toggleLabel = expanded ? "Collapse sidebar" : "Expand sidebar";
-  const ToggleIcon = expanded ? AltArrowLeftIcon : AltArrowRightIcon;
+  // CSS owns the default before hydration. Descendants query the rail's
+  // content width (96px minimized, 208px expanded), including manual choices.
+  const layoutClass = manualExpanded === null
+    ? "w-24 lg:w-60 lg:justify-between lg:gap-[46px] lg:px-4"
+    : manualExpanded
+      ? "w-60 justify-between gap-[46px] px-4"
+      : "w-24";
+
+  function renderToggle(isExpanded: boolean, responsiveClass = "") {
+    const toggleLabel = isExpanded ? "Collapse sidebar" : "Expand sidebar";
+    const ToggleIcon = isExpanded ? AltArrowLeftIcon : AltArrowRightIcon;
+    return (
+      <button
+        type="button"
+        aria-label={toggleLabel}
+        title={toggleLabel}
+        aria-expanded={isExpanded}
+        aria-controls={sidebarId}
+        onClick={() => setManualExpanded((previous) => !(previous ?? isExpanded))}
+        className={`absolute -top-4 -right-4 flex size-8 cursor-pointer items-center justify-center rounded-full border border-neutral-700 bg-neutral-900 text-white hover:border-primary hover:text-tint-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tint-400 ${responsiveClass}`}
+      >
+        <ToggleIcon size={18} aria-hidden="true" />
+      </button>
+    );
+  }
   const ticketsPath = paths.accountTickets.getHref();
   const personalInfoPath = paths.accountPersonalInfo.getHref();
   const paymentPath = paths.accountPayment.getHref();
@@ -115,17 +138,16 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
   return (
     <aside
       id={sidebarId}
-      data-expanded={expanded}
-      className={`group/sidebar relative flex w-24 shrink-0 flex-col rounded-3xl bg-neutral-1000 py-4 data-[expanded=true]:w-60 data-[expanded=true]:justify-between data-[expanded=true]:gap-[46px] data-[expanded=true]:px-4 ${className}`}
+      className={`@container/sidebar relative flex shrink-0 flex-col rounded-3xl bg-neutral-1000 py-4 ${layoutClass} ${className}`}
     >
-      <div className="flex w-full flex-col gap-[35px] group-data-[expanded=true]/sidebar:gap-8">
-        <div className="flex h-[60px] flex-col items-center justify-between group-data-[expanded=true]/sidebar:h-auto group-data-[expanded=true]/sidebar:flex-row group-data-[expanded=true]/sidebar:justify-center group-data-[expanded=true]/sidebar:gap-2 group-data-[expanded=true]/sidebar:border-b group-data-[expanded=true]/sidebar:border-neutral-700 group-data-[expanded=true]/sidebar:pb-4">
-          <BrandLogo className="text-center text-[29px] leading-[37px] group-data-[expanded=false]/sidebar:tracking-tighter group-data-[expanded=true]/sidebar:grow group-data-[expanded=true]/sidebar:text-[2.5rem] group-data-[expanded=true]/sidebar:leading-[1.25]" />
-          <hr className="w-16 border-neutral-700 group-data-[expanded=true]/sidebar:hidden" />
+      <div className="flex w-full flex-col gap-[35px] @min-[200px]/sidebar:gap-8">
+        <div className="flex h-[60px] flex-col items-center justify-between @min-[200px]/sidebar:h-auto @min-[200px]/sidebar:flex-row @min-[200px]/sidebar:justify-center @min-[200px]/sidebar:gap-2 @min-[200px]/sidebar:border-b @min-[200px]/sidebar:border-neutral-700 @min-[200px]/sidebar:pb-4">
+          <BrandLogo className="text-center text-[29px] leading-[37px] @max-[200px]/sidebar:tracking-tighter @min-[200px]/sidebar:grow @min-[200px]/sidebar:text-[2.5rem] @min-[200px]/sidebar:leading-[1.25]" />
+          <hr className="w-16 border-neutral-700 @min-[200px]/sidebar:hidden" />
         </div>
 
-        <nav aria-label="Account" className="flex flex-col gap-5 group-data-[expanded=true]/sidebar:gap-6">
-          <ul className="flex flex-col gap-2 group-data-[expanded=true]/sidebar:items-start">
+        <nav aria-label="Account" className="flex flex-col gap-5 @min-[200px]/sidebar:gap-6">
+          <ul className="flex flex-col gap-2 @min-[200px]/sidebar:items-start">
             <li>
               <NavItem
                 href={ticketsPath}
@@ -160,9 +182,9 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
             </li>
           </ul>
 
-          <div className="flex flex-col items-center gap-[18px] pt-[3px] group-data-[expanded=true]/sidebar:items-stretch group-data-[expanded=true]/sidebar:gap-4 group-data-[expanded=true]/sidebar:pt-0">
-            <hr className="w-16 border-neutral-700 group-data-[expanded=true]/sidebar:w-auto" />
-            <ul className="flex w-full flex-col gap-2 group-data-[expanded=true]/sidebar:items-start">
+          <div className="flex flex-col items-center gap-[18px] pt-[3px] @min-[200px]/sidebar:items-stretch @min-[200px]/sidebar:gap-4 @min-[200px]/sidebar:pt-0">
+            <hr className="w-16 border-neutral-700 @min-[200px]/sidebar:w-auto" />
+            <ul className="flex w-full flex-col gap-2 @min-[200px]/sidebar:items-start">
               <li>
                 <NavItem
                   href={settingsPath}
@@ -189,7 +211,7 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
       </div>
 
       <div
-        className="hidden h-[149px] flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-transparent p-[15px] group-data-[expanded=true]/sidebar:flex"
+        className="hidden h-[149px] flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-transparent p-[15px] @min-[200px]/sidebar:flex"
         style={{ background: UPGRADE_CARD_BACKGROUND }}
       >
         <div className="flex w-full flex-col gap-2">
@@ -214,17 +236,12 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
           See plans
         </Button>
       </div>
-      <button
-        type="button"
-        aria-label={toggleLabel}
-        title={toggleLabel}
-        aria-expanded={expanded}
-        aria-controls={sidebarId}
-        onClick={() => setManualExpanded((previous) => !(previous ?? autoExpanded))}
-        className="absolute -top-4 -right-4 flex size-8 cursor-pointer items-center justify-center rounded-full border border-neutral-700 bg-neutral-900 text-white hover:border-primary hover:text-tint-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tint-400"
-      >
-        <ToggleIcon size={18} aria-hidden="true" />
-      </button>
+      {expanded === null ? (
+        <>
+          {renderToggle(false, "@min-[200px]/sidebar:hidden")}
+          {renderToggle(true, "hidden @min-[200px]/sidebar:flex")}
+        </>
+      ) : renderToggle(expanded)}
     </aside>
   );
 }
