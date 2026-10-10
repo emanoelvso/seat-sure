@@ -110,8 +110,7 @@ const meta: Meta<typeof EventTicketsView> = {
   title: "Pages/EventTickets",
   component: EventTicketsView,
   args: payload(),
-  // TODO(a11y): aria-hidden-focus, aria-dialog-name still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" }, layout: "fullscreen" },
+  parameters: { layout: "fullscreen" },
 } satisfies Meta<typeof EventTicketsView>;
 
 export default meta;
@@ -305,6 +304,11 @@ const loaded = (canvas: Canvas) =>
   canvas.findByRole("heading", { level: 1, name: "Adele" });
 
 export const QuantityOptions: Story = {
+  // Radix Select aria-hides the page while open but leaves its links and
+  // buttons tabbable, which axe reports as aria-hidden-focus.
+  parameters: {
+    a11y: { config: { rules: [{ id: "aria-hidden-focus", enabled: false }] } },
+  },
   args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
@@ -519,6 +523,11 @@ export const PriceFilterClearsSelection: Story = {
 };
 
 export const NoTicketTypes: Story = {
+  // Radix Select aria-hides the page while open but leaves its links and
+  // buttons tabbable, which axe reports as aria-hidden-focus.
+  parameters: {
+    a11y: { config: { rules: [{ id: "aria-hidden-focus", enabled: false }] } },
+  },
   args: payload({ ticketTypes: [] }),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
