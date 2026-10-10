@@ -20,12 +20,9 @@ export function OrdersEmptyState() {
             Explore exciting events and secure your spot now!
           </p>
         </div>
-        {/* SPEC_DEVIATION: Figma's primary "Fill" button is white on
-            #C14FE6 (primary), 3.8:1, below WCAG AA for 16px text.
-            Reason: tint-600, the button's own pressed shade, gives 5.4:1. */}
         <Link
           href={paths.events.getHref()}
-          className="inline-flex h-10 w-[182px] items-center justify-center gap-2 rounded-lg border border-tint-600 bg-tint-600 px-4 py-[5px] text-base leading-[120%] text-white transition-colors hover:border-shade-100 hover:bg-shade-100"
+          className="inline-flex h-10 w-[182px] items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-[5px] text-base leading-[120%] text-white transition-colors hover:border-shade-100 hover:bg-shade-100"
         >
           Browse Events
           <ArrowRightIcon size={24} aria-hidden />
