@@ -60,7 +60,7 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-2 text-center text-sm text-neutral-300">
+          <p className="mt-2 text-center text-sm text-neutral-200">
             {subtitle}
           </p>
         )}

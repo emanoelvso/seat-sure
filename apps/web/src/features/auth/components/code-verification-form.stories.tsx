@@ -7,8 +7,6 @@ import type {
 import { CodeVerificationForm } from "./code-verification-form";
 
 const meta: Meta<typeof CodeVerificationForm> = {
-  // TODO(a11y): color-contrast (neutral-300 text) still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" } },
   title: "Features/Auth/CodeVerificationForm",
   tags: ["autodocs"],
   component: CodeVerificationForm,

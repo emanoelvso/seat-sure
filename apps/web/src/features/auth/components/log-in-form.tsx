@@ -56,7 +56,7 @@ export function LogInForm({ redirectTo, action = logInAction }: LogInFormProps) 
         <Checkbox label="Remember me" name="rememberMe" />
         <Link
           href={paths.forgotPassword.getHref()}
-          className="text-sm text-neutral-300"
+          className="text-sm text-neutral-200"
         >
           Forgot Password?
         </Link>
@@ -69,11 +69,11 @@ export function LogInForm({ redirectTo, action = logInAction }: LogInFormProps) 
       <Button type="submit" variant="primary" size="lg" disabled={pending}>
         Log in
       </Button>
-      <p className="text-center text-sm text-neutral-300">
+      <p className="text-center text-sm text-neutral-200">
         New to SeatSure?{" "}
         <Link
           href={paths.signup.getHref(redirectTo)}
-          className="text-tint-500"
+          className="text-tint-500 underline"
         >
           Create account
         </Link>

@@ -58,7 +58,7 @@ export function ResetResultDialog({
               ? "Password Changed Successfully"
               : "Password Change Failed"}
           </h2>
-          <p className="mt-2 text-sm text-neutral-300">
+          <p className="mt-2 text-sm text-neutral-200">
             {isSuccess
               ? "You can now go back to the login page and log in with your new password."
               : "There was a problem changing your password."}

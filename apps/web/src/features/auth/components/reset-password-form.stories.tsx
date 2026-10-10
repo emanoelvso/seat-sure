@@ -9,8 +9,6 @@ const meta: Meta<typeof ResetPasswordForm> = {
   tags: ["autodocs"],
   component: ResetPasswordForm,
   parameters: {
-  // TODO(a11y): color-contrast (neutral-300 text) still fails axe; tracked in todo.md.
-    a11y: { test: "todo" },
     nextjs: { appDirectory: true },
   },
 } satisfies Meta<typeof ResetPasswordForm>;
