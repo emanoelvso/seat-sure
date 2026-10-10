@@ -33,7 +33,7 @@ export function PaymentSuccess({ email }: PaymentSuccessProps) {
       />
       <div className="relative flex flex-col items-center gap-2 text-center text-white">
         <div className="relative">
-          <h1 className="text-4xl font-bold text-primary">Thank You!</h1>
+          <h1 className="text-4xl font-bold text-tint-500">Thank You!</h1>
           <VerifiedCheckIcon
             size={40}
             aria-hidden="true"

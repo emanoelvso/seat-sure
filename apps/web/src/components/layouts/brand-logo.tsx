@@ -17,7 +17,7 @@ export function BrandLogo({ className = "" }: BrandLogoProps) {
   return (
     <Link
       href={paths.home.getHref()}
-      className={`${lobster.className} text-primary ${className}`}
+      className={`${lobster.className} text-tint-500 ${className}`}
     >
       SeatSure
     </Link>

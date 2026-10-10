@@ -124,7 +124,7 @@ export function ReviewSeatsDialog({
             <MapPointIcon
               size={24}
               aria-hidden="true"
-              className="shrink-0 text-primary"
+              className="shrink-0 text-tint-500"
             />
             Ticket Information
           </h2>

@@ -82,7 +82,7 @@ export function SignUpForm({ redirectTo, action = signUpAction }: SignUpFormProp
       </Button>
       <p className="text-center text-sm text-neutral-300">
         Have a SeatSure account?{" "}
-        <Link href={paths.login.getHref(redirectTo)} className="text-primary">
+        <Link href={paths.login.getHref(redirectTo)} className="text-tint-500">
           Sign in
         </Link>
       </p>

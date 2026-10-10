@@ -11,7 +11,7 @@ export function FanProtectCard() {
         <ShieldCheckIcon
           size={20}
           aria-hidden="true"
-          className="shrink-0 text-primary"
+          className="shrink-0 text-tint-500"
         />
         FanProtect : every order is 100% guaranteed
       </p>
@@ -19,7 +19,7 @@ export function FanProtectCard() {
         <DollarMinimalisticIcon
           size={20}
           aria-hidden="true"
-          className="shrink-0 text-primary"
+          className="shrink-0 text-tint-500"
         />
         <div>
           <p className="font-bold text-white">Easy Refund</p>

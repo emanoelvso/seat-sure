@@ -164,7 +164,7 @@ export function CodeVerificationForm({
               type="button"
               disabled={!resendEnabled || isResending}
               onClick={handleResend}
-              className="text-primary disabled:text-neutral-500"
+              className="text-tint-500 disabled:text-neutral-500"
             >
               Resend
             </button>

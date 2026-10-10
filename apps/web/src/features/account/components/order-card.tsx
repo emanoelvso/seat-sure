@@ -60,7 +60,7 @@ export function OrderCard({ order }: { order: AccountOrderSummary }) {
         </p>
         <Link
           href={ticketDetailsHref(order)}
-          className="inline-flex h-8 items-center gap-2 pl-4 text-primary transition-colors hover:text-tint-400"
+          className="inline-flex h-8 items-center gap-2 pl-4 text-tint-500 transition-colors hover:text-tint-400"
         >
           Ticket Details
           <AltArrowRightIcon size={24} aria-hidden />

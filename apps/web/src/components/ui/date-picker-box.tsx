@@ -62,7 +62,7 @@ export function DatePickerBox({
               weekday: "text-center text-neutral-400 text-sm pb-1",
               day: "text-center",
               day_button: "w-full text-center",
-              today: "text-primary",
+              today: "text-tint-500",
               selected: "bg-primary text-white rounded",
               range_start: "bg-primary text-white rounded-l",
               range_end: "bg-primary text-white rounded-r",

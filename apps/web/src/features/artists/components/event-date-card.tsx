@@ -28,7 +28,7 @@ export function EventDateCard({
     <article className="flex flex-col gap-6 rounded-3xl bg-neutral-900 p-6">
       <div className="flex items-start justify-between gap-6 border-b border-dashed border-neutral-300 pb-3.5">
         <div className="flex min-w-0 items-center gap-2">
-          <MapPointIcon size={24} className="shrink-0 text-primary" />
+          <MapPointIcon size={24} className="shrink-0 text-tint-500" />
           <h3 className="truncate text-xl font-bold">
             {formatEventLocation(event)}
           </h3>

@@ -18,7 +18,7 @@ export function Footer() {
     <footer className="flex flex-col items-center justify-center mb-10">
       <Link
         href={paths.home.getHref()}
-        className="flex gap-2 text-primary items-center mb-[2.625rem]"
+        className="flex gap-2 text-tint-500 items-center mb-[2.625rem]"
       >
         <MicrophoneIcon />
         <span className={`${lobster.className} text-[2.5rem]`}>SeatSure</span>

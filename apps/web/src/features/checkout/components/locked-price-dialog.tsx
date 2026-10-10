@@ -69,7 +69,7 @@ export function LockedPriceDialog({
           <LockUnlockedIcon
             size={56}
             aria-hidden="true"
-            className="relative text-primary"
+            className="relative text-tint-500"
           />
         </div>
 
@@ -85,7 +85,7 @@ export function LockedPriceDialog({
             <p role="alert" className="text-sm text-error-400">
               Some of your seats were just taken. Pick your seats again.
             </p>
-            <Link href={seatsHref} className="text-primary underline">
+            <Link href={seatsHref} className="text-tint-500 underline">
               Choose seats
             </Link>
           </div>

@@ -73,7 +73,7 @@ export function LogInForm({ redirectTo, action = logInAction }: LogInFormProps) 
         New to SeatSure?{" "}
         <Link
           href={paths.signup.getHref(redirectTo)}
-          className="text-primary"
+          className="text-tint-500"
         >
           Create account
         </Link>

@@ -52,7 +52,7 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
       <div className="relative z-10 flex flex-col items-center px-6 pb-16 pt-24">
         <Link
           href={paths.home.getHref()}
-          className={`${lobster.className} text-[2.5rem] text-primary`}
+          className={`${lobster.className} text-[2.5rem] text-tint-500`}
         >
           SeatSure
         </Link>

@@ -41,7 +41,7 @@ function ContactCard({
             className={`absolute top-1/2 left-1/2 -translate-1/2 rounded-full border-2 ${ring}`}
           />
         ))}
-        <CardIcon size={48} className="relative text-primary" />
+        <CardIcon size={48} className="relative text-tint-500" />
       </span>
       {children}
     </li>

@@ -21,7 +21,7 @@
   --blur-glow: 120px;
 
   /* Brand Colors */
-  --color-primary: #c14fe6;
+  --color-primary: #a62fca;
 
   --color-tint-600: #a62fca;
   --color-tint-500: #c14fe6;
@@ -40,7 +40,7 @@
 
   /* State Colors */
   --color-error-500: #850d06;
-  --color-error-400: #941a13;
+  --color-error-400: #ef5350;
   --color-error-300: #f44336;
   --color-error-200: #f66359;
   --color-error-100: #fbbab5;

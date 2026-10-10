@@ -125,7 +125,7 @@ export function AccountOrderDetailView({
                 <button
                   type="button"
                   disabled
-                  className="inline-flex h-10 w-[202px] items-center justify-center gap-2 rounded-lg border border-[#8e24aa] px-4 py-[5px] text-base leading-[1.2] text-primary disabled:cursor-not-allowed"
+                  className="inline-flex h-10 w-[202px] items-center justify-center gap-2 rounded-lg border border-[#8e24aa] px-4 py-[5px] text-base leading-[1.2] text-tint-500 disabled:cursor-not-allowed"
                 >
                   <DownloadMinimalisticIcon size={24} aria-hidden />
                   Download ticket
