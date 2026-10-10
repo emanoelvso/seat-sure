@@ -48,6 +48,21 @@ describe("shared colour tokens", () => {
   });
 
   it.each(["neutral-700", "neutral-800"])(
+    "renders success-400 text on %s at 4.5:1 or more",
+    (surface) => {
+      expect(contrast(token("success-400"), token(surface))).toBeGreaterThanOrEqual(
+        WCAG_AA,
+      );
+    },
+  );
+
+  it("renders neutral-200 helper text on neutral-1000 at 4.5:1 or more", () => {
+    expect(contrast(token("neutral-200"), token("neutral-1000"))).toBeGreaterThanOrEqual(
+      WCAG_AA,
+    );
+  });
+
+  it.each(["neutral-700", "neutral-800"])(
     "renders error-400 text on %s at 4.5:1 or more",
     (surface) => {
       expect(contrast(token("error-400"), token(surface))).toBeGreaterThanOrEqual(

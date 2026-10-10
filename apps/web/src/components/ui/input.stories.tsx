@@ -4,8 +4,6 @@ import { Input } from "./input";
 import { CheckCircleIcon, EyeIcon, MagnifierIcon } from "@solar-icons/react/outline";
 
 const meta: Meta<typeof Input> = {
-  // TODO(a11y): color-contrast (neutral-400 helper text) still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" } },
   title: "Components/Input",
   tags: ["autodocs"],
   component: Input,

@@ -80,7 +80,7 @@ export function CountdownTimer({
       </div>
       <div className="text-sm text-neutral-200">
         <p>left to complete your purchase</p>
-        <p className="text-neutral-400">
+        <p className="text-neutral-200">
           Your price is only guaranteed for this time!
         </p>
       </div>
