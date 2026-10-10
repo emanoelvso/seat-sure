@@ -9,6 +9,7 @@ export type TicketingExceptionReason =
   | 'PAYMENT_IN_PROGRESS'
   | 'INVALID_CARD'
   | 'CARD_DECLINED'
+  | 'CARD_NOT_FOUND'
   | 'INVALID_PAGE';
 
 // A business failure returned to the client as a reason (AD-018), the same

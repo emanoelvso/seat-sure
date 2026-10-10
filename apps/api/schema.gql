@@ -81,6 +81,13 @@ enum AccountOrdersTab {
   PENDING
 }
 
+input AddPaymentCardInput {
+  cvv: String!
+  expiry: String!
+  holder: String!
+  number: String!
+}
+
 type Artist {
   bio: String!
   cover: String!
@@ -315,14 +322,17 @@ enum LogInStatus {
 }
 
 type Mutation {
+  addPaymentCard(input: AddPaymentCardInput!): [PaymentCard!]!
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   logIn(input: LogInInput!): LogInResult!
   payOrder(input: PayOrderInput!): CheckoutOrder!
   refreshSession(input: RefreshSessionInput!): SessionTokens!
+  removePaymentCard(input: PaymentCardIdInput!): [PaymentCard!]!
   requestPasswordReset(input: RequestPasswordResetInput!): CodeDelivery!
   resendCode(input: ResendCodeInput!): CodeDelivery!
   resetPassword(input: ResetPasswordInput!): Boolean!
+  setDefaultPaymentCard(input: PaymentCardIdInput!): [PaymentCard!]!
   signUp(input: SignUpInput!): SignUpResult!
   startCheckout(input: StartCheckoutInput!): CheckoutOrder!
   updateMyProfile(input: UpdateMyProfileInput!): UserProfile!
@@ -335,8 +345,25 @@ type PasswordResetGrant {
 }
 
 input PayOrderInput {
-  card: CardInput!
+  card: CardInput
   orderId: String!
+  saveCard: Boolean! = false
+  savedCardId: ID
+}
+
+type PaymentCard {
+  brand: String!
+  expMonth: Int!
+  expYear: Int!
+  expired: Boolean!
+  holder: String!
+  id: ID!
+  isDefault: Boolean!
+  last4: String!
+}
+
+input PaymentCardIdInput {
+  id: String!
 }
 
 input PriceRange {
@@ -355,6 +382,7 @@ type Query {
   findUnavailableSeats(FindUnavailableSeatsInput: FindUnavailableSeatsInput!): UnavailableSeats!
   getHomeSections: HomeSections!
   me: CurrentUser!
+  myPaymentCards: [PaymentCard!]!
   myProfile: UserProfile!
 }
 
