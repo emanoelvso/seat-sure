@@ -3,12 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BellIcon, Logout2Icon, TicketIcon } from "@solar-icons/react/outline";
+import {
+  Logout2Icon,
+  TicketIcon,
+  UserIcon,
+} from "@solar-icons/react/outline";
 import { paths } from "@/config/paths";
 import { getInitials } from "@/utils/initials";
+import { HeaderNotifications } from "./header-notifications";
 
+// Figma "Profile menu" 5011:120934: 250px panel, 16px padding and gap, items
+// 40px high with 16px side padding and a 24px icon.
 const MENU_ITEM_CLASS =
-  "flex h-10 items-center gap-2 rounded-lg px-3 text-base text-white hover:bg-neutral-700 focus-visible:bg-neutral-700";
+  "flex h-10 items-center gap-2 rounded-lg px-4 text-base text-white hover:bg-neutral-700 focus-visible:bg-neutral-700";
 
 interface SessionUser {
   id: string;
@@ -26,8 +33,9 @@ interface SessionResponse {
 // header slot for it: a loading placeholder, a Signup link carrying the
 // current page as redirectTo (AUTH-40), or the bell + avatar/initials
 // (AUTH-42, AUTH-43). The avatar links to the account tickets (ACCT-02) and
-// opens a small menu on hover or keyboard focus with the same link and a
-// Log out button (the same POST the account sidebar uses).
+// opens a menu on hover or keyboard focus with Tickets, My account (personal
+// info, PROFILE-10) and a Log out button (the same POST the account sidebar
+// uses).
 export function HeaderAccount() {
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -69,9 +77,7 @@ export function HeaderAccount() {
 
   return (
     <>
-      <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
-        <BellIcon />
-      </div>
+      <HeaderNotifications />
       <div
         className="relative shrink-0"
         onMouseEnter={() => setMenuOpen(true)}
@@ -88,7 +94,7 @@ export function HeaderAccount() {
       >
         <Link
           href={paths.accountTickets.getHref()}
-          aria-label="My account"
+          aria-label="Account"
           className="block w-10 h-10 rounded-full overflow-hidden"
         >
           {user.avatarUrl ? (
@@ -109,20 +115,28 @@ export function HeaderAccount() {
           // pt-2 keeps the pointer inside the wrapper while it crosses the
           // gap between the avatar and the panel.
           <div className="absolute right-0 top-full z-30 pt-2">
-            <div className="flex w-48 flex-col gap-1 rounded-xl border border-neutral-700 bg-neutral-900 p-2 shadow-lg">
+            <div className="flex w-62.5 flex-col gap-4 rounded-2xl bg-neutral-900 p-4 shadow-lg">
               <Link
                 href={paths.accountTickets.getHref()}
                 className={MENU_ITEM_CLASS}
               >
-                <TicketIcon size={20} />
-                My tickets
+                <TicketIcon size={24} />
+                Tickets
               </Link>
+              <Link
+                href={paths.accountPersonalInfo.getHref()}
+                className={MENU_ITEM_CLASS}
+              >
+                <UserIcon size={24} />
+                My account
+              </Link>
+              <hr className="border-neutral-600" />
               <form action="/api/auth/logout" method="post">
                 <button
                   type="submit"
                   className={`${MENU_ITEM_CLASS} w-full cursor-pointer`}
                 >
-                  <Logout2Icon size={20} />
+                  <Logout2Icon size={24} />
                   Log out
                 </button>
               </form>

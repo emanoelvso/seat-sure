@@ -3,7 +3,10 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 import { AccountOrdersService } from '@ticketingModule/core/service/account-orders.service';
 import { CheckoutService } from '@ticketingModule/core/service/checkout.service';
-import { OrderPaymentService } from '@ticketingModule/core/service/order-payment.service';
+import {
+  OrderPaymentService,
+  toChargeSource,
+} from '@ticketingModule/core/service/order-payment.service';
 import { TicketingService } from '@ticketingModule/core/service/ticketing.service';
 import { ClsService } from 'nestjs-cls';
 import {
@@ -65,12 +68,13 @@ export class TicketingResolver {
   @UseGuards(AuthGuard)
   @Mutation(() => CheckoutOrder)
   async payOrder(
-    @Args('input') { orderId, card }: PayOrderInput,
+    @Args('input') { orderId, card, savedCardId, saveCard }: PayOrderInput,
   ): Promise<CheckoutOrder> {
     return this.orderPaymentService.pay({
       userId: this.clsService.get<string>('userId'),
       orderId,
-      card,
+      source: toChargeSource(card, savedCardId),
+      saveCard: saveCard ?? false,
       now: new Date(),
     });
   }

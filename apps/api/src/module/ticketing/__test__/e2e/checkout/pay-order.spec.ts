@@ -1,9 +1,14 @@
 import { randomUUID } from 'crypto';
+import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import {
   ChargeInput,
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import { CardInput } from '@billingModule/core/util/card-rules';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
+import { NotificationsPublicApiProvider } from '@notificationsModule/integration/provider/public-api.provider';
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { factory } from '@sharedModules/config/util/config.factory';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -49,6 +54,17 @@ const FIND_UNAVAILABLE_SEATS = `
   }
 `;
 
+const MY_PAYMENT_CARDS = `
+  query MyPaymentCards {
+    myPaymentCards {
+      id
+      brand
+      last4
+      isDefault
+    }
+  }
+`;
+
 const VALID_CARD = {
   number: '4242 4242 4242 4242',
   holder: 'Jane Doe',
@@ -66,10 +82,12 @@ describe('TicketingResolver payOrder (e2e)', () => {
   // Records every charge and delegates to the simulated gateway, so
   // 4000 0000 0000 0002 is still declined. The implementations are set in
   // beforeEach because the Jest config resets mocks between tests.
-  const simulated = new SimulatedPaymentGateway();
+  const simulated = new SimulatedPaymentGateway(new ConfigService(factory()));
   const gateway = {
     charge: jest.fn<ReturnType<PaymentGateway['charge']>, [ChargeInput]>(),
     refund: jest.fn<Promise<void>, [string]>(),
+    tokenize: jest.fn<ReturnType<PaymentGateway['tokenize']>, [CardInput]>(),
+    detach: jest.fn<Promise<void>, [string]>(),
   };
 
   // Records every ticket notice
@@ -84,6 +102,8 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await testDbClient(Tables.OrderItem).del();
     await testDbClient(Tables.Order).del();
     await testDbClient(Tables.BillingPayment).del();
+    await testDbClient(Tables.BillingPaymentCard).del();
+    await testDbClient(Tables.NotificationsNotification).del();
   };
 
   beforeAll(async () => {
@@ -110,6 +130,8 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await deleteRows();
     gateway.charge.mockImplementation((input) => simulated.charge(input));
     gateway.refund.mockImplementation(() => simulated.refund());
+    gateway.tokenize.mockImplementation((card) => simulated.tokenize(card));
+    gateway.detach.mockImplementation(() => simulated.detach());
     sender.send.mockResolvedValue(undefined);
   });
 
@@ -123,6 +145,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       'billing',
       'identity',
       'user-profile',
+      'notifications',
     ]) {
       const dataSource = module.get<DataSource>(getDataSourceToken(name));
       if (dataSource.isInitialized) {
@@ -156,10 +179,24 @@ describe('TicketingResolver payOrder (e2e)', () => {
     return response.body;
   };
 
+  // payOrder with any input shape: a saved card id, or both or neither source
+  const payOrderWith = async (input: Record<string, unknown>) => {
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .set('Authorization', `Bearer ${tokenFor(userId)}`)
+      .send({ query: PAY_ORDER, variables: { input } })
+      .expect(200);
+    return response.body;
+  };
+
   const errorOf = (body: {
     errors?: {
       extensions: {
-        originalError?: { reason?: string; fields?: Record<string, string> };
+        originalError?: {
+          reason?: string;
+          message?: string;
+          fields?: Record<string, string>;
+        };
       };
     }[];
   }) => body.errors?.[0]?.extensions.originalError;
@@ -555,6 +592,450 @@ describe('TicketingResolver payOrder (e2e)', () => {
     for (const spy of spies) {
       spy.mockRestore();
     }
+  });
+
+  describe('a saved card (CARD-08)', () => {
+    const insertSavedCard = async (
+      overrides: Parameters<typeof billingPaymentCardFactory.build>[0] = {},
+    ) => {
+      const card = billingPaymentCardFactory.build({ userId, ...overrides });
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [card]);
+      return card;
+    };
+
+    it("pays the order, issues the tickets, and records the saved card's brand and last 4 (AC 8, 11)", async () => {
+      const { order } = await insertOrder();
+      const savedCard = await insertSavedCard({
+        brand: 'mastercard',
+        last4: '4444',
+      });
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId }),
+      ).toHaveLength(2);
+      const payments = await paymentsOf(order.id);
+      expect(payments).toHaveLength(1);
+      expect(payments[0]).toMatchObject({
+        status: 'succeeded',
+        amountCents: 110700,
+        cardBrand: 'mastercard',
+        cardLast4: '4444',
+      });
+      expect(gateway.charge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 110700,
+          source: { type: 'token', token: savedCard.providerToken },
+        }),
+      );
+    });
+
+    it.each([
+      [
+        "another user's card",
+        async () => (await insertSavedCard({ userId: randomUUID() })).id,
+      ],
+      [
+        'a removed card',
+        async () => {
+          const card = await insertSavedCard();
+          await testDbClient(Tables.BillingPaymentCard)
+            .where({ id: card.id })
+            .del();
+          return card.id;
+        },
+      ],
+    ])(
+      'fails %s with CARD_NOT_FOUND, charges nothing, and leaves the order payable (AC 9)',
+      async (_, savedCardIdOf) => {
+        const { order } = await insertOrder();
+        const savedCardId = await savedCardIdOf();
+
+        const body = await payOrderWith({ orderId: order.id, savedCardId });
+
+        expect(errorOf(body)?.reason).toBe('CARD_NOT_FOUND');
+        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(await paymentsOf(order.id)).toHaveLength(0);
+        expect((await orderRow(order.id)).status).toBe('pending');
+
+        const retried = await payOrder(order.id);
+
+        expect(retried.errors).toBeUndefined();
+        expect(retried.data.payOrder.status).toBe('PAID');
+      },
+    );
+
+    it('fails with CARD_DECLINED when the saved card is declined, leaving the order pending (AC 10)', async () => {
+      const { order } = await insertOrder();
+      const savedCard = await insertSavedCard({
+        providerToken: `sim_pm_decline_${randomUUID()}`,
+        last4: '0341',
+      });
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      expect((await orderRow(order.id)).status).toBe('pending');
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+    });
+
+    it.each([
+      [
+        'both a card and a saved card id',
+        { card: VALID_CARD, savedCardId: randomUUID() },
+      ],
+      ['neither a card nor a saved card id', {}],
+    ])(
+      'fails %s with INVALID_CARD "Choose a payment method." and no fields, without charging',
+      async (_, source) => {
+        const { order } = await insertOrder();
+
+        const body = await payOrderWith({ orderId: order.id, ...source });
+
+        const error = errorOf(body);
+        expect(error?.reason).toBe('INVALID_CARD');
+        expect(error?.message).toBe('Choose a payment method.');
+        expect(error?.fields).toBeUndefined();
+        expect(gateway.charge).not.toHaveBeenCalled();
+        expect((await orderRow(order.id)).status).toBe('pending');
+      },
+    );
+  });
+
+  describe('saving the card while paying (CARD-09)', () => {
+    const myPaymentCards = async () => {
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .set('Authorization', `Bearer ${tokenFor(userId)}`)
+        .send({ query: MY_PAYMENT_CARDS })
+        .expect(200);
+      return response.body.data.myPaymentCards;
+    };
+
+    it('saves the card as the default when the payment succeeds and it is the first card (AC 3)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(await myPaymentCards()).toEqual([
+        {
+          id: expect.any(String),
+          brand: 'visa',
+          last4: '4242',
+          isDefault: true,
+        },
+      ]);
+    });
+
+    it.each([
+      ['saveCard: false', { saveCard: false }],
+      ['saveCard omitted', {}],
+    ])('saves no card with %s (AC 6)', async (_, saveCard) => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        ...saveCard,
+      });
+
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(await myPaymentCards()).toEqual([]);
+    });
+
+    it('saves no card when the payment is declined (AC 4)', async () => {
+      const { order } = await insertOrder();
+
+      // A card that tokenizes fine but whose charge is declined, so a save
+      // attempted after a decline would actually store it.
+      gateway.charge.mockResolvedValueOnce({
+        status: 'failed',
+        reason: 'card_declined',
+      });
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      expect(gateway.tokenize).not.toHaveBeenCalled();
+      expect(await myPaymentCards()).toEqual([]);
+    });
+
+    it('saves no card when the seats were lost after the charge (CARD-09 AC 4)', async () => {
+      const { order, holds } = await insertOrder();
+      await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      expect(gateway.tokenize).not.toHaveBeenCalled();
+      expect(await myPaymentCards()).toEqual([]);
+    });
+
+    it('still pays when the card is already saved, and keeps the list unchanged (AC 5)', async () => {
+      const { order: first } = await insertOrder();
+      await payOrderWith({
+        orderId: first.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+      const before = await myPaymentCards();
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(before).toHaveLength(1);
+      expect(await myPaymentCards()).toEqual(before);
+    });
+
+    it('still pays with 5 cards already saved, and keeps the list unchanged (AC 5)', async () => {
+      await testDbClient.batchInsert(
+        Tables.BillingPaymentCard,
+        Array.from({ length: 5 }, (_, index) =>
+          billingPaymentCardFactory.build({
+            userId,
+            isDefault: index === 0,
+            last4: `000${index}`,
+          }),
+        ),
+      );
+      const before = await myPaymentCards();
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(before).toHaveLength(5);
+      expect(await myPaymentCards()).toEqual(before);
+    });
+
+    it('still pays when saving fails, and logs the failure with the order id only (AC 5)', async () => {
+      const { order } = await insertOrder();
+      gateway.tokenize.mockRejectedValueOnce(new Error('gateway unavailable'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(await myPaymentCards()).toEqual([]);
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
+        orderId: order.id,
+      });
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('purchase notification (NOTIF-02, NOTIF-04)', () => {
+    const notificationsOf = () =>
+      testDbClient(Tables.NotificationsNotification).where({ userId });
+
+    it('stores one unread purchase confirmed for the buyer with the order as its source and the event name (NOTIF-02 AC 2)', async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      const rows = await notificationsOf();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId,
+        type: 'purchase_confirmed',
+        channel: 'in_app',
+        sourceId: order.id,
+        payload: { eventName: 'Coldplay: Music of the Spheres' },
+        readAt: null,
+      });
+    });
+
+    it('stores no purchase notification when the seats were lost and the charge was refunded', async () => {
+      const { order, holds } = await insertOrder();
+      await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
+      expect(await notificationsOf()).toHaveLength(0);
+    });
+
+    it('still answers PAID and logs only the user id, type, and order id when storing fails (NOTIF-04 AC 7, 8)', async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+      jest
+        .spyOn(
+          NotificationsPublicApiProvider.prototype,
+          'notifyPurchaseConfirmed',
+        )
+        .mockRejectedValueOnce(new Error('notification boom'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId }),
+      ).toHaveLength(2);
+      expect(await notificationsOf()).toHaveLength(0);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith("Couldn't store the notification", {
+        userId,
+        type: 'purchase_confirmed',
+        orderId: order.id,
+      });
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('payment unsuccessful notification (NOTIF-03, NOTIF-04)', () => {
+    const notificationsOf = () =>
+      testDbClient(Tables.NotificationsNotification).where({ userId });
+
+    it('stores one unread payment unsuccessful with the payment as its source and the event name; a second decline stores a second one (NOTIF-03 AC 3)', async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+
+      const first = await payOrder(order.id, DECLINED_CARD);
+
+      expect(errorOf(first)?.reason).toBe('CARD_DECLINED');
+      const [firstPayment] = await paymentsOf(order.id);
+      const afterFirst = await notificationsOf();
+      expect(afterFirst).toHaveLength(1);
+      expect(afterFirst[0]).toMatchObject({
+        userId,
+        type: 'payment_unsuccessful',
+        channel: 'in_app',
+        sourceId: firstPayment.id,
+        payload: { eventName: 'Coldplay: Music of the Spheres' },
+        readAt: null,
+      });
+
+      const second = await payOrder(order.id, DECLINED_CARD);
+
+      expect(errorOf(second)?.reason).toBe('CARD_DECLINED');
+      const afterSecond = await notificationsOf();
+      expect(afterSecond).toHaveLength(2);
+      expect(afterSecond.map((row) => row.sourceId).sort()).toEqual(
+        (await paymentsOf(order.id)).map((payment) => payment.id).sort(),
+      );
+    });
+
+    it('stores one per declined charge of a saved card too (NOTIF-03 AC 3)', async () => {
+      const { order } = await insertOrder();
+      const savedCard = billingPaymentCardFactory.build({
+        userId,
+        providerToken: `sim_pm_decline_${randomUUID()}`,
+      });
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [savedCard]);
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
+      const rows = await notificationsOf();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].type).toBe('payment_unsuccessful');
+    });
+
+    it('stores none when the saved card is not found (NOTIF-03 AC 5)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: randomUUID(),
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_NOT_FOUND');
+      expect(await notificationsOf()).toHaveLength(0);
+    });
+
+    it('stores none when the gateway throws (NOTIF-03 AC 5)', async () => {
+      const { order } = await insertOrder();
+      gateway.charge.mockRejectedValueOnce(new Error('gateway unavailable'));
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors[0].extensions.code).toBe('INTERNAL_SERVER_ERROR');
+      expect(await notificationsOf()).toHaveLength(0);
+    });
+
+    it('still answers CARD_DECLINED with the same message, keeps the order payable, and logs only the user id, type, and order id when storing fails (NOTIF-04 AC 7, 8)', async () => {
+      const { order } = await insertOrder({
+        eventName: 'Coldplay: Music of the Spheres',
+      });
+      jest
+        .spyOn(
+          NotificationsPublicApiProvider.prototype,
+          'notifyPaymentUnsuccessful',
+        )
+        .mockRejectedValueOnce(new Error('notification boom'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const declined = await payOrder(order.id, DECLINED_CARD);
+
+      expect(errorOf(declined)?.reason).toBe('CARD_DECLINED');
+      expect(errorOf(declined)?.message).toBe(
+        'Your card was declined. Try another card.',
+      );
+      expect(await notificationsOf()).toHaveLength(0);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith("Couldn't store the notification", {
+        userId,
+        type: 'payment_unsuccessful',
+        orderId: order.id,
+      });
+      errorSpy.mockRestore();
+
+      const retried = await payOrder(order.id);
+
+      expect(retried.errors).toBeUndefined();
+      expect(retried.data.payOrder.status).toBe('PAID');
+    });
   });
 
   describe('concurrent payments (PAY-45)', () => {

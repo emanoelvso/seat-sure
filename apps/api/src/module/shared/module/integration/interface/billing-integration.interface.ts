@@ -10,18 +10,24 @@ export type BillingCardFieldErrors = Record<
   string
 >;
 
+// What a charge draws from: a typed card, or one of the user's saved cards
+export type ChargeSource =
+  | { type: 'card'; card: BillingCardInput }
+  | { type: 'savedCard'; savedCardId: string };
+
 export interface ChargeDto {
   userId: string;
   orderId: string;
   amountCents: number;
   currency: string;
-  card: BillingCardInput;
+  source: ChargeSource;
 }
 
-export interface ChargeOutcome {
-  paymentId: string;
-  status: 'succeeded' | 'failed';
-}
+// `card_not_found`: the saved card isn't the user's or no longer exists.
+// Nothing was charged and no payment was recorded.
+export type ChargeOutcome =
+  | { status: 'succeeded' | 'failed'; paymentId: string }
+  | { status: 'card_not_found' };
 
 export interface BillingPaymentCard {
   brand: string;
@@ -34,6 +40,9 @@ export interface BillingApi {
     now: Date,
   ): Promise<BillingCardFieldErrors>;
   charge(input: ChargeDto): Promise<ChargeOutcome>;
+  // Saves a typed card for the user. A duplicate, the card limit, or a
+  // decline leaves the saved cards as they are and throws nothing.
+  saveCard(userId: string, card: BillingCardInput, now: Date): Promise<void>;
   refund(paymentId: string): Promise<void>;
   findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
 }

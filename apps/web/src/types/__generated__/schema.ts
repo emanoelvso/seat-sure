@@ -94,6 +94,23 @@ export type AccountOrdersTab =
   | 'COMPLETED'
   | 'PENDING';
 
+export type AccountSettings = {
+  __typename: 'AccountSettings';
+  emailNotifications: Scalars['Boolean']['output'];
+  eventReminders: Scalars['Boolean']['output'];
+  exclusiveOffers: Scalars['Boolean']['output'];
+  language: Scalars['String']['output'];
+  pushNotifications: Scalars['Boolean']['output'];
+  ticketAvailability: Scalars['Boolean']['output'];
+};
+
+export type AddPaymentCardInput = {
+  cvv: Scalars['String']['input'];
+  expiry: Scalars['String']['input'];
+  holder: Scalars['String']['input'];
+  number: Scalars['String']['input'];
+};
+
 export type Artist = {
   __typename: 'Artist';
   bio: Scalars['String']['output'];
@@ -337,17 +354,29 @@ export type LogInStatus =
 
 export type Mutation = {
   __typename: 'Mutation';
+  addPaymentCard: Array<PaymentCard>;
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
   logIn: LogInResult;
+  markAllNotificationsRead: NotificationCounts;
+  markNotificationRead: Notification;
   payOrder: CheckoutOrder;
   refreshSession: SessionTokens;
+  removePaymentCard: Array<PaymentCard>;
   requestPasswordReset: CodeDelivery;
   resendCode: CodeDelivery;
   resetPassword: Scalars['Boolean']['output'];
+  setDefaultPaymentCard: Array<PaymentCard>;
   signUp: SignUpResult;
   startCheckout: CheckoutOrder;
+  updateMyProfile: UserProfile;
+  updateMySettings: AccountSettings;
   verifyEmail: SessionTokens;
+};
+
+
+export type MutationAddPaymentCardArgs = {
+  input: AddPaymentCardInput;
 };
 
 
@@ -366,6 +395,11 @@ export type MutationLogInArgs = {
 };
 
 
+export type MutationMarkNotificationReadArgs = {
+  input: NotificationIdInput;
+};
+
+
 export type MutationPayOrderArgs = {
   input: PayOrderInput;
 };
@@ -373,6 +407,11 @@ export type MutationPayOrderArgs = {
 
 export type MutationRefreshSessionArgs = {
   input: RefreshSessionInput;
+};
+
+
+export type MutationRemovePaymentCardArgs = {
+  input: PaymentCardIdInput;
 };
 
 
@@ -391,6 +430,11 @@ export type MutationResetPasswordArgs = {
 };
 
 
+export type MutationSetDefaultPaymentCardArgs = {
+  input: PaymentCardIdInput;
+};
+
+
 export type MutationSignUpArgs = {
   input: SignUpInput;
 };
@@ -401,9 +445,63 @@ export type MutationStartCheckoutArgs = {
 };
 
 
+export type MutationUpdateMyProfileArgs = {
+  input: UpdateMyProfileInput;
+};
+
+
+export type MutationUpdateMySettingsArgs = {
+  input: UpdateMySettingsInput;
+};
+
+
 export type MutationVerifyEmailArgs = {
   input: VerifyEmailInput;
 };
+
+export type MyNotificationsInput = {
+  page: Scalars['Int']['input'];
+  pageSize: Scalars['Int']['input'];
+  tab?: NotificationsTab;
+};
+
+export type Notification = {
+  __typename: 'Notification';
+  createdAt: Scalars['DateTime']['output'];
+  eventName: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  readAt: Maybe<Scalars['DateTime']['output']>;
+  type: NotificationType;
+};
+
+export type NotificationCounts = {
+  __typename: 'NotificationCounts';
+  all: Scalars['Int']['output'];
+  read: Scalars['Int']['output'];
+  unread: Scalars['Int']['output'];
+};
+
+export type NotificationIdInput = {
+  id: Scalars['String']['input'];
+};
+
+export type NotificationType =
+  | 'PAYMENT_UNSUCCESSFUL'
+  | 'PURCHASE_CONFIRMED'
+  | 'WELCOME';
+
+export type NotificationsPage = {
+  __typename: 'NotificationsPage';
+  counts: NotificationCounts;
+  items: Array<Notification>;
+  page: Scalars['Int']['output'];
+  totalPages: Scalars['Int']['output'];
+};
+
+export type NotificationsTab =
+  | 'ALL'
+  | 'READ'
+  | 'UNREAD';
 
 export type PasswordResetGrant = {
   __typename: 'PasswordResetGrant';
@@ -412,8 +510,26 @@ export type PasswordResetGrant = {
 };
 
 export type PayOrderInput = {
-  card: CardInput;
+  card?: InputMaybe<CardInput>;
   orderId: Scalars['String']['input'];
+  saveCard?: Scalars['Boolean']['input'];
+  savedCardId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+export type PaymentCard = {
+  __typename: 'PaymentCard';
+  brand: Scalars['String']['output'];
+  expMonth: Scalars['Int']['output'];
+  expYear: Scalars['Int']['output'];
+  expired: Scalars['Boolean']['output'];
+  holder: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  isDefault: Scalars['Boolean']['output'];
+  last4: Scalars['String']['output'];
+};
+
+export type PaymentCardIdInput = {
+  id: Scalars['String']['input'];
 };
 
 export type PriceRange = {
@@ -433,6 +549,10 @@ export type Query = {
   findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
   me: CurrentUser;
+  myNotifications: NotificationsPage;
+  myPaymentCards: Array<PaymentCard>;
+  myProfile: UserProfile;
+  mySettings: AccountSettings;
 };
 
 
@@ -473,6 +593,11 @@ export type QueryFindTicketTypeSeatsArgs = {
 
 export type QueryFindUnavailableSeatsArgs = {
   FindUnavailableSeatsInput: FindUnavailableSeatsInput;
+};
+
+
+export type QueryMyNotificationsArgs = {
+  input: MyNotificationsInput;
 };
 
 export type RefreshSessionInput = {
@@ -601,6 +726,40 @@ export type TicketTypeSeats = {
 export type UnavailableSeats = {
   __typename: 'UnavailableSeats';
   seatIds: Array<Scalars['String']['output']>;
+};
+
+export type UpdateMyProfileInput = {
+  birthDate: Scalars['String']['input'];
+  city: Scalars['String']['input'];
+  firstName: Scalars['String']['input'];
+  lastName: Scalars['String']['input'];
+  phoneCountryCode: Scalars['String']['input'];
+  phoneNumber: Scalars['String']['input'];
+  state: Scalars['String']['input'];
+  zipCode: Scalars['String']['input'];
+};
+
+export type UpdateMySettingsInput = {
+  emailNotifications?: InputMaybe<Scalars['Boolean']['input']>;
+  eventReminders?: InputMaybe<Scalars['Boolean']['input']>;
+  exclusiveOffers?: InputMaybe<Scalars['Boolean']['input']>;
+  language?: InputMaybe<Scalars['String']['input']>;
+  pushNotifications?: InputMaybe<Scalars['Boolean']['input']>;
+  ticketAvailability?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type UserProfile = {
+  __typename: 'UserProfile';
+  avatarUrl: Maybe<Scalars['String']['output']>;
+  birthDate: Maybe<Scalars['String']['output']>;
+  city: Maybe<Scalars['String']['output']>;
+  firstName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  lastName: Scalars['String']['output'];
+  phoneCountryCode: Maybe<Scalars['String']['output']>;
+  phoneNumber: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
+  zipCode: Maybe<Scalars['String']['output']>;
 };
 
 export type VerifyEmailInput = {

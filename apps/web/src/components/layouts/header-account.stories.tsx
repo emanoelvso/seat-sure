@@ -36,6 +36,7 @@ export const SignedOut: Story = {
   },
   play: async ({ canvas }) => {
     const link = await canvas.findByRole("link", { name: "Signup" });
+    await expect(canvas.queryByRole("link", { name: "Notifications" })).toBeNull();
     const redirectTo = `${window.location.pathname}${window.location.search}`;
     await expect(link).toHaveAttribute(
       "href",
@@ -63,10 +64,16 @@ export const SignedInWithoutAvatar: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await expect(await canvas.findByText("NK")).toBeVisible();
+    const notifications = canvas.getByRole("link", { name: "Notifications" });
+    await expect(notifications).toHaveAttribute("href", "/account/notifications");
+    await expect(notifications).toBeVisible();
+    await userEvent.tab();
+    await expect(notifications).toHaveFocus();
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
-    await expect(
-      canvas.getByRole("link", { name: "My account" }),
-    ).toHaveAttribute("href", "/account/tickets");
+    await expect(canvas.getByRole("link", { name: "Account" })).toHaveAttribute(
+      "href",
+      "/account/tickets",
+    );
     await expect(canvasElement.querySelector("form")).toBeNull();
   },
 };
@@ -91,7 +98,7 @@ export const SignedInWithAvatar: Story = {
   play: async ({ canvas, canvasElement }) => {
     const avatar = await canvas.findByRole("img", { name: "Profile Avatar" });
     await expect(avatar).toBeVisible();
-    const accountLink = canvas.getByRole("link", { name: "My account" });
+    const accountLink = canvas.getByRole("link", { name: "Account" });
     await expect(accountLink).toHaveAttribute("href", "/account/tickets");
     await expect(accountLink).toContainElement(avatar);
     await expect(canvasElement.querySelector("form")).toBeNull();
@@ -107,11 +114,14 @@ export const Loading: Story = {
     await expect(canvas.queryByRole("link", { name: "Signup" })).toBeNull();
     await expect(canvas.queryByRole("img")).toBeNull();
     await expect(canvas.queryByText("NK")).toBeNull();
+    await expect(canvas.queryByRole("link", { name: "Notifications" })).toBeNull();
   },
 };
 
-// Hovering the avatar opens a menu with a link to the account tickets and a
-// Log out button posting to the logout route; leaving or Escape closes it.
+// PROFILE-10 AC 4: hovering the avatar opens a menu with "Tickets",
+// "My account" and "Log out", in that order, linking to the tickets list and
+// the personal info page, with Log out posting to the logout route; leaving
+// or Escape closes it.
 export const AvatarMenu: Story = {
   beforeEach: () => {
     stubFetch(() =>
@@ -127,15 +137,16 @@ export const AvatarMenu: Story = {
     );
   },
   play: async ({ canvas, canvasElement }) => {
-    const avatar = await canvas.findByRole("link", { name: "My account" });
-    await expect(canvas.queryByRole("link", { name: "My tickets" })).toBeNull();
+    const avatar = await canvas.findByRole("link", { name: "Account" });
+    await expect(canvas.queryByRole("link", { name: "Tickets" })).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Log out" })).toBeNull();
 
     await userEvent.hover(avatar);
 
-    await expect(
-      await canvas.findByRole("link", { name: "My tickets" }),
-    ).toHaveAttribute("href", "/account/tickets");
+    const tickets = await canvas.findByRole("link", { name: "Tickets" });
+    await expect(tickets).toHaveAttribute("href", "/account/tickets");
+    const myAccount = canvas.getByRole("link", { name: "My account" });
+    await expect(myAccount).toHaveAttribute("href", "/account/personal-info");
     const logout = canvas.getByRole("button", { name: "Log out" });
     await expect(logout).toHaveAttribute("type", "submit");
     const form = canvasElement.querySelector("form");
@@ -143,18 +154,55 @@ export const AvatarMenu: Story = {
     await expect(form).toHaveAttribute("method", "post");
     await expect(form).toContainElement(logout);
 
+    // Order: Tickets, My account, Log out.
+    const items = [tickets, myAccount, logout];
+    const sorted = [...items].sort((a, b) =>
+      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+    );
+    await expect(sorted).toEqual(items);
+
     await userEvent.unhover(avatar);
     await waitFor(() =>
       expect(canvas.queryByRole("button", { name: "Log out" })).toBeNull(),
     );
 
     await userEvent.tab();
+    await expect(canvas.getByRole("link", { name: "Notifications" })).toHaveFocus();
+    await userEvent.tab();
     await expect(
-      await canvas.findByRole("link", { name: "My tickets" }),
+      await canvas.findByRole("link", { name: "Tickets" }),
     ).toBeVisible();
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
-      expect(canvas.queryByRole("link", { name: "My tickets" })).toBeNull(),
+      expect(canvas.queryByRole("link", { name: "Tickets" })).toBeNull(),
     );
+  },
+};
+
+// PROFILE-10: the open menu passes the a11y checks (a11y "error" makes the
+// addon's violations fail the story).
+export const OpenMenuA11y: Story = {
+  parameters: { a11y: { test: "error" } },
+  beforeEach: () => {
+    stubFetch(() =>
+      jsonResponse({
+        user: {
+          id: "user-4",
+          email: "ines@example.com",
+          firstName: "Ines",
+          lastName: "Roca",
+          avatarUrl: null,
+        },
+      }),
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.hover(await canvas.findByRole("link", { name: "Account" }));
+
+    await expect(
+      await canvas.findByRole("link", { name: "My account" }),
+    ).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Tickets" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Log out" })).toBeVisible();
   },
 };

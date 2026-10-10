@@ -306,6 +306,7 @@
     },
     "nested_module_folder": {
       "children": [
+        { "name": "__test__", "ruleId": "test_folder" },
         { "name": "{kebab-case}", "ruleId": "nested_module_folder" },
         { "name": "{kebab-case}.{kebab-case}.ts" }
       ]

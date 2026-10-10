@@ -18,7 +18,9 @@ import {
   SendSecurityAlertInput,
 } from '@identityModule/core/adapter/security-alert-sender.adapter.interface';
 import { IdentityModule } from '@identityModule/identity.module';
+import { NotificationsPublicApiProvider } from '@notificationsModule/integration/provider/public-api.provider';
 import { GraphqlModule } from '@sharedModules/graphql/graphql.module';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { UserProfileService } from '@userProfileModule/core/service/user-profile.service';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
@@ -111,12 +113,14 @@ describe('SignUp (e2e)', () => {
     await testDbClient(Tables.IdentityVerificationCode).del();
     await testDbClient(Tables.IdentityUser).del();
     await testDbClient(Tables.UserProfileUser).del();
+    await testDbClient(Tables.NotificationsNotification).del();
   });
 
   afterAll(async () => {
     await testDbClient(Tables.IdentityVerificationCode).del();
     await testDbClient(Tables.IdentityUser).del();
     await testDbClient(Tables.UserProfileUser).del();
+    await testDbClient(Tables.NotificationsNotification).del();
     await testDbClient.destroy();
     const identityDs = module.get<DataSource>(getDataSourceToken('identity'));
     if (identityDs.isInitialized) {
@@ -127,6 +131,12 @@ describe('SignUp (e2e)', () => {
     );
     if (profileDs.isInitialized) {
       await profileDs.destroy();
+    }
+    const notificationsDs = module.get<DataSource>(
+      getDataSourceToken('notifications'),
+    );
+    if (notificationsDs.isInitialized) {
+      await notificationsDs.destroy();
     }
     await app.getHttpServer().close();
   });
@@ -380,5 +390,90 @@ describe('SignUp (e2e)', () => {
       .where({ email })
       .first();
     expect(userRow).toBeDefined();
+  });
+
+  describe('welcome notification', () => {
+    const notificationsOf = (userId: string) =>
+      testDbClient(Tables.NotificationsNotification).where({ userId });
+
+    it('stores exactly one unread welcome for the new user (NOTIF-01 AC 1, 9)', async () => {
+      const email = `negar-welcome-${randomUUID()}@example.com`;
+
+      const response = await signUp(validInput({ email }));
+
+      expect(response.body.errors).toBeUndefined();
+      const userRow = await testDbClient(Tables.IdentityUser)
+        .where({ email })
+        .first();
+      const rows = await notificationsOf(userRow.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: userRow.id,
+        type: 'welcome',
+        channel: 'in_app',
+        sourceId: userRow.id,
+        payload: {},
+        readAt: null,
+      });
+    });
+
+    it('stores none for the existing account on a duplicate-email signup (NOTIF-01)', async () => {
+      const email = `negar-welcome-dup-${randomUUID()}@example.com`;
+      await signUp(validInput({ email }));
+
+      const duplicate = await signUp(
+        validInput({ email: email.toUpperCase() }),
+      );
+
+      expect(duplicate.body.errors).toBeUndefined();
+      const userRow = await testDbClient(Tables.IdentityUser)
+        .where({ email })
+        .first();
+      expect(await notificationsOf(userRow.id)).toHaveLength(1);
+      expect(await testDbClient(Tables.NotificationsNotification)).toHaveLength(
+        1,
+      );
+    });
+
+    it('stores none when the profile creation fails and the signup is rolled back (NOTIF-01 AC 6)', async () => {
+      const email = `negar-welcome-rollback-${randomUUID()}@example.com`;
+      jest
+        .spyOn(UserProfileService.prototype, 'createProfile')
+        .mockRejectedValueOnce(new Error('profile boom'));
+
+      const failed = await signUp(validInput({ email }));
+
+      expect(failed.body.errors).toBeDefined();
+      expect(await testDbClient(Tables.NotificationsNotification)).toHaveLength(
+        0,
+      );
+    });
+
+    it('completes the signup with the same result and logs only the user id and type when storing fails (NOTIF-04 AC 7, 8)', async () => {
+      const email = `negar-welcome-fail-${randomUUID()}@example.com`;
+      jest
+        .spyOn(NotificationsPublicApiProvider.prototype, 'notifyWelcome')
+        .mockRejectedValueOnce(new Error('notification boom'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const response = await signUp(validInput({ email }));
+
+      expect(response.body.errors).toBeUndefined();
+      expect(response.body.data.signUp).toMatchObject({
+        email,
+        codeSent: true,
+      });
+      expect(fakeCodeSender.sent).toHaveLength(1);
+      const userRow = await testDbClient(Tables.IdentityUser)
+        .where({ email })
+        .first();
+      expect(userRow).toBeDefined();
+      expect(await notificationsOf(userRow.id)).toHaveLength(0);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith("Couldn't store the notification", {
+        userId: userRow.id,
+        type: 'welcome',
+      });
+    });
   });
 });

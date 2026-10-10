@@ -52,6 +52,9 @@ export const paths = {
   session: {
     getHref: () => "/api/auth/session",
   },
+  notificationsUnreadCount: {
+    getHref: () => "/api/notifications/unread-count",
+  },
   checkoutStart: {
     getHref: (eventId: string, ticketTypeId: string, seatIds: string[]) =>
       `/events/${encodeURIComponent(eventId)}/tickets/${encodeURIComponent(ticketTypeId)}/checkout?seats=${seatIds.map(encodeURIComponent).join(",")}`,
@@ -69,6 +72,18 @@ export const paths = {
   accountTicket: {
     getHref: (orderId: string) =>
       `/account/tickets/${encodeURIComponent(orderId)}`,
+  },
+  accountPersonalInfo: {
+    getHref: () => "/account/personal-info",
+  },
+  accountPayment: {
+    getHref: () => "/account/payment",
+  },
+  accountNotifications: {
+    getHref: () => "/account/notifications",
+  },
+  accountSettings: {
+    getHref: () => "/account/settings",
   },
   sessionRefresh: {
     getHref: (redirectTo: string) =>

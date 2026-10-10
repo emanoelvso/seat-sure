@@ -1,6 +1,11 @@
 import { UnprocessableEntityException } from '@nestjs/common';
 
-export type BillingExceptionReason = 'INVALID_CARD';
+export type BillingExceptionReason =
+  | 'INVALID_CARD'
+  | 'DUPLICATE_CARD'
+  | 'CARD_LIMIT_REACHED'
+  | 'CARD_DECLINED'
+  | 'CARD_NOT_FOUND';
 
 // Mirrors IdentityException (AD-018): a business error carried as a typed
 // reason + field errors, not a generic 500.

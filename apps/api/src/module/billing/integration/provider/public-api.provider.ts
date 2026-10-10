@@ -24,6 +24,14 @@ export class BillingPublicApiProvider implements BillingApi {
     return this.billingService.charge(input);
   }
 
+  async saveCard(
+    userId: string,
+    card: BillingCardInput,
+    now: Date,
+  ): Promise<void> {
+    await this.billingService.saveCard(userId, card, now);
+  }
+
   async refund(paymentId: string): Promise<void> {
     return this.billingService.refund(paymentId);
   }
