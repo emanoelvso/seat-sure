@@ -28,4 +28,29 @@ export class UserProfileUserRepository extends DefaultTypeOrmRepository<UserProf
       .values(data)
       .execute();
   }
+
+  // Full replacement of the editable columns; `null` clears a column.
+  // Returns false when no row has the given id.
+  async updateProfile(
+    id: string,
+    data: {
+      firstName: string;
+      lastName: string;
+      state: string | null;
+      city: string | null;
+      birthDate: string | null;
+      phoneCountryCode: string | null;
+      phoneNumber: string | null;
+      zipCode: string | null;
+    },
+  ): Promise<boolean> {
+    const result = await this.entityManager
+      .createQueryBuilder()
+      .update(UserProfileUser)
+      .set(data)
+      .where('id = :id', { id })
+      .execute();
+
+    return (result.affected ?? 0) > 0;
+  }
 }
