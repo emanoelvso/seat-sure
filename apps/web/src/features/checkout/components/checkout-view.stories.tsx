@@ -40,8 +40,6 @@ const order = {
 };
 
 const meta: Meta<typeof CheckoutView> = {
-  // TODO(a11y): color-contrast (neutral-400 label markers, success text) still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" } },
   title: "Features/Checkout/CheckoutView",
   tags: ["autodocs"],
   component: CheckoutView,

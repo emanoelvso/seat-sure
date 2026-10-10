@@ -4,8 +4,6 @@ import { zonedIso } from "@/testing/dates";
 import { CheckoutEventCard } from "./checkout-event-card";
 
 const meta: Meta<typeof CheckoutEventCard> = {
-  // TODO(a11y): color-contrast (success text) still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" } },
   title: "Features/Checkout/CheckoutEventCard",
   tags: ["autodocs"],
   component: CheckoutEventCard,
