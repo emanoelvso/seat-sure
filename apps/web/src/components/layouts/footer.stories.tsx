@@ -29,6 +29,21 @@ export const Default: Story = {
       );
     }
 
+    const social = [
+      ["Facebook", "https://facebook.com/seatsure"],
+      ["Instagram", "https://instagram.com/seatsure"],
+      ["LinkedIn", "https://linkedin.com/company/seatsure"],
+      ["YouTube", "https://youtube.com/@seatsure"],
+      ["Telegram", "https://t.me/seatsure"],
+    ] as const;
+
+    for (const [name, href] of social) {
+      const link = canvas.getByRole("link", { name });
+      await expect(link).toHaveAttribute("href", href);
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
+
     await expect(
       canvas.getByRole("link", { name: "SeatSure" }),
     ).toHaveAttribute("href", "/");
