@@ -10,8 +10,6 @@ const options = [
 ];
 
 const meta: Meta<typeof SelectBox> = {
-  // TODO(a11y): button-name still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" } },
   title: "Components/SelectBox",
   component: SelectBox,
   tags: ["autodocs"],

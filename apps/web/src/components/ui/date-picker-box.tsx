@@ -30,7 +30,7 @@ export function DatePickerBox({
           </legend>
           <Popover.Trigger asChild>
             <button
-              className={`flex items-center justify-between gap-3 w-full bg-transparent outline-none text-sm pl-12 pr-4 py-2 cursor-pointer relative ${value?.from ? "text-white" : "text-neutral-400"}`}
+              className={`flex items-center justify-between gap-3 w-full bg-transparent outline-none text-sm pl-12 pr-4 py-2 cursor-pointer relative ${value?.from ? "text-white" : "text-neutral-200"}`}
             >
               {createElement(leftIcon, {
                 className:
@@ -45,6 +45,7 @@ export function DatePickerBox({
       </div>
       <Popover.Portal>
         <Popover.Content
+          aria-label={label}
           sideOffset={4}
           onInteractOutside={() => setOpen(false)}
           style={{ width: "var(--radix-popover-trigger-width)" }}
@@ -59,7 +60,7 @@ export function DatePickerBox({
               month: "w-full",
               month_grid: "w-full table-fixed border-collapse",
               month_caption: "text-center mb-2 mt-0",
-              weekday: "text-center text-neutral-400 text-sm pb-1",
+              weekday: "text-center text-neutral-200 text-sm pb-1",
               day: "text-center",
               day_button: "w-full text-center",
               today: "text-tint-500",

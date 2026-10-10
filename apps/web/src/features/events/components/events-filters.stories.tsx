@@ -33,8 +33,6 @@ const pills = (canvas: Canvas) =>
     .map((pill) => pill.textContent);
 
 const meta: Meta<typeof EventsFilters> = {
-  // TODO(a11y): button-name, color-contrast, aria-dialog-name still fails axe; tracked in todo.md.
-  parameters: { a11y: { test: "todo" } },
   title: "Features/Events/EventsFilters",
   component: EventsFilters,
   args: { cities: ["Paris", "Lyon", "Berlin"] },

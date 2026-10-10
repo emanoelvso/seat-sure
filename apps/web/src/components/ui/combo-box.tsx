@@ -58,7 +58,7 @@ export function ComboBox({
                   setOpen(true);
                 }}
                 onFocus={() => setOpen(true)}
-                className={`w-full bg-transparent outline-none text-white placeholder:text-neutral-400 text-sm ${leftIcon ? "pl-12" : "pl-4"} pr-4 py-2`}
+                className={`w-full bg-transparent outline-none text-white placeholder:text-neutral-200 text-sm ${leftIcon ? "pl-12" : "pl-4"} pr-4 py-2`}
               />
             </div>
           </Popover.Anchor>
@@ -67,6 +67,7 @@ export function ComboBox({
 
       <Popover.Portal>
         <Popover.Content
+          aria-label={label ?? placeholder}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onInteractOutside={() => setOpen(false)}
           sideOffset={4}

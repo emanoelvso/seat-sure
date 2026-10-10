@@ -53,7 +53,7 @@ export function SelectBox({
               value={value}
               onChange={(e) => onChange?.(e.target.value)}
               placeholder={placeholder}
-              className={`w-full bg-transparent outline-none text-white placeholder:text-neutral-400 text-sm ${leftIcon ? "pl-12" : "pl-4"} pr-4 py-2`}
+              className={`w-full bg-transparent outline-none text-white placeholder:text-neutral-200 text-sm ${leftIcon ? "pl-12" : "pl-4"} pr-4 py-2`}
             />
           </div>
         ) : (
@@ -63,6 +63,7 @@ export function SelectBox({
             defaultValue={defaultValue}
           >
             <Select.Trigger
+              aria-label={label ?? placeholder}
               className={`flex items-center justify-between gap-3 w-full bg-transparent outline-none text-white placeholder:text-neutral-300 text-sm ${leftIcon ? "pl-12" : "pl-4"} pr-4 py-2 cursor-pointer data-[state=open]:border-primary`}
             >
               {leftIcon &&

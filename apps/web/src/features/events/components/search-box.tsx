@@ -62,7 +62,7 @@ export function SearchBox() {
               <span className="text-neutral-200 text-sm">Date</span>
             </div>
           </button>
-          <IconButton icon={MinimalisticMagnifierOutlineIcon} />
+          <IconButton icon={MinimalisticMagnifierOutlineIcon} label="Search" />
         </div>
       </div>
 
