@@ -348,6 +348,8 @@ export type Mutation = {
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
   logIn: LogInResult;
+  markAllNotificationsRead: NotificationCounts;
+  markNotificationRead: Notification;
   payOrder: CheckoutOrder;
   refreshSession: SessionTokens;
   removePaymentCard: Array<PaymentCard>;
@@ -379,6 +381,11 @@ export type MutationCreateEventArgs = {
 
 export type MutationLogInArgs = {
   input: LogInInput;
+};
+
+
+export type MutationMarkNotificationReadArgs = {
+  input: NotificationIdInput;
 };
 
 
@@ -436,6 +443,50 @@ export type MutationVerifyEmailArgs = {
   input: VerifyEmailInput;
 };
 
+export type MyNotificationsInput = {
+  page: Scalars['Int']['input'];
+  pageSize: Scalars['Int']['input'];
+  tab?: NotificationsTab;
+};
+
+export type Notification = {
+  __typename: 'Notification';
+  createdAt: Scalars['DateTime']['output'];
+  eventName: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  readAt: Maybe<Scalars['DateTime']['output']>;
+  type: NotificationType;
+};
+
+export type NotificationCounts = {
+  __typename: 'NotificationCounts';
+  all: Scalars['Int']['output'];
+  read: Scalars['Int']['output'];
+  unread: Scalars['Int']['output'];
+};
+
+export type NotificationIdInput = {
+  id: Scalars['String']['input'];
+};
+
+export type NotificationType =
+  | 'PAYMENT_UNSUCCESSFUL'
+  | 'PURCHASE_CONFIRMED'
+  | 'WELCOME';
+
+export type NotificationsPage = {
+  __typename: 'NotificationsPage';
+  counts: NotificationCounts;
+  items: Array<Notification>;
+  page: Scalars['Int']['output'];
+  totalPages: Scalars['Int']['output'];
+};
+
+export type NotificationsTab =
+  | 'ALL'
+  | 'READ'
+  | 'UNREAD';
+
 export type PasswordResetGrant = {
   __typename: 'PasswordResetGrant';
   expiresAt: Scalars['DateTime']['output'];
@@ -482,6 +533,7 @@ export type Query = {
   findUnavailableSeats: UnavailableSeats;
   getHomeSections: HomeSections;
   me: CurrentUser;
+  myNotifications: NotificationsPage;
   myPaymentCards: Array<PaymentCard>;
   myProfile: UserProfile;
 };
@@ -524,6 +576,11 @@ export type QueryFindTicketTypeSeatsArgs = {
 
 export type QueryFindUnavailableSeatsArgs = {
   FindUnavailableSeatsInput: FindUnavailableSeatsInput;
+};
+
+
+export type QueryMyNotificationsArgs = {
+  input: MyNotificationsInput;
 };
 
 export type RefreshSessionInput = {

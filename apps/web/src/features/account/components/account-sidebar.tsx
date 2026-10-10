@@ -78,14 +78,15 @@ function NavItem({
   );
 }
 
-// Account shell navigation (ACCT-01, ACCT-02, PROFILE-09, CARD-12): Tickets,
-// Personal info, Payment and Log out work; the unbuilt pages and "See plans" render disabled,
+// Account shell navigation (ACCT-01, ACCT-02, PROFILE-09, CARD-12, NOTIF-13): Tickets,
+// Personal info, Payment, Notification and Log out work; the unbuilt pages and "See plans" render disabled,
 // with no href.
 export function AccountSidebar({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const ticketsPath = paths.accountTickets.getHref();
   const personalInfoPath = paths.accountPersonalInfo.getHref();
   const paymentPath = paths.accountPayment.getHref();
+  const notificationsPath = paths.accountNotifications.getHref();
 
   return (
     <aside
@@ -123,7 +124,12 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
               />
             </li>
             <li>
-              <DisabledItem icon={BellIcon} label="Notification" />
+              <NavItem
+                href={notificationsPath}
+                current={isCurrentPath(pathname, notificationsPath)}
+                icon={BellIcon}
+                label="Notification"
+              />
             </li>
           </ul>
 
