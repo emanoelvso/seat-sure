@@ -211,6 +211,7 @@ The `-input.type.ts` suffix is a project convention; lint only checks `{kebab-ca
 6. **REST only when required**: Stripe webhooks, multipart uploads, `GET /health`. Everything else is GraphQL.
 7. **Authentication**: `AuthGuard` (`@sharedModules/auth/guard/auth.guard`) works for GraphQL and REST. It verifies the `Authorization: Bearer` access token (a JWT signed with `JWT_SECRET`) without a database call and stores `userId` and `sessionId` in `ClsService` ([ADR-016](../../../docs/adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)). The API never reads or sets cookies; the web server holds the tokens. Only Identity checks whether a session was revoked.
 8. **HTTP clients**: calls to external APIs live in `http/client/` and use the shared `HttpClient` (`@sharedModules/http-client/client/http.client`).
+9. **Card data**: only Billing touches a card, and only as a gateway token plus display data (brand, last 4, expiry, holder) and a keyed fingerprint (`BILLING_FINGERPRINT_SECRET`). The number and CVV are never stored, logged, put in an error message, or returned, and neither are the token and fingerprint ([ADR-020](../../../docs/adrs/020-saved-cards-as-gateway-tokens.md)). Other modules reach cards through `BillingApi` with a saved card id.
 
 ---
 

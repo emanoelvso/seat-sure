@@ -22,6 +22,9 @@ export const factory = (): Config => {
       jwtSecret: process.env.JWT_SECRET,
       codeSender: process.env.AUTH_CODE_SENDER || undefined,
     },
+    billing: {
+      fingerprintSecret: process.env.BILLING_FINGERPRINT_SECRET,
+    },
     app: {
       timeZone: process.env.APP_TIME_ZONE || undefined,
     },

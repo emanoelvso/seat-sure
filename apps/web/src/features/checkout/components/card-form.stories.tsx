@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn } from "storybook/test";
-import type { CardInput } from "@/features/checkout/utils/card";
+import type { CardInput } from "@/utils/card";
 import { CardForm } from "./card-form";
 
 const emptyCard: CardInput = { number: "", holder: "", expiry: "", cvv: "" };
@@ -198,5 +198,25 @@ export const ServerErrors: Story = {
       "aria-invalid",
       "true",
     );
+  },
+};
+
+// The footer slot renders under the fields and above "Review order" (the
+// checkout's save checkbox and "Use a saved card", CARD-07, CARD-09).
+export const WithFooter: Story = {
+  args: {
+    footer: <button type="button">Use a saved card</button>,
+  },
+  play: async ({ canvas }) => {
+    const footer = canvas.getByRole("button", { name: "Use a saved card" });
+    const review = canvas.getByRole("button", { name: "Review order" });
+    await expect(footer).toBeVisible();
+    await expect(
+      canvas.getByLabelText("CVV").compareDocumentPosition(footer) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await expect(
+      footer.compareDocumentPosition(review) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   },
 };

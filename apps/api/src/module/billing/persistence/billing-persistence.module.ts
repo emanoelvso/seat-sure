@@ -6,6 +6,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { BillingPaymentRepository } from './repository/billing-payment.repository';
+import { BillingPaymentCardRepository } from './repository/billing-payment-card.repository';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { BillingPaymentRepository } from './repository/billing-payment.repositor
       },
     }),
   ],
-  providers: [BillingPaymentRepository],
-  exports: [BillingPaymentRepository],
+  providers: [BillingPaymentRepository, BillingPaymentCardRepository],
+  exports: [BillingPaymentRepository, BillingPaymentCardRepository],
 })
 export class BillingPersistenceModule {}

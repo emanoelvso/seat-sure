@@ -1,8 +1,11 @@
 "use client";
 
+import { useId, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AltArrowLeftIcon,
+  AltArrowRightIcon,
   BellIcon,
   CupIcon,
   Logout2Icon,
@@ -18,11 +21,13 @@ import { Button } from "@/components/ui/button";
 import { paths } from "@/config/paths";
 
 const ITEM_LAYOUT_CLASS =
-  "flex h-10 items-center justify-center px-4 py-2 text-base";
+  "flex h-10 w-full items-center justify-center px-4 py-2 text-base @min-[200px]/sidebar:w-auto";
 const ITEM_CLASS = `${ITEM_LAYOUT_CLASS} text-white`;
 // Figma's gradient transform scales x by 7.43, so the fill fades out over
 // the first 1/7.43 (13.46%) of the item. The 4px left stroke sits inside.
-const ITEM_CURRENT_CLASS = `${ITEM_LAYOUT_CLASS} text-tint-400 bg-linear-to-r from-primary/60 to-neutral-800/0 to-[13.46%] shadow-[inset_4px_0_0_var(--color-tint-400)]`;
+// Minimize=on (4117:57200) has two overlaid fills, each 40% opaque with
+// 60%-alpha stops. The second transform spans 1.923% to 27.691%.
+const ITEM_CURRENT_CLASS = `${ITEM_LAYOUT_CLASS} text-tint-400 bg-linear-to-r from-primary/60 to-neutral-800/0 to-[13.46%] [box-shadow:inset_4px_0_0_var(--color-tint-400)] @max-[200px]/sidebar:[background-image:linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_0%,transparent_13.46%),linear-gradient(90deg,color-mix(in_srgb,var(--color-primary)_24%,transparent)_1.923%,transparent_27.691%)]`;
 
 // Card frame: #181319 fill, 1px inside stroke fading from #1D1A1E (58%) to
 // #B271C8 at the bottom, and the glow + stars exported from Figma. The
@@ -35,17 +40,9 @@ const UPGRADE_CARD_BACKGROUND = [
 
 function ItemContent({ icon: ItemIcon, label }: { icon: Icon; label: string }) {
   return (
-    <span className="flex w-40 items-center gap-2">
-      <ItemIcon size={24} />
-      {label}
-    </span>
-  );
-}
-
-function DisabledItem({ icon, label }: { icon: Icon; label: string }) {
-  return (
-    <span role="link" aria-disabled="true" className={ITEM_CLASS}>
-      <ItemContent icon={icon} label={label} />
+    <span className="flex items-center justify-center gap-2 @min-[200px]/sidebar:w-40 @min-[200px]/sidebar:justify-start">
+      <ItemIcon size={24} aria-hidden="true" />
+      <span className="hidden @min-[200px]/sidebar:inline">{label}</span>
     </span>
   );
 }
@@ -70,6 +67,8 @@ function NavItem({
   return (
     <Link
       href={href}
+      aria-label={label}
+      title={label}
       aria-current={current ? "page" : undefined}
       className={current ? ITEM_CURRENT_CLASS : ITEM_CLASS}
     >
@@ -78,25 +77,77 @@ function NavItem({
   );
 }
 
-// Account shell navigation (ACCT-01, ACCT-02, PROFILE-09): Tickets, Personal
-// info and Log out work; the unbuilt pages and "See plans" render disabled,
-// with no href.
+const EXPANDED_VIEWPORT = "(min-width: 1024px)";
+
+function subscribeToViewport(onChange: () => void) {
+  const viewport = window.matchMedia(EXPANDED_VIEWPORT);
+  viewport.addEventListener("change", onChange);
+  return () => viewport.removeEventListener("change", onChange);
+}
+
+function isExpandedViewport() {
+  return window.matchMedia(EXPANDED_VIEWPORT).matches;
+}
+
+function serverExpandedViewport() {
+  return null;
+}
+
+// Account shell navigation. SET-01 enables Setting; See plans stays disabled.
 export function AccountSidebar({ className = "" }: { className?: string }) {
   const pathname = usePathname();
+  const sidebarId = useId();
+  const autoExpanded = useSyncExternalStore(
+    subscribeToViewport,
+    isExpandedViewport,
+    serverExpandedViewport,
+  );
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  const expanded = manualExpanded ?? autoExpanded;
+  // CSS owns the default before hydration. Descendants query the rail's
+  // content width (96px minimized, 208px expanded), including manual choices.
+  const layoutClass = manualExpanded === null
+    ? "w-24 lg:w-60 lg:justify-between lg:gap-[46px] lg:px-4"
+    : manualExpanded
+      ? "w-60 justify-between gap-[46px] px-4"
+      : "w-24";
+
+  function renderToggle(isExpanded: boolean, responsiveClass = "") {
+    const toggleLabel = isExpanded ? "Collapse sidebar" : "Expand sidebar";
+    const ToggleIcon = isExpanded ? AltArrowLeftIcon : AltArrowRightIcon;
+    return (
+      <button
+        type="button"
+        aria-label={toggleLabel}
+        title={toggleLabel}
+        aria-expanded={isExpanded}
+        aria-controls={sidebarId}
+        onClick={() => setManualExpanded((previous) => !(previous ?? isExpanded))}
+        className={`absolute -top-4 -right-4 flex size-8 cursor-pointer items-center justify-center rounded-full border border-neutral-700 bg-neutral-900 text-white hover:border-primary hover:text-tint-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tint-400 ${responsiveClass}`}
+      >
+        <ToggleIcon size={18} aria-hidden="true" />
+      </button>
+    );
+  }
   const ticketsPath = paths.accountTickets.getHref();
   const personalInfoPath = paths.accountPersonalInfo.getHref();
+  const paymentPath = paths.accountPayment.getHref();
+  const notificationsPath = paths.accountNotifications.getHref();
+  const settingsPath = paths.accountSettings.getHref();
 
   return (
     <aside
-      className={`flex w-60 shrink-0 flex-col justify-between gap-[46px] overflow-hidden rounded-3xl bg-neutral-1000 p-4 ${className}`}
+      id={sidebarId}
+      className={`@container/sidebar relative flex shrink-0 flex-col rounded-3xl bg-neutral-1000 py-4 ${layoutClass} ${className}`}
     >
-      <div className="flex flex-col gap-8">
-        <div className="flex items-center justify-center gap-2 border-b border-neutral-700 pb-4">
-          <BrandLogo className="grow text-center text-[2.5rem] leading-[1.25]" />
+      <div className="flex w-full flex-col gap-[35px] @min-[200px]/sidebar:gap-8">
+        <div className="flex h-[60px] flex-col items-center justify-between @min-[200px]/sidebar:h-auto @min-[200px]/sidebar:flex-row @min-[200px]/sidebar:justify-center @min-[200px]/sidebar:gap-2 @min-[200px]/sidebar:border-b @min-[200px]/sidebar:border-neutral-700 @min-[200px]/sidebar:pb-4">
+          <BrandLogo className="text-center text-[29px] leading-[37px] @max-[200px]/sidebar:tracking-tighter @min-[200px]/sidebar:grow @min-[200px]/sidebar:text-[2.5rem] @min-[200px]/sidebar:leading-[1.25]" />
+          <hr className="w-16 border-neutral-700 @min-[200px]/sidebar:hidden" />
         </div>
 
-        <nav aria-label="Account" className="flex flex-col gap-6">
-          <ul className="flex flex-col items-start gap-2">
+        <nav aria-label="Account" className="flex flex-col gap-5 @min-[200px]/sidebar:gap-6">
+          <ul className="flex flex-col gap-2 @min-[200px]/sidebar:items-start">
             <li>
               <NavItem
                 href={ticketsPath}
@@ -114,23 +165,40 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
               />
             </li>
             <li>
-              <DisabledItem icon={WalletIcon} label="Payment" />
+              <NavItem
+                href={paymentPath}
+                current={isCurrentPath(pathname, paymentPath)}
+                icon={WalletIcon}
+                label="Payment"
+              />
             </li>
             <li>
-              <DisabledItem icon={BellIcon} label="Notification" />
+              <NavItem
+                href={notificationsPath}
+                current={isCurrentPath(pathname, notificationsPath)}
+                icon={BellIcon}
+                label="Notification"
+              />
             </li>
           </ul>
 
-          <div className="flex flex-col gap-4">
-            <hr className="border-neutral-700" />
-            <ul className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-[18px] pt-[3px] @min-[200px]/sidebar:items-stretch @min-[200px]/sidebar:gap-4 @min-[200px]/sidebar:pt-0">
+            <hr className="w-16 border-neutral-700 @min-[200px]/sidebar:w-auto" />
+            <ul className="flex w-full flex-col gap-2 @min-[200px]/sidebar:items-start">
               <li>
-                <DisabledItem icon={SettingsIcon} label="Setting" />
+                <NavItem
+                  href={settingsPath}
+                  current={isCurrentPath(pathname, settingsPath)}
+                  icon={SettingsIcon}
+                  label="Setting"
+                />
               </li>
               <li>
                 <form action="/api/auth/logout" method="post">
                   <button
                     type="submit"
+                    aria-label="Log out"
+                    title="Log out"
                     className={`${ITEM_CLASS} cursor-pointer`}
                   >
                     <ItemContent icon={Logout2Icon} label="Log out" />
@@ -143,7 +211,7 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
       </div>
 
       <div
-        className="flex h-[149px] flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-transparent p-[15px]"
+        className="hidden h-[149px] flex-col items-center justify-between gap-4 overflow-hidden rounded-2xl border border-transparent p-[15px] @min-[200px]/sidebar:flex"
         style={{ background: UPGRADE_CARD_BACKGROUND }}
       >
         <div className="flex w-full flex-col gap-2">
@@ -168,6 +236,12 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
           See plans
         </Button>
       </div>
+      {expanded === null ? (
+        <>
+          {renderToggle(false, "@min-[200px]/sidebar:hidden")}
+          {renderToggle(true, "hidden @min-[200px]/sidebar:flex")}
+        </>
+      ) : renderToggle(expanded)}
     </aside>
   );
 }

@@ -115,6 +115,10 @@ export const maskedNumber = (value: string): string => {
   return `•••• •••• •••• ${last4}`;
 };
 
+// A saved card's expiry month and 4-digit year as "MM/YY" (CARD-01 AC 4)
+export const formatExpiry = (expMonth: number, expYear: number): string =>
+  `${String(expMonth).padStart(2, "0")}/${String(expYear % 100).padStart(2, "0")}`;
+
 // Formats the expiry input as the user types, inserting the "/" after the
 // month (PAY-29 style grouping applied to MM/YY).
 export const formatExpiryInput = (value: string): string => {

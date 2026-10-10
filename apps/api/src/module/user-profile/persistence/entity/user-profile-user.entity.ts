@@ -33,4 +33,22 @@ export class UserProfileUser extends DefaultEntity<UserProfileUser> {
 
   @Column({ type: 'varchar', length: 10, nullable: true })
   zipCode?: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  eventReminders: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  exclusiveOffers: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  ticketAvailability: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  emailNotifications: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  pushNotifications: boolean;
+
+  @Column({ type: 'varchar', length: 5, default: 'en' })
+  language: 'en' | 'pt-BR';
 }
