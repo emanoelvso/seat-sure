@@ -34,7 +34,7 @@ export function TicketTotals({
     <dl className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <dt className="text-neutral-100">Price</dt>
-        <dd className="text-primary">
+        <dd className="text-tint-500">
           <span className="text-2xl font-bold">
             {formatPrice(priceCents, currency)}
           </span>

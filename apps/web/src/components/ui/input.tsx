@@ -25,10 +25,10 @@ const fieldsetVariants = cva(
 const supportingTextVariants = cva("flex justify-between text-xs", {
   variants: {
     variant: {
-      default: "text-neutral-400",
+      default: "text-neutral-200",
       success: "text-success-400",
-      error: "text-error-300",
-      disabled: "text-neutral-400",
+      error: "text-error-400",
+      disabled: "text-neutral-200",
     },
   },
   defaultVariants: { variant: "default" },

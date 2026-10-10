@@ -185,7 +185,7 @@ export function SeatMap({
           }}
           className="pointer-events-none absolute z-10 flex -translate-x-1/2 translate-y-4 items-center gap-3 whitespace-nowrap rounded-lg bg-white px-4 py-2 text-neutral-1000 shadow-lg"
         >
-          <CupIcon size={24} aria-hidden="true" className="text-primary" />
+          <CupIcon size={24} aria-hidden="true" className="text-tint-500" />
           <span className="flex flex-col">
             <span className="text-sm">{`${tooltip.offer.name} seat`}</span>
             <span className="text-lg font-bold">

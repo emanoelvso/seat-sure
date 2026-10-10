@@ -8,7 +8,7 @@ export type SeatState = "available" | "unavailable" | "picked";
 const seatFill: Record<SeatState, string> = {
   available: "fill-white",
   unavailable: "fill-neutral-300",
-  picked: "fill-primary",
+  picked: "fill-tint-500",
 };
 
 export function SeatGlyph({ state }: { state: SeatState }) {

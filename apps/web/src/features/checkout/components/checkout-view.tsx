@@ -209,7 +209,7 @@ export function CheckoutView({
               <p role="alert" className="text-sm text-error-300">
                 Your seats were just taken. You haven&apos;t been charged.
               </p>
-              <Link href={seatsHref} className="text-primary underline">
+              <Link href={seatsHref} className="text-tint-400 underline">
                 Choose seats
               </Link>
             </div>

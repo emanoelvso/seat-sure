@@ -59,6 +59,7 @@ export function PriceRangeFilter({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
+          aria-label="Price range"
           align="start"
           sideOffset={8}
           className="z-50 rounded-lg border border-neutral-500 bg-neutral-800 p-4 shadow-lg"

@@ -304,6 +304,11 @@ const loaded = (canvas: Canvas) =>
   canvas.findByRole("heading", { level: 1, name: "Adele" });
 
 export const QuantityOptions: Story = {
+  // Radix Select aria-hides the page while open but leaves its links and
+  // buttons tabbable, which axe reports as aria-hidden-focus.
+  parameters: {
+    a11y: { config: { rules: [{ id: "aria-hidden-focus", enabled: false }] } },
+  },
   args: payload(),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);
@@ -518,6 +523,11 @@ export const PriceFilterClearsSelection: Story = {
 };
 
 export const NoTicketTypes: Story = {
+  // Radix Select aria-hides the page while open but leaves its links and
+  // buttons tabbable, which axe reports as aria-hidden-focus.
+  parameters: {
+    a11y: { config: { rules: [{ id: "aria-hidden-focus", enabled: false }] } },
+  },
   args: payload({ ticketTypes: [] }),
   play: async ({ canvas, userEvent }) => {
     await loaded(canvas);

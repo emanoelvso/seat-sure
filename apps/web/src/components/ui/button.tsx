@@ -10,9 +10,9 @@ export const buttonVariants = cva(
         primary:
           "bg-primary hover:bg-tint-400 disabled:bg-neutral-900 text-white active:bg-tint-600",
         outline:
-          "border border-primary bg-background text-primary hover:border-tint-400 hover:text-tint-400 active:border-tint-600 active:text-tint-600 disabled:border-neutral-800 disabled:text-neutral-800",
+          "border border-primary bg-background text-tint-500 hover:border-tint-400 hover:text-tint-400 active:border-tint-600 active:text-tint-600 disabled:border-neutral-800 disabled:text-neutral-800",
         ghost:
-          "bg-background text-primary hover:text-tint-400 active:text-tint-600 disabled:text-neutral-800",
+          "bg-background text-tint-500 hover:text-tint-400 active:text-tint-600 disabled:text-neutral-800",
       },
       size: {
         sm: "h-8 px-3",

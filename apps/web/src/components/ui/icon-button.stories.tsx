@@ -15,5 +15,6 @@ type Story = StoryObj<typeof IconButton>;
 export const Default: Story = {
   args: {
     icon: MinimalisticMagnifierOutlineIcon,
+    label: "Search",
   },
 } satisfies Story;

@@ -138,7 +138,7 @@ export function CodeVerificationForm({
     <div className="flex flex-col items-center gap-6">
       <div className="text-center">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <p className="mt-2 text-sm text-neutral-300">{description}</p>
+        <p className="mt-2 text-sm text-neutral-200">{description}</p>
       </div>
 
       <form
@@ -156,7 +156,7 @@ export function CodeVerificationForm({
         )}
         {resendError && <p className="text-sm text-error-400">{resendError}</p>}
 
-        <div className="flex w-full items-center justify-between text-sm text-neutral-300">
+        <div className="flex w-full items-center justify-between text-sm text-neutral-200">
           <span>Didn&apos;t receive the code?</span>
           <div className="flex items-center gap-2">
             <span>{formatCountdown(remainingMs)}</span>
@@ -164,7 +164,7 @@ export function CodeVerificationForm({
               type="button"
               disabled={!resendEnabled || isResending}
               onClick={handleResend}
-              className="text-primary disabled:text-neutral-500"
+              className="text-tint-500 disabled:text-neutral-500"
             >
               Resend
             </button>

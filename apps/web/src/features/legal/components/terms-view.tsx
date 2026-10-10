@@ -91,7 +91,7 @@ export function TermsView() {
             support team at{" "}
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="text-primary hover:text-tint-400"
+              className="text-tint-500 hover:text-tint-400"
             >
               {SUPPORT_EMAIL}
             </a>

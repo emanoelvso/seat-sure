@@ -23,7 +23,7 @@ const TAB_CLASS =
 // Figma's gradient transform puts the primary stop 21.25% below the tab and
 // the transparent one at 75.03% of its height, from the bottom; the fill is
 // at 40% opacity.
-const TAB_CURRENT_CLASS = `${TAB_CLASS} text-primary bg-[linear-gradient(0deg,rgb(193_79_230/0.4)_-21.25%,rgb(27_27_27/0)_75.03%)] shadow-[inset_0_-1px_0_var(--color-primary)]`;
+const TAB_CURRENT_CLASS = `${TAB_CLASS} text-tint-500 bg-[linear-gradient(0deg,rgb(193_79_230/0.4)_-21.25%,rgb(27_27_27/0)_75.03%)] shadow-[inset_0_-1px_0_var(--color-primary)]`;
 // SPEC_DEVIATION: Figma colours the other tabs #454545 (neutral-300), below
 // WCAG AA on the card. Reason: neutral-200 passes the a11y check.
 const TAB_OTHER_CLASS = `${TAB_CLASS} rounded-lg text-neutral-200 hover:text-white`;

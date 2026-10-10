@@ -161,7 +161,7 @@ function SeatTooltip({
         <span>{`${ticketType.name} seat`}</span>
       </span>
       <span className="flex flex-col items-center gap-2 px-2 pb-3 pt-4">
-        <span className="text-2xl font-bold text-primary">
+        <span className="text-2xl font-bold text-tint-500">
           {formatPrice(ticketType.priceCents, ticketType.currency)}
         </span>
         <span className="flex w-full items-center justify-between">
