@@ -68,7 +68,7 @@ export function Pagination({ page, totalPages, getHref }: PaginationProps) {
                     href={getHref(pageNumber)}
                     aria-current={current ? "page" : undefined}
                     className={`flex size-8 items-center justify-center rounded-full text-sm ${
-                      current ? "bg-primary text-white" : "text-neutral-300"
+                      current ? "bg-primary text-white" : "text-neutral-200"
                     }`}
                   >
                     {pageNumber}
