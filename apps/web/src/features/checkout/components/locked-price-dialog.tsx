@@ -85,7 +85,7 @@ export function LockedPriceDialog({
             <p role="alert" className="text-sm text-error-400">
               Some of your seats were just taken. Pick your seats again.
             </p>
-            <Link href={seatsHref} className="text-tint-500 underline">
+            <Link href={seatsHref} className="text-tint-400 underline">
               Choose seats
             </Link>
           </div>

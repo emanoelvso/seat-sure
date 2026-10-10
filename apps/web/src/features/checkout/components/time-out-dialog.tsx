@@ -44,7 +44,7 @@ export function TimeOutDialog({ open, seatsHref }: TimeOutDialogProps) {
         </p>
         <Link
           href={seatsHref}
-          className="text-tint-500 underline"
+          className="text-tint-400 underline"
         >
           Choose seats
         </Link>

@@ -41,6 +41,12 @@ describe("shared colour tokens", () => {
     },
   );
 
+  it("renders tint-400 link text on neutral-700 dialogs at 4.5:1 or more", () => {
+    expect(contrast(token("tint-400"), token("neutral-700"))).toBeGreaterThanOrEqual(
+      WCAG_AA,
+    );
+  });
+
   it.each(["neutral-700", "neutral-800"])(
     "renders error-400 text on %s at 4.5:1 or more",
     (surface) => {
