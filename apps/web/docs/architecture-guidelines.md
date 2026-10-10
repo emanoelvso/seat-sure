@@ -106,8 +106,10 @@ src/features/tickets/
 | `testimonials` | Testimonial cards and carousel                         | Social Proof         |
 | `faq`          | FAQ section                                            | —                    |
 | `auth`         | Login, signup, code verification, password reset, session cookies | Identity & Access, User Profile |
+| `account`      | Account area: my tickets and order detail, personal info, saved payment cards, notifications, notification and language settings, sidebar | Ticketing, User Profile, Billing, Notifications |
+| `checkout`     | Checkout steps, payment form, saved card picker, order confirmation | Ticketing, Billing |
 
-Add features as new product areas appear (checkout, auth, account). Features are organized by UI area; they usually line up with a backend bounded context but don't have to.
+Add features as new product areas appear. Card utilities (`src/utils/card.ts`, `card-schema.ts`) and `CardPreview` live in the shared folders because both `account` and `checkout` use them. Features are organized by UI area; they usually line up with a backend bounded context but don't have to.
 
 **Rules:**
 

@@ -42,14 +42,6 @@ function ItemContent({ icon: ItemIcon, label }: { icon: Icon; label: string }) {
   );
 }
 
-function DisabledItem({ icon, label }: { icon: Icon; label: string }) {
-  return (
-    <span role="link" aria-disabled="true" className={ITEM_CLASS}>
-      <ItemContent icon={icon} label={label} />
-    </span>
-  );
-}
-
 // An item is current on its own path and on anything below it (an order
 // detail keeps "Tickets" current).
 function isCurrentPath(pathname: string | null, itemPath: string) {
@@ -78,15 +70,14 @@ function NavItem({
   );
 }
 
-// Account shell navigation (ACCT-01, ACCT-02, PROFILE-09, CARD-12, NOTIF-13): Tickets,
-// Personal info, Payment, Notification and Log out work; the unbuilt pages and "See plans" render disabled,
-// with no href.
+// Account shell navigation. SET-01 enables Setting; See plans stays disabled.
 export function AccountSidebar({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const ticketsPath = paths.accountTickets.getHref();
   const personalInfoPath = paths.accountPersonalInfo.getHref();
   const paymentPath = paths.accountPayment.getHref();
   const notificationsPath = paths.accountNotifications.getHref();
+  const settingsPath = paths.accountSettings.getHref();
 
   return (
     <aside
@@ -137,7 +128,12 @@ export function AccountSidebar({ className = "" }: { className?: string }) {
             <hr className="border-neutral-700" />
             <ul className="flex flex-col items-start gap-2">
               <li>
-                <DisabledItem icon={SettingsIcon} label="Setting" />
+                <NavItem
+                  href={settingsPath}
+                  current={isCurrentPath(pathname, settingsPath)}
+                  icon={SettingsIcon}
+                  label="Setting"
+                />
               </li>
               <li>
                 <form action="/api/auth/logout" method="post">

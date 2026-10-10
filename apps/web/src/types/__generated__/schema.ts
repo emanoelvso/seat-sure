@@ -94,6 +94,16 @@ export type AccountOrdersTab =
   | 'COMPLETED'
   | 'PENDING';
 
+export type AccountSettings = {
+  __typename: 'AccountSettings';
+  emailNotifications: Scalars['Boolean']['output'];
+  eventReminders: Scalars['Boolean']['output'];
+  exclusiveOffers: Scalars['Boolean']['output'];
+  language: Scalars['String']['output'];
+  pushNotifications: Scalars['Boolean']['output'];
+  ticketAvailability: Scalars['Boolean']['output'];
+};
+
 export type AddPaymentCardInput = {
   cvv: Scalars['String']['input'];
   expiry: Scalars['String']['input'];
@@ -360,6 +370,7 @@ export type Mutation = {
   signUp: SignUpResult;
   startCheckout: CheckoutOrder;
   updateMyProfile: UserProfile;
+  updateMySettings: AccountSettings;
   verifyEmail: SessionTokens;
 };
 
@@ -436,6 +447,11 @@ export type MutationStartCheckoutArgs = {
 
 export type MutationUpdateMyProfileArgs = {
   input: UpdateMyProfileInput;
+};
+
+
+export type MutationUpdateMySettingsArgs = {
+  input: UpdateMySettingsInput;
 };
 
 
@@ -536,6 +552,7 @@ export type Query = {
   myNotifications: NotificationsPage;
   myPaymentCards: Array<PaymentCard>;
   myProfile: UserProfile;
+  mySettings: AccountSettings;
 };
 
 
@@ -720,6 +737,15 @@ export type UpdateMyProfileInput = {
   phoneNumber: Scalars['String']['input'];
   state: Scalars['String']['input'];
   zipCode: Scalars['String']['input'];
+};
+
+export type UpdateMySettingsInput = {
+  emailNotifications?: InputMaybe<Scalars['Boolean']['input']>;
+  eventReminders?: InputMaybe<Scalars['Boolean']['input']>;
+  exclusiveOffers?: InputMaybe<Scalars['Boolean']['input']>;
+  language?: InputMaybe<Scalars['String']['input']>;
+  pushNotifications?: InputMaybe<Scalars['Boolean']['input']>;
+  ticketAvailability?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type UserProfile = {
