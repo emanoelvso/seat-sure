@@ -13,6 +13,7 @@ import type { CardInput } from "@/utils/card";
 import { paths } from "@/config/paths";
 
 const DECLINED_ERROR = "This card was declined. Try another card.";
+const LIMITED_ERROR = "Too many card attempts. Try again in 15 minutes.";
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 
 export type AddPaymentCardState =
@@ -64,6 +65,10 @@ export async function addPaymentCardAction(
       }
       if (error.reason === "CARD_DECLINED") {
         return { status: "error", fieldErrors: {}, formError: DECLINED_ERROR };
+      }
+      // CARDABUSE-03 AC 1: locked after too many failed attempts.
+      if (error.reason === "CARD_ATTEMPTS_LIMITED") {
+        return { status: "error", fieldErrors: {}, formError: LIMITED_ERROR };
       }
     }
     return { status: "error", fieldErrors: {}, formError: GENERIC_ERROR };

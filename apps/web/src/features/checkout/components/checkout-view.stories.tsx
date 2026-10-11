@@ -187,6 +187,27 @@ export const Pay: Story = {
   },
 };
 
+// CARDABUSE-03 AC 2: a locked user stays on Review with the attempts-limit
+// message, the countdown keeps running, and the order is not marked timed out.
+export const AttemptsLimitedResult: Story = {
+  args: {
+    payAction: fn<PayAction>(async () => ({
+      reason: "CARD_ATTEMPTS_LIMITED",
+    })),
+  },
+  play: async ({ canvas, userEvent }) => {
+    await goToReview(canvas, userEvent);
+    await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Too many card attempts. Try again in 15 minutes.",
+    );
+    await expect(canvas.getByRole("button", { name: "Pay" })).toBeEnabled();
+    await expect(canvas.getByRole("timer")).toBeVisible();
+    await expect(canvas.queryByRole("dialog")).toBeNull();
+  },
+};
+
 // PAY-52: INVALID_CARD returns to Payment and shows the server's field error.
 export const InvalidCardResult: Story = {
   args: {

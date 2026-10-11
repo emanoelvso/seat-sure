@@ -78,6 +78,19 @@ export const Declined: Story = {
   },
 };
 
+// CARDABUSE-03 AC 2: a locked user sees the attempts-limit copy and both
+// buttons stay enabled.
+export const AttemptsLimited: Story = {
+  args: { error: "CARD_ATTEMPTS_LIMITED" },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "Too many card attempts. Try again in 15 minutes.",
+    );
+    await expect(canvas.getByRole("button", { name: "Back" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "Pay" })).toBeEnabled();
+  },
+};
+
 // PAY-53: any other failure shows the generic copy.
 export const GenericError: Story = {
   args: { error: "GENERIC" },

@@ -14,15 +14,17 @@ type PayOrderReason =
   | "ORDER_EXPIRED"
   | "INVALID_CARD"
   | "CARD_NOT_FOUND"
+  | "CARD_ATTEMPTS_LIMITED"
   | "GENERIC";
 
 // The reasons the API can pass straight through as-is (PAY-50, PAY-51,
-// PAY-61, CARD-08 AC 9). Anything else becomes GENERIC (PAY-53).
+// PAY-61, CARD-08 AC 9, CARDABUSE-03 AC 2). Anything else becomes GENERIC (PAY-53).
 const PASSTHROUGH_REASONS = new Set<string>([
   "CARD_DECLINED",
   "SEATS_UNAVAILABLE",
   "ORDER_EXPIRED",
   "CARD_NOT_FOUND",
+  "CARD_ATTEMPTS_LIMITED",
 ]);
 
 export interface PayOrderState {
