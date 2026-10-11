@@ -73,3 +73,100 @@ Chosen from the baseline evidence above, one decision per lever. These decisions
 Known risk, not changed: the datasource factories leave the pool unset (`pg` default `max = 10`, no acquire timeout; see `apps/api/src/module/ticketing/persistence/typeorm-datasource.factory.ts`). Pool tuning is revisited in the hardened run (T24) only if that run shows pool waits.
 
 Consequences for the task list: the pool tasks (T14 to T20) and the claim strategy task (T21) are skipped; the admission limiter tasks (T22, T23) apply.
+
+## After (hardened API)
+
+The admission limiter (`9f123f9`, applied to checkout in `1a59927`) is the only lever applied. The spike harness counts `BUSY` apart from errors since `9c20bfb`. The hardened API did not meet the spec thresholds in any run: hold and pay pass at low limits, discovery p95 and the unexpected-error rate always fail.
+
+### Setup
+
+| Item | Value |
+| ---- | ----- |
+| Date | 2026-10-11, runs between 18:11 and 18:32 UTC |
+| Machine | Apple M1 Pro, 8 cores, 16 GB RAM, macOS 26.6.2; Docker VM with 8 CPUs and 8.2 GB RAM |
+| API commit | `9c20bfb8399063e4fab6bd1b56721184d388e444` (`git rev-parse HEAD`, `dist` rebuilt from it before every run) |
+| k6 | v2.3.0 (grafana/k6 image, linux/arm64) |
+| Database | `seat-sure-load` dropped, recreated and migrated for all six modules before every spike |
+| Scenario | Same as the baseline: 2,000 VUs, 10 s ramp, 60 s hold, 500 seats |
+| Admission limit | `ADMISSION_MAX_CONCURRENT` set in the API environment per run (the default of 100 applies when it is unset); no code change between runs |
+
+### Results per run
+
+Each cell is p50 / p95 / p99 in ms. Requests per second, unexpected-error rate and busy rate are per operation. Busy rate is `busy_responses{op}` divided by `http_reqs{op}`. Source: `summary.json` of each directory under `apps/api/load/results/`.
+
+Run A, limit 100 (default), `spike-2026-10-11T18-11-08-278Z`:
+
+| Operation | Requests/s | p50 / p95 / p99 | Unexpected-error rate | Busy rate |
+| --------- | ---------- | --------------- | --------------------- | --------- |
+| discovery | 447.3 | 817 / 9,350 / 11,188 | 2.54% (879) | n/a |
+| hold | 248.4 | 18 / 3,053 / 5,083 | 0% | 85.5% (16,463) |
+| pay | 6.4 | 22 / 2,921 / 3,179 | 0% | 61.8% (304) |
+| all | 702.1 | | 1.62% (879) | |
+
+Run B, limit 20, `spike-2026-10-11T18-21-36-614Z`:
+
+| Operation | Requests/s | p50 / p95 / p99 | Unexpected-error rate | Busy rate |
+| --------- | ---------- | --------------- | --------------------- | --------- |
+| discovery | 637.6 | 486 / 3,803 / 4,244 | 2.46% (1,199) | n/a |
+| hold | 325.8 | 14 / 110 / 2,246 | 0% | 96.5% (23,977) |
+| pay | 4.1 | 16 / 125 / 2,016 | 0% | 86.2% (269) |
+| all | 967.5 | | 1.62% (1,199) | |
+
+Run C, limit 50, `spike-2026-10-11T18-25-01-887Z`:
+
+| Operation | Requests/s | p50 / p95 / p99 | Unexpected-error rate | Busy rate |
+| --------- | ---------- | --------------- | --------------------- | --------- |
+| discovery | 494.0 | 1,492 / 6,334 / 8,810 | 1.79% (680) | n/a |
+| hold | 262.2 | 17 / 1,411 / 3,671 | 0% | 91.1% (18,351) |
+| pay | 5.9 | 17 / 1,182 / 1,389 | 0% | 65.2% (294) |
+| all | 762.1 | | 1.16% (680) | |
+
+Run D, limit 10, `spike-2026-10-11T18-28-07-676Z`:
+
+| Operation | Requests/s | p50 / p95 / p99 | Unexpected-error rate | Busy rate |
+| --------- | ---------- | --------------- | --------------------- | --------- |
+| discovery | 637.5 | 479 / 3,740 / 3,995 | 1.80% (869) | n/a |
+| hold | 321.8 | 14 / 85 / 2,031 | 0% | 98.1% (23,952) |
+| pay | 2.9 | 13 / 151 / 393 | 0% | 83.8% (186) |
+| all | 962.2 | | 1.19% (869) | |
+
+Baseline for comparison (unmodified API, no limiter): hold p95 8,372 ms, pay p95 20,601 ms, discovery p95 7,806 ms, 2.31% unexpected.
+
+### Thresholds
+
+| Threshold | A (100) | B (20) | C (50) | D (10) |
+| --------- | ------- | ------ | ------ | ------ |
+| hold p95 < 800 ms | 3,053 FAIL | 110 pass | 1,411 FAIL | 85 pass |
+| pay p95 < 1,500 ms | 2,921 FAIL | 125 pass | 1,182 pass | 151 pass |
+| discovery p95 < 500 ms | 9,350 FAIL | 3,803 FAIL | 6,334 FAIL | 3,740 FAIL |
+| unexpected errors < 1% | 1.62% FAIL | 1.62% FAIL | 1.16% FAIL | 1.19% FAIL |
+
+k6 exited with code 99 in all four runs.
+
+### Oversell and contention
+
+- Oversell check: passed in all four runs (`oversell.json`): no duplicate tickets or holds; sold tickets equal paid seats (188, 43, 157 and 36 orders paid respectively, out of 500 seats).
+- Contention (200 VUs, one seat), default limit 100, `contention-2026-10-11T18-31-09-824Z`: exactly 1 winner and no 5xx, but only 123 `SEATS_UNAVAILABLE` and 76 `BUSY`. k6 exited 99 because the scenario expects 199 `SEATS_UNAVAILABLE` and counts `BUSY` as unexpected. With 200 buyers arriving at once and a limit of 100, shedding is the designed behaviour; the scenario was not changed.
+- Contention with `ADMISSION_MAX_CONCURRENT=200` (limit above the 200 callers), `contention-2026-10-11T18-31-44-731Z`: 1 winner, 199 `SEATS_UNAVAILABLE`, 0 unexpected, k6 exit 0, oversell ok.
+
+### Fix-run loop
+
+Run A is the hardened API as shipped (limit 100). Its failure and the three env-only changes that followed:
+
+| Loop | Change | Result |
+| ---- | ------ | ------ |
+| 1 | `ADMISSION_MAX_CONCURRENT=20` | Hold p95 8,372 -> 110 ms and pay p95 -> 125 ms pass. Discovery p95 3,803 ms and 1.62% unexpected still fail. |
+| 2 | `ADMISSION_MAX_CONCURRENT=50` | Hold p95 1,411 ms fails again; discovery 6,334 ms. Worse than 20, so the limit was not raised. |
+| 3 | `ADMISSION_MAX_CONCURRENT=10` | Hold and pay pass; discovery p95 3,740 ms and 1.19% unexpected still fail. No gain over 20, and fewer orders paid (36 against 43). |
+
+The loop stopped after three iterations with discovery and the unexpected-error rate still failing.
+
+### Cause of the remaining failures
+
+- The Node process is still CPU-bound. In every run `apiCpuPercent` averaged 100 to 104% over the 71 to 72 loaded seconds of `resources.jsonl` (one saturated core of eight); the sampler shows no idle gap.
+- Discovery (`findEventTickets`, `findUnavailableSeats`) is not behind the limiter and is now the bulk of the work: 34,646 to 48,648 requests against 222 to 492 pay requests. Requests per second rose from 315 in the baseline to 702 to 967 because shed buyers (`BUSY` hold) give up the iteration and browse again after 1 to 2 s, so the limiter converts expensive checkout work into more discovery calls.
+- All unexpected errors are discovery responses (`unexpected_errors{op:discovery}` = 680 to 1,199; hold and pay show 0). As in the baseline they look like connection-level failures during the 2,000-VU ramp: `http_req_connecting` max 5.9 s in run B. `http_req_failed` equals the discovery count. The error text is not exported.
+- Postgres is not the limit: connections peaked at 37 to 42 of 100 and `waitingLocks` was 0 in every sample of every run (`resources.jsonl`), so the claim lever stays unnecessary.
+- Busy responses were high: 85.5% of holds at limit 100 and 96.5% at limit 20. Hold p95 passes only when the limit is low enough that few holds do real work, which also means few orders are paid (43 of 500 seats in 71 s at limit 20).
+- Pool tuning was not applied: the process is CPU-bound at about 100% and the shed holds and pays answer in 13 to 18 ms at the median, so a larger pool cannot lower discovery latency. Per-pool wait metrics still do not exist, so the pool risk from the Before section is unchanged.
+- The levers in scope (claim, pool, admission on checkout) do not reduce discovery cost. Meeting the discovery and error thresholds needs something outside them: more than one API process, cheaper or cached discovery queries, or admission applied to discovery with the scenario accepting `BUSY` there. That choice is left to the decision on this evidence.
