@@ -4,6 +4,7 @@
 export function SpainIcon() {
   return (
     <svg
+      data-country="es"
       width="24"
       height="16"
       viewBox="0 0 24 16"

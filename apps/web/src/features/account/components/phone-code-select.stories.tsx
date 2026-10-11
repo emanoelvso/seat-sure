@@ -53,8 +53,12 @@ export const Options: Story = {
       "+34",
       "+33",
     ]);
-    for (const option of options) {
-      await expect(option.querySelector("svg")).not.toBeNull();
+    const expectedFlags = ["us", "de", "es", "fr"];
+    for (const [index, option] of options.entries()) {
+      await expect(option.querySelector("svg")).toHaveAttribute(
+        "data-country",
+        expectedFlags[index],
+      );
     }
 
     await userEvent.keyboard("{Escape}");
@@ -74,7 +78,10 @@ export const PickClosesAndReports: Story = {
 
     await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
     await expect(trigger).toHaveTextContent("+49");
-    await expect(trigger.querySelector("svg")).not.toBeNull();
+    await expect(trigger.querySelector("svg")).toHaveAttribute(
+      "data-country",
+      "de",
+    );
     await expect(onChange).toHaveBeenCalledTimes(1);
     await expect(onChange).toHaveBeenCalledWith("+49");
   },
