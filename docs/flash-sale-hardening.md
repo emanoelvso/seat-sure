@@ -59,3 +59,17 @@ Authentication: the sessions were created minutes before the spike, inside the 1
 ### Prior run
 
 A first run on the same API code (`apps/api/load/results/spike-2026-10-11T17-45-55-996Z/`, commit `2dfceaa`) had the same outcome: all four thresholds failed (hold p95 9,427 ms, pay p95 20,699 ms, discovery p95 7,485 ms, 7.11% unexpected), oversell passed, API CPU 84 to 115%. Its summary had no p99 or per-operation error rates, so the harness was fixed (`9c5e75d`) and the spike repeated. The numbers above are the baseline.
+
+## Fix levers
+
+Chosen from the baseline evidence above, one decision per lever. These decisions are final for the hardening work; the hardened run revisits one only if its own evidence says so.
+
+| Lever | Decision | Evidence |
+| ----- | -------- | -------- |
+| Locking and claim strategy | Not needed | `waitingLocks` was 0 in all 92 samples; hold had 0 unexpected errors; the oversell check passed; the contention scenario yields exactly 1 winner. Nothing waited on a row lock, so reordering or batching seat claims has nothing to fix. |
+| Pool tuning | Not implicated by the evidence (inconclusive) | Postgres connections peaked at 45 of 100 and the run has no pool-wait metrics. The process was CPU-bound (`apiCpuPercent` averaged 107%, queueing medians of 7 to 13 s), which explains the latency without a pool limit. |
+| Queueing and admission control | Apply | One Node process saturated about one core and requests queued behind it (hold p50 7.1 s, pay p50 12.8 s) while Postgres stayed idle. Bounding the concurrent `startCheckout` and `payOrder` work and answering the excess with a retryable `BUSY` business error (HTTP 422) sheds load instead of letting every request wait. |
+
+Known risk, not changed: the datasource factories leave the pool unset (`pg` default `max = 10`, no acquire timeout; see `apps/api/src/module/ticketing/persistence/typeorm-datasource.factory.ts`). Pool tuning is revisited in the hardened run (T24) only if that run shows pool waits.
+
+Consequences for the task list: the pool tasks (T14 to T20) and the claim strategy task (T21) are skipped; the admission limiter tasks (T22, T23) apply.
