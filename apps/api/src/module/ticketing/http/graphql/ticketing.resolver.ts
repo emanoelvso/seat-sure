@@ -1,5 +1,6 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { AdmissionLimiter } from '@sharedModules/admission/service/admission-limiter.service';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 import { AccountOrdersService } from '@ticketingModule/core/service/account-orders.service';
 import { CheckoutService } from '@ticketingModule/core/service/checkout.service';
@@ -30,6 +31,7 @@ export class TicketingResolver {
     private readonly orderPaymentService: OrderPaymentService,
     private readonly accountOrdersService: AccountOrdersService,
     private readonly clsService: ClsService,
+    private readonly admissionLimiter: AdmissionLimiter,
   ) {}
 
   @Query(() => UnavailableSeats)
@@ -44,13 +46,16 @@ export class TicketingResolver {
   async startCheckout(
     @Args('input') { eventId, ticketTypeId, seatIds }: StartCheckoutInput,
   ): Promise<CheckoutOrder> {
-    return this.checkoutService.start({
-      userId: this.clsService.get<string>('userId'),
-      eventId,
-      ticketTypeId,
-      seatIds,
-      now: new Date(),
-    });
+    const userId = this.clsService.get<string>('userId');
+    return this.admissionLimiter.run(() =>
+      this.checkoutService.start({
+        userId,
+        eventId,
+        ticketTypeId,
+        seatIds,
+        now: new Date(),
+      }),
+    );
   }
 
   @UseGuards(AuthGuard)
@@ -70,13 +75,16 @@ export class TicketingResolver {
   async payOrder(
     @Args('input') { orderId, card, savedCardId, saveCard }: PayOrderInput,
   ): Promise<CheckoutOrder> {
-    return this.orderPaymentService.pay({
-      userId: this.clsService.get<string>('userId'),
-      orderId,
-      source: toChargeSource(card, savedCardId),
-      saveCard: saveCard ?? false,
-      now: new Date(),
-    });
+    const userId = this.clsService.get<string>('userId');
+    return this.admissionLimiter.run(() =>
+      this.orderPaymentService.pay({
+        userId,
+        orderId,
+        source: toChargeSource(card, savedCardId),
+        saveCard: saveCard ?? false,
+        now: new Date(),
+      }),
+    );
   }
 
   @UseGuards(AuthGuard)
