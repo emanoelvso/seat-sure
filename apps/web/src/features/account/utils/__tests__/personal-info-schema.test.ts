@@ -3,6 +3,7 @@ import {
   PHONE_COUNTRY_CODES,
   formatBirthDate,
   personalInfoSchema,
+  todayInAppTimeZone,
   toFormValues,
 } from "@/features/account/utils/personal-info-schema";
 
@@ -264,5 +265,40 @@ describe("formatBirthDate", () => {
 
   it("returns an empty string for an empty value", () => {
     expect(formatBirthDate("")).toBe("");
+  });
+});
+
+// BDATE-04: the calendar and the schema share this app-time-zone date.
+describe("todayInAppTimeZone", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  it("is a day ahead of UTC in Pacific/Kiritimati (UTC+14)", () => {
+    vi.stubEnv("NEXT_PUBLIC_TIME_ZONE", "Pacific/Kiritimati");
+    vi.setSystemTime(new Date("2023-08-30T10:30:00Z"));
+
+    expect(todayInAppTimeZone()).toBe("2023-08-31");
+  });
+
+  it("is a day behind UTC in Pacific/Niue (UTC-11)", () => {
+    vi.stubEnv("NEXT_PUBLIC_TIME_ZONE", "Pacific/Niue");
+    vi.setSystemTime(new Date("2023-08-30T10:30:00Z"));
+
+    expect(todayInAppTimeZone()).toBe("2023-08-29");
+  });
+
+  it("rolls over at UTC midnight when the zone is UTC", () => {
+    vi.stubEnv("NEXT_PUBLIC_TIME_ZONE", "UTC");
+    vi.setSystemTime(new Date("2023-08-30T23:59:59Z"));
+    expect(todayInAppTimeZone()).toBe("2023-08-30");
+
+    vi.setSystemTime(new Date("2023-08-31T00:00:00Z"));
+    expect(todayInAppTimeZone()).toBe("2023-08-31");
   });
 });

@@ -1,18 +1,25 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn, screen, waitFor, within } from "storybook/test";
+import { env } from "@/config/env";
 import { BirthDatePicker } from "./birth-date-picker";
 
 // Fixed clock so the assertions do not depend on the day the tests run.
 const TODAY = "2023-08-30";
 const onChange = fn();
 
-function Controlled({ initial }: { initial: string }) {
+function Controlled({
+  initial,
+  today = TODAY,
+}: {
+  initial: string;
+  today?: string;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <BirthDatePicker
       value={value}
-      today={TODAY}
+      today={today}
       onChange={(next) => {
         onChange(next);
         setValue(next);
@@ -202,5 +209,166 @@ export const ClearEmptiesField: Story = {
     await expect(field).not.toHaveTextContent("1995");
     await expect(field.textContent).toBe("");
     await expect(onChange).toHaveBeenCalledWith("");
+  },
+};
+
+const todayCells = (dialog: HTMLElement) =>
+  Array.from(dialog.querySelectorAll("[data-today]")).map((cell) =>
+    cell.getAttribute("data-day"),
+  );
+
+// BDATE-01 AC 3 and 4: the injected day is the only today cell, and it is
+// the last enabled day.
+export const TodayCellIsTheGivenDay: Story = {
+  render: () => <Controlled initial="" />,
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await openCalendar(canvas, userEvent);
+
+    await expect(todayCells(dialog)).toEqual(["2023-08-30"]);
+    await expect(
+      within(dialog).getByRole("button", { name: /August 31st, 2023/ }),
+    ).toBeDisabled();
+  },
+};
+
+// BDATE-01 AC 2: a day far from the browser's current date is the today
+// cell, so the cell does not come from the browser clock.
+export const TodayCellIgnoresBrowserClock: Story = {
+  render: () => <Controlled initial="" today="2000-01-15" />,
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await openCalendar(canvas, userEvent);
+
+    await expect(todayCells(dialog)).toEqual(["2000-01-15"]);
+  },
+};
+
+// BDATE-01 AC 1: with `today` unset, the today cell is the date in
+// env.timeZone at the browser clock's instant. At 01:00 UTC the UTC date and
+// the app-zone date can differ; Intl gives the expected date independently.
+const INSTANT = Date.parse("2023-08-30T01:00:00Z");
+const RealDate = Date;
+
+export const TodayCellUsesAppTimeZone: Story = {
+  beforeEach: () => {
+    class FixedDate extends RealDate {
+      constructor(...args: unknown[]) {
+        // new Date() is the fixed instant; any other call is unchanged.
+        super(...((args.length === 0 ? [INSTANT] : args) as [number]));
+      }
+      static now() {
+        return INSTANT;
+      }
+    }
+    globalThis.Date = FixedDate as DateConstructor;
+    return () => {
+      globalThis.Date = RealDate;
+    };
+  },
+  render: () => <BirthDatePicker value="" onChange={onChange} />,
+  play: async ({ canvas, userEvent }) => {
+    const expected = new Intl.DateTimeFormat("en-CA", {
+      timeZone: env.timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(INSTANT);
+    const dialog = await openCalendar(canvas, userEvent);
+
+    await expect(todayCells(dialog)).toEqual([expected]);
+  },
+};
+
+// BDATE-01 edge case: on the first day of a month the calendar opens on
+// that month and the day is enabled.
+export const TodayOnFirstOfMonth: Story = {
+  render: () => <Controlled initial="" today="2023-09-01" />,
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await openCalendar(canvas, userEvent);
+    const calendar = within(dialog);
+
+    await expect(
+      calendar.getByRole("combobox", { name: "Month" }),
+    ).toHaveTextContent("Sep");
+    await expect(todayCells(dialog)).toEqual(["2023-09-01"]);
+    await expect(
+      calendar.getByRole("button", { name: /September 1st, 2023/ }),
+    ).toBeEnabled();
+  },
+};
+
+// BDATE-01 edge case: a month other than today's has no today cell.
+export const NoTodayCellInOtherMonths: Story = {
+  render: () => <Controlled initial="1995-03-17" />,
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await openCalendar(canvas, userEvent);
+
+    await expect(todayCells(dialog)).toEqual([]);
+  },
+};
+
+// BDATE-02 AC 1, 2 and 4: the today cell is shown with the a11y check in
+// error mode (contrast >= 4.5:1), in tint-400 (rgb 213, 128, 242).
+export const TodayCellContrast: Story = {
+  render: () => <Controlled initial="1995-08-10" today="1995-08-30" />,
+  parameters: { a11y: { test: "error" } },
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await openCalendar(canvas, userEvent);
+    const today = within(dialog).getByRole("button", {
+      name: /August 30th, 1995/,
+    });
+
+    await expect(todayCells(dialog)).toEqual(["1995-08-30"]);
+    await expect(getComputedStyle(today).color).toBe("rgb(213, 128, 242)");
+  },
+};
+
+// BDATE-02 AC 3: when today is also the selected day, the selected style
+// wins (white text).
+export const TodayCellSelected: Story = {
+  render: () => <Controlled initial="2023-08-30" />,
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await openCalendar(canvas, userEvent);
+    const today = within(dialog).getByRole("button", {
+      name: /August 30th, 2023/,
+    });
+
+    await expect(today.closest("td")).toHaveAttribute("aria-selected", "true");
+    await expect(todayCells(dialog)).toEqual(["2023-08-30"]);
+    await expect(getComputedStyle(today).color).toBe("rgb(255, 255, 255)");
+  },
+};
+
+// BDATE-03 AC 1, 2 and 4: the error is an alert, the trigger is described
+// by it, and the button carries no aria-invalid (unsupported on a button).
+export const ErrorIsAnnounced: Story = {
+  render: () => (
+    <BirthDatePicker
+      value=""
+      today={TODAY}
+      onChange={onChange}
+      error="Enter a valid date of birth."
+    />
+  ),
+  play: async ({ canvas }) => {
+    const field = canvas.getByRole("button", { name: /Date of birth/ });
+
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "Enter a valid date of birth.",
+    );
+    await expect(field).toHaveAccessibleDescription(
+      "Enter a valid date of birth.",
+    );
+    await expect(field).not.toHaveAttribute("aria-invalid");
+  },
+};
+
+// BDATE-03 AC 3: without an error there is no alert and no description.
+export const NoErrorNoAlert: Story = {
+  render: () => <Controlled initial="1995-08-17" />,
+  play: async ({ canvas }) => {
+    const field = canvas.getByRole("button", { name: /Date of birth/ });
+
+    await expect(canvas.queryByRole("alert")).toBeNull();
+    await expect(field).not.toHaveAttribute("aria-describedby");
   },
 };
