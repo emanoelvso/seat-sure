@@ -5,7 +5,9 @@ import { fixture, gql, reasonOf, START_CHECKOUT } from './common.js';
 // Flash sale: buyers ramp up against one event and each browses, holds a seat
 // and pays with the simulated gateway's success card. 60% of the buyers pick
 // from a hot set of 50 seats, 40% from the rest; a rejected hold retries once.
-// Business losses are expected; 5xx, timeouts and connection errors are not.
+// Business losses and BUSY (load shed) are expected; 5xx, timeouts and
+// connection errors are not. A buyer whose hold or pay gets BUSY gives up
+// that iteration.
 
 const VUS = Number(__ENV.VUS || 2000);
 const RAMP_SECONDS = Number(__ENV.RAMP_SECONDS || 10);
@@ -17,6 +19,8 @@ const unexpected = new Rate('unexpected_errors');
 const seatsUnavailable = new Counter('expected_seats_unavailable');
 const holdExpired = new Counter('expected_hold_expired');
 const sold = new Counter('orders_paid');
+// Load shed by the admission limiter: expected, counted per operation.
+const busy = new Counter('busy_responses');
 
 export const options = {
   scenarios: {
@@ -42,6 +46,7 @@ export const options = {
       ['discovery', 'hold', 'pay'].flatMap((op) => [
         [`unexpected_errors{op:${op}}`, ['rate>=0']],
         [`http_reqs{op:${op}}`, ['count>=0']],
+        [`busy_responses{op:${op}}`, ['count>=0']],
       ]),
     ),
   },
@@ -117,7 +122,9 @@ const classify = (result, expectedReasons, op) => {
   const { response, body } = result;
   const ok = response.status === 200 && !body?.errors && Boolean(body?.data);
   const reason = reasonOf(body);
-  const expected = !ok && expectedReasons.includes(reason);
+  const shed = !ok && reason === 'BUSY';
+  const expected = !ok && (shed || expectedReasons.includes(reason));
+  if (shed) busy.add(1, { op });
   unexpected.add(!ok && !expected, { op });
   return { ok, reason };
 };
@@ -174,7 +181,7 @@ export default function () {
   }
   check(payment, {
     'payment settled or expired': () =>
-      paid.ok || paid.reason === 'ORDER_EXPIRED',
+      paid.ok || ['ORDER_EXPIRED', 'BUSY'].includes(paid.reason),
   });
   sleep(1 + Math.random());
 }
