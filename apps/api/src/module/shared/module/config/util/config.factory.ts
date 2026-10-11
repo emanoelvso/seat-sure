@@ -28,6 +28,9 @@ export const factory = (): Config => {
     app: {
       timeZone: process.env.APP_TIME_ZONE || undefined,
     },
+    admission: {
+      maxConcurrent: process.env.ADMISSION_MAX_CONCURRENT || undefined,
+    },
   });
 
   if (result.success) {

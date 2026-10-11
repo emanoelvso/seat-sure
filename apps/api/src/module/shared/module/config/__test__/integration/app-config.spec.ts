@@ -36,3 +36,35 @@ describe('App configuration', () => {
     expect(() => factory()).toThrow(ConfigException);
   });
 });
+
+describe('Admission configuration', () => {
+  const original = process.env.ADMISSION_MAX_CONCURRENT;
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env.ADMISSION_MAX_CONCURRENT;
+    } else {
+      process.env.ADMISSION_MAX_CONCURRENT = original;
+    }
+  });
+
+  it('defaults admission.maxConcurrent to 100 when unset or empty', () => {
+    delete process.env.ADMISSION_MAX_CONCURRENT;
+    expect(factory().admission.maxConcurrent).toBe(100);
+
+    process.env.ADMISSION_MAX_CONCURRENT = '';
+    expect(factory().admission.maxConcurrent).toBe(100);
+  });
+
+  it('reads admission.maxConcurrent from ADMISSION_MAX_CONCURRENT', () => {
+    process.env.ADMISSION_MAX_CONCURRENT = '7';
+
+    expect(factory().admission.maxConcurrent).toBe(7);
+  });
+
+  it('throws ConfigException when ADMISSION_MAX_CONCURRENT is not a positive integer', () => {
+    process.env.ADMISSION_MAX_CONCURRENT = '0';
+
+    expect(() => factory()).toThrow(ConfigException);
+  });
+});
