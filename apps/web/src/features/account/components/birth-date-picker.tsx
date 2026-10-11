@@ -269,6 +269,7 @@ export function BirthDatePicker({
             hideNavigation
             weekStartsOn={0}
             showOutsideDays
+            today={todayDate}
             month={month}
             onMonthChange={setMonth}
             startMonth={new Date(MIN_YEAR, 0, 1)}
@@ -296,7 +297,9 @@ export function BirthDatePicker({
               // Figma fills the day with primary; white on it is 3.79:1, so
               // tint-600 (a11y gate 4.5:1).
               selected: "[&>button]:bg-tint-600 [&>button:hover]:bg-tint-600",
-              today: "[&>button]:text-primary",
+              // primary is 4.34:1 on neutral-700; tint-400 passes. A selected
+              // today keeps the selected style's white text.
+              today: "[&:not([aria-selected])>button]:text-tint-400",
               outside: "opacity-[0.38]",
               disabled: "text-neutral-300 opacity-[0.38]",
             }}
