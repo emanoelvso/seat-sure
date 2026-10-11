@@ -95,6 +95,12 @@ describe('Global input validation (e2e)', () => {
     expect(probeHandler).toHaveBeenCalledTimes(1);
   });
 
+  it('hands the resolver a transformed input class instance (VALID-01)', async () => {
+    await send('{ email: "a@b.co", quantity: 3 }');
+
+    expect(probeHandler.mock.calls[0][0]).toBeInstanceOf(ProbeInput);
+  });
+
   it('validates and accepts the GraphQL default of an omitted field', async () => {
     const response = await send('{ email: "a@b.co" }');
 
