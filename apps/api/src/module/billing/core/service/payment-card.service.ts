@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { BillingException } from '@billingModule/core/exception/billing.exception';
+import { CardThrottleService } from '@billingModule/core/service/card-throttle.service';
 import {
   PaymentCardModel,
   toPaymentCardModel,
@@ -31,6 +32,7 @@ const cardNotFound = () =>
 export class PaymentCardService {
   constructor(
     private readonly paymentCardRepository: BillingPaymentCardRepository,
+    private readonly cardThrottleService: CardThrottleService,
     @Inject(PaymentGateway) private readonly gateway: PaymentGateway,
     @InjectDataSource('billing') private readonly dataSource: DataSource,
     private readonly logger: AppLogger,
@@ -43,12 +45,40 @@ export class PaymentCardService {
     return cards.map((card) => toPaymentCardModel(card, now));
   }
 
-  // Rules, then tokenize, then a locked insert (CARD-03, CARD-04, CARD-05)
+  // Throttled (AD-028): a locked user is refused before any rule or gateway
+  // call. An invalid or declined card counts as a failure; a saved one clears
+  // the count. A duplicate, the card limit, or an unexpected error do not
+  // count.
   async add(
     userId: string,
     card: CardInput,
     now: Date,
   ): Promise<PaymentCardModel[]> {
+    await this.cardThrottleService.assertNotLocked(userId, now);
+
+    try {
+      await this.saveCard(userId, card, now);
+    } catch (error) {
+      if (
+        error instanceof BillingException &&
+        (error.reason === 'INVALID_CARD' || error.reason === 'CARD_DECLINED')
+      ) {
+        await this.cardThrottleService.recordFailure(userId, now);
+      }
+      throw error;
+    }
+
+    await this.cardThrottleService.clear(userId);
+
+    return this.list(userId, now);
+  }
+
+  // Rules, then tokenize, then a locked insert (CARD-03, CARD-04, CARD-05)
+  private async saveCard(
+    userId: string,
+    card: CardInput,
+    now: Date,
+  ): Promise<void> {
     // Only the invalid fields, so the client marks exactly those (CARD-04 AC 8)
     const fields = Object.fromEntries(
       Object.entries(validateCard(card, now)).filter(
@@ -120,8 +150,6 @@ export class PaymentCardService {
       await this.gateway.detach(tokenized.token);
       throw error;
     }
-
-    return this.list(userId, now);
   }
 
   // Makes the card the caller's only default; the current default is left
