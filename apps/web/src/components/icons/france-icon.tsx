@@ -1,6 +1,7 @@
 export function FranceIcon() {
   return (
     <svg
+      data-country="fr"
       width="24"
       height="16"
       viewBox="0 0 24 16"

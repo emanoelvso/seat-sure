@@ -1,6 +1,7 @@
 export function UsaIcon() {
   return (
     <svg
+      data-country="us"
       width="24"
       height="16"
       viewBox="0 0 24 16"

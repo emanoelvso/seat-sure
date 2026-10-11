@@ -1,6 +1,7 @@
 export function GermanyIcon() {
   return (
     <svg
+      data-country="de"
       width="24"
       height="16"
       viewBox="0 0 24 16"
