@@ -523,6 +523,50 @@ describe('BillingPublicApiProvider (integration)', () => {
     });
   });
 
+  // CARDABUSE-04
+  describe('a removed saved card', () => {
+    afterEach(async () => {
+      await testDbClient(Tables.BillingPaymentCard).del();
+    });
+
+    it('leaves the payment it paid with unchanged, still showing its brand and last 4 (AC 1, 2)', async () => {
+      const savedCard = billingPaymentCardFactory.build({
+        brand: 'mastercard',
+        last4: '4444',
+      });
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [savedCard]);
+      const outcome = recorded(
+        await billingApi.charge({
+          userId: savedCard.userId,
+          orderId: randomUUID(),
+          amountCents: 26000,
+          currency: 'USD',
+          source: { type: 'savedCard', savedCardId: savedCard.id },
+        }),
+      );
+      const before = await testDbClient(Tables.BillingPayment)
+        .where('id', outcome.paymentId)
+        .first();
+
+      await module
+        .get(PaymentCardService)
+        .remove(savedCard.userId, savedCard.id, new Date());
+
+      expect(
+        await testDbClient(Tables.BillingPaymentCard).where('id', savedCard.id),
+      ).toHaveLength(0);
+      expect(await billingApi.findPaymentCard(outcome.paymentId)).toEqual({
+        brand: 'mastercard',
+        last4: '4444',
+      });
+      expect(
+        await testDbClient(Tables.BillingPayment)
+          .where('id', outcome.paymentId)
+          .first(),
+      ).toEqual(before);
+    });
+  });
+
   describe('findPaymentCard (ORDDETAIL-02)', () => {
     it('returns the brand and last 4 stored for the payment', async () => {
       const payment = billingPaymentFactory.build({
