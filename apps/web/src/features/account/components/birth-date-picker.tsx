@@ -1,6 +1,5 @@
 "use client";
 
-import { tz } from "@date-fns/tz";
 import {
   AltArrowDownIcon,
   AltArrowLeftIcon,
@@ -11,8 +10,10 @@ import { format } from "date-fns";
 import { Popover, Select } from "radix-ui";
 import { useId, useState } from "react";
 import { DayPicker } from "react-day-picker";
-import { env } from "@/config/env";
-import { formatBirthDate } from "@/features/account/utils/personal-info-schema";
+import {
+  formatBirthDate,
+  todayInAppTimeZone,
+} from "@/features/account/utils/personal-info-schema";
 
 const MIN_YEAR = 1900;
 const MONTH_LABELS = [
@@ -46,10 +47,6 @@ function isoToDate(iso: string): Date {
 
 function dateToIso(date: Date): string {
   return format(date, "yyyy-MM-dd");
-}
-
-function todayInAppTimeZone(): string {
-  return format(new Date(), "yyyy-MM-dd", { in: tz(env.timeZone) });
 }
 
 function DropdownArrow() {

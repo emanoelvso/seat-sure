@@ -60,7 +60,7 @@ function isCalendarDate(value: string): boolean {
 }
 
 // Today's calendar date in the app time zone; ISO dates compare as strings.
-function todayInAppTimeZone(): string {
+export function todayInAppTimeZone(): string {
   return format(new Date(), "yyyy-MM-dd", { in: tz(env.timeZone) });
 }
 
