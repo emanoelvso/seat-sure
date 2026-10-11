@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { INestApplication } from '@nestjs/common';
 import { TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
+import { destroyDataSources } from '@testInfra/data-sources.teardown';
 import { createNestApp } from '@testInfra/test-e2e.setup';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
 import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory';
@@ -11,7 +11,6 @@ import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
 import { TicketingService } from '@ticketingModule/core/service/ticketing.service';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 
 describe('TicketingResolver findUnavailableSeats (e2e)', () => {
   let app: INestApplication;
@@ -39,10 +38,7 @@ describe('TicketingResolver findUnavailableSeats (e2e)', () => {
   afterAll(async () => {
     await deleteRows();
     await testDbClient.destroy();
-    const dataSource = module.get<DataSource>(getDataSourceToken('ticketing'));
-    if (dataSource.isInitialized) {
-      await dataSource.destroy();
-    }
+    await destroyDataSources(module);
     await app.getHttpServer().close();
   });
 

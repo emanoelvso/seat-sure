@@ -4,7 +4,7 @@
 
 Use tlc-spec-driven: one verified atomic commit per task (apps/api only, succinct, no attribution), then independent verifier. Planning only in this session; no implementation authorized yet. Five tasks fit one inline batch.
 
-Status: In progress (T1–T3 done).
+Status: In progress (T1–T4 done).
 
 ## Test Coverage Matrix
 
@@ -62,7 +62,7 @@ T1 → T2 → T3 → T4 → T5
 **Done when**:
 - [x] `refreshes updatedAt` seeds `updatedAt` to 2000-01-01T00:00:00Z via knex, has no `setTimeout`, and asserts the stored value is later.
 
-### T4: Diagnose and close leaked Jest handles
+### T4: Diagnose and close leaked Jest handles ✅
 
 **Where**: `apps/api/test/`, `apps/api/src/**/__test__/`
 **Depends on**: T3
@@ -70,7 +70,7 @@ T1 → T2 → T3 → T4 → T5
 **Tests**: integration
 **Gate**: full
 **Done when**:
-- [ ] `--detectOpenHandles` output is recorded, each leaked handle (DataSource, knex `testDbClient`, HTTP server, Nest app) is closed in its owning `afterAll`, `--detectOpenHandles` reports zero handles, and the full suite exits without `--forceExit` 3 times in a row.
+- [x] `--detectOpenHandles` output is recorded, each leaked handle (DataSource, knex `testDbClient`, HTTP server, Nest app) is closed in its owning `afterAll`, `--detectOpenHandles` reports zero handles, and the full suite exits without `--forceExit` 3 times in a row.
 
 ### T5: Investigate the HTTP parsing error
 

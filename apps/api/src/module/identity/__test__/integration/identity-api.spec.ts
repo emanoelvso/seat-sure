@@ -2,12 +2,11 @@ import { randomUUID } from 'crypto';
 import { IdentityModule } from '@identityModule/identity.module';
 import { INestApplication } from '@nestjs/common';
 import { TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
+import { destroyDataSources } from '@testInfra/data-sources.teardown';
 import { createNestApp } from '@testInfra/test-e2e.setup';
-import { DataSource } from 'typeorm';
 
 describe('IdentityPublicApiProvider.findAccountEmail (integration)', () => {
   let app: INestApplication;
@@ -25,16 +24,7 @@ describe('IdentityPublicApiProvider.findAccountEmail (integration)', () => {
   afterAll(async () => {
     await testDbClient(Tables.IdentityUser).del();
     await testDbClient.destroy();
-    const dataSource = module.get<DataSource>(getDataSourceToken('identity'));
-    if (dataSource.isInitialized) {
-      await dataSource.destroy();
-    }
-    const notificationsDs = module.get<DataSource>(
-      getDataSourceToken('notifications'),
-    );
-    if (notificationsDs.isInitialized) {
-      await notificationsDs.destroy();
-    }
+    await destroyDataSources(module);
     await app.getHttpServer().close();
   });
 

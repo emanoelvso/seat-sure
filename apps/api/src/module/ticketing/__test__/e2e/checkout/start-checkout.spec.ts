@@ -8,9 +8,9 @@ import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
+import { destroyDataSources } from '@testInfra/data-sources.teardown';
 import { createNestApp } from '@testInfra/test-e2e.setup';
 import {
   orderFactory,
@@ -21,7 +21,6 @@ import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory'
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 
 const TEN_MINUTES = 10 * 60_000;
 
@@ -105,12 +104,7 @@ describe('TicketingResolver startCheckout (e2e)', () => {
     await deleteRows();
     await testDbClient(Tables.Venue).where('id', venue.id).del();
     await testDbClient.destroy();
-    for (const name of ['ticketing', 'catalog']) {
-      const dataSource = module.get<DataSource>(getDataSourceToken(name));
-      if (dataSource.isInitialized) {
-        await dataSource.destroy();
-      }
-    }
+    await destroyDataSources(module);
     await app.getHttpServer().close();
   });
 
