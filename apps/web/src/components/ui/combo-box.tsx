@@ -1,13 +1,15 @@
 "use client";
 import { Popover } from "radix-ui";
 import { Icon } from "@solar-icons/react/lib/types";
-import { createElement, useState } from "react";
+import { createElement, useId, useState } from "react";
 import { CheckCircleIcon } from "@solar-icons/react/outline";
 
 interface ComboBoxProps {
   options: string[];
   value?: string | undefined;
   onChange: (value: string | undefined) => void;
+  // A picked suggestion; `onChange` receives it too when this is omitted.
+  onSelect?: (value: string) => void;
   label?: string;
   placeholder?: string;
   leftIcon?: Icon;
@@ -17,18 +19,20 @@ export function ComboBox({
   options,
   value,
   onChange,
+  onSelect = onChange,
   label,
   placeholder,
   leftIcon,
 }: ComboBoxProps) {
   const [open, setOpen] = useState(false);
+  const legendId = useId();
 
   const filtered = value
     ? options.filter((o) => o.toLowerCase().includes(value.toLowerCase()))
     : options;
 
   function handleSelect(city: string) {
-    onChange(city);
+    onSelect(city);
     setOpen(false);
   }
 
@@ -37,7 +41,7 @@ export function ComboBox({
       <div className="w-full max-w-xl flex flex-col gap-1">
         <fieldset className="relative w-full bg-neutral-700 border rounded-lg border-neutral-800">
           {label && (
-            <legend className="ml-3 px-1 text-xs text-neutral-200 leading-none">
+            <legend id={legendId} className="ml-3 px-1 text-xs text-neutral-200 leading-none">
               {label}
             </legend>
           )}
@@ -51,6 +55,7 @@ export function ComboBox({
                 })}
               <input
                 type="text"
+                aria-labelledby={label ? legendId : undefined}
                 value={value ?? ""}
                 placeholder={placeholder}
                 onChange={(e) => {

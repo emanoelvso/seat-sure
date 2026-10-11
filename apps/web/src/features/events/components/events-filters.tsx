@@ -20,9 +20,14 @@ import {
 } from "@solar-icons/react/outline";
 import { format, parse } from "date-fns";
 import { type Nullable, useQueryStates } from "nuqs";
+import { useEffect, useRef, useState } from "react";
 import { DateRange } from "react-day-picker";
 
 type Filters = Partial<Nullable<Omit<EventsSearchParams, "page">>>;
+
+// How long the city box waits after the last keystroke before it updates the
+// URL, and so the server page.
+const CITY_DEBOUNCE_MS = 300;
 
 const CALENDAR_DAY = "yyyy-MM-dd";
 
@@ -48,6 +53,37 @@ export function EventsFilters({ cities }: { cities: string[] }) {
   // Any filter change starts over from the first page.
   function setFilters(filters: Filters) {
     setParams({ ...filters, page: null });
+  }
+
+  // The box shows what was typed; the URL (and the pills) follow after a pause.
+  const [cityText, setCityText] = useState(city ?? "");
+  const cityTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // A URL change (back/forward, a deep link) wins over a pending edit.
+  const [seenCity, setSeenCity] = useState(city);
+  if (city !== seenCity) {
+    setSeenCity(city);
+    setCityText(city ?? "");
+  }
+  useEffect(() => {
+    clearTimeout(cityTimer.current);
+  }, [city]);
+  useEffect(() => () => clearTimeout(cityTimer.current), []);
+
+  function typeCity(text: string | undefined) {
+    const next = text ?? "";
+    setCityText(next);
+    clearTimeout(cityTimer.current);
+    cityTimer.current = setTimeout(
+      () => setFilters({ city: next || null }),
+      CITY_DEBOUNCE_MS,
+    );
+  }
+
+  function pickCity(picked: string) {
+    clearTimeout(cityTimer.current);
+    setCityText(picked);
+    setFilters({ city: picked });
   }
 
   return (
@@ -80,8 +116,9 @@ export function EventsFilters({ cities }: { cities: string[] }) {
           label="Where"
           placeholder="Search city..."
           options={cities}
-          value={city ?? undefined}
-          onChange={(v) => setFilters({ city: v || null })}
+          value={cityText}
+          onChange={typeCity}
+          onSelect={pickCity}
           leftIcon={MapPointIcon}
         />
         <SelectBox
