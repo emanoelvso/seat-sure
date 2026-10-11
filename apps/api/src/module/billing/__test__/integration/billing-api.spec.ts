@@ -188,29 +188,166 @@ describe('BillingPublicApiProvider (integration)', () => {
     expect(row.refundedAt).not.toBeNull();
   });
 
-  it('never stores the full card number or CVV in any row (PAY-47)', async () => {
-    // A distinctive CVV: any match in the row's JSON can only come from the
-    // column genuinely storing it, not from a coincidental digit run.
-    const card = { ...VALID_CARD, cvv: '907' };
-    await billingApi.charge({
-      userId: randomUUID(),
-      orderId: randomUUID(),
-      amountCents: 26000,
-      currency: 'USD',
-      source: { type: 'card', card },
+  // PAY-47, CARDABUSE-05. Deterministic by construction: the ids and the
+  // gateway's token, fingerprint and payment id are fixed and contain no
+  // digit, and only text columns are scanned (a uuid, timestamp or number
+  // column cannot hold card text). So a match can only come from a column
+  // that genuinely stores card data.
+  describe('card data privacy (CARDABUSE-05)', () => {
+    const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const TYPED_ORDER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const SAVED_ORDER_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+    const TOKEN = 'sim_pm_opaque_token';
+    const FINGERPRINT = 'abcdef'.repeat(10) + 'abcd';
+    const PROVIDER_PAYMENT_ID = 'sim_payment_opaque';
+    const CARD = { ...VALID_CARD, cvv: '907' };
+    const TABLES = [
+      Tables.BillingPayment,
+      Tables.BillingPaymentCard,
+      Tables.BillingCardThrottle,
+    ];
+    const TEXT_TYPES = ['character varying', 'character', 'text'];
+
+    // Every stored text value of the user's rows, with where it lives
+    const textValues = async () => {
+      const columns: Array<{ table_name: string; column_name: string }> =
+        await testDbClient('information_schema.columns')
+          .select('table_name', 'column_name')
+          .where('table_schema', 'public')
+          .whereIn('table_name', TABLES)
+          .whereIn('data_type', TEXT_TYPES);
+      const found: Array<{ place: string; value: string }> = [];
+      for (const table of TABLES) {
+        const rows: Array<Record<string, unknown>> = await testDbClient(
+          table,
+        ).where({ userId: USER_ID });
+        for (const row of rows) {
+          for (const { column_name } of columns.filter(
+            (column) => column.table_name === table,
+          )) {
+            const value = row[column_name];
+            if (value !== null && value !== undefined) {
+              found.push({
+                place: `${table}.${column_name}`,
+                value: String(value),
+              });
+            }
+          }
+        }
+      }
+      return found;
+    };
+
+    // Where a value may legitimately live: a saved card keeps its own token
+    // and fingerprint (AD-026), nothing else is kept anywhere
+    const ALLOWED_PLACES: Record<string, string> = {
+      token: 'BillingPaymentCard.providerToken',
+      fingerprint: 'BillingPaymentCard.fingerprint',
+    };
+
+    const leaks = async (needles: Record<string, string>) =>
+      (await textValues()).flatMap(({ place, value }) =>
+        Object.entries(needles)
+          .filter(
+            ([name, needle]) =>
+              value.includes(needle) && ALLOWED_PLACES[name] !== place,
+          )
+          .map(([name]) => `${name} in ${place}`),
+      );
+
+    const NEEDLES = {
+      number: '4242424242424242',
+      spacedNumber: '4242 4242 4242 4242',
+      cvv: CARD.cvv,
+      token: TOKEN,
+      fingerprint: FINGERPRINT,
+    };
+
+    beforeEach(() => {
+      const gateway = module.get<PaymentGateway>(PaymentGateway);
+      jest.spyOn(gateway, 'tokenize').mockResolvedValue({
+        status: 'succeeded',
+        token: TOKEN,
+        fingerprint: FINGERPRINT,
+      });
+      jest.spyOn(gateway, 'charge').mockResolvedValue({
+        status: 'succeeded',
+        providerPaymentId: PROVIDER_PAYMENT_ID,
+      });
     });
 
-    const rows: Array<Record<string, unknown>> = await testDbClient(
-      Tables.BillingPayment,
-    ).select('*');
+    afterEach(async () => {
+      await testDbClient(Tables.BillingPaymentCard).del();
+      await testDbClient(Tables.BillingCardThrottle).del();
+      jest.restoreAllMocks();
+    });
 
-    expect(rows.length).toBeGreaterThan(0);
-    for (const row of rows) {
-      for (const value of Object.values(row).map((v) => String(v))) {
-        expect(value).not.toContain('4242424242424242');
-        expect(value).not.toBe(card.cvv);
+    const payTypedThenSaved = async () => {
+      const cards = module.get(PaymentCardService);
+      const typed = await billingApi.charge({
+        userId: USER_ID,
+        orderId: TYPED_ORDER_ID,
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card: CARD },
+      });
+      const saved = await cards.add(USER_ID, CARD, new Date());
+      const savedPayment = await billingApi.charge({
+        userId: USER_ID,
+        orderId: SAVED_ORDER_ID,
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'savedCard', savedCardId: saved[0].id },
+      });
+      return {
+        typed,
+        saved,
+        savedPayment,
+        listed: await cards.list(USER_ID, new Date()),
+      };
+    };
+
+    it('finds no card number, CVV, token or fingerprint in any stored text value, for a typed and a saved-card payment (AC 1-3)', async () => {
+      await payTypedThenSaved();
+
+      const scanned = (await textValues()).map(({ place }) => place);
+      expect(scanned).toEqual(
+        expect.arrayContaining([
+          'BillingPayment.cardLast4',
+          'BillingPayment.providerPaymentId',
+          'BillingPaymentCard.providerToken',
+          'BillingPaymentCard.fingerprint',
+          'BillingPaymentCard.holder',
+        ]),
+      );
+      expect(await leaks(NEEDLES)).toEqual([]);
+    });
+
+    it('finds the CVV when a text column holds it inside a longer value (AC 4)', async () => {
+      await payTypedThenSaved();
+      await testDbClient(Tables.BillingPaymentCard)
+        .where({ userId: USER_ID })
+        .update({ holder: `cvv=${CARD.cvv}` });
+
+      expect(await leaks(NEEDLES)).toEqual([
+        'cvv in BillingPaymentCard.holder',
+      ]);
+    });
+
+    it('returns no card number, CVV, token or fingerprint from add, list or charge (AC 5)', async () => {
+      const results = await payTypedThenSaved();
+
+      for (const [name, result] of Object.entries(results)) {
+        const json = JSON.stringify(result);
+        for (const [needleName, needle] of Object.entries(NEEDLES)) {
+          expect({ name, needleName, found: json.includes(needle) }).toEqual({
+            name,
+            needleName,
+            found: false,
+          });
+        }
       }
-    }
+    });
   });
 
   describe('charge with a saved card (CARD-08)', () => {
