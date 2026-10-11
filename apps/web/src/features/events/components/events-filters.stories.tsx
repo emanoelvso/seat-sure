@@ -325,6 +325,30 @@ export const TypingBurstUpdatesUrlOnce: Story = {
   },
 };
 
+export const UpdateWaitsForTheFullPause: Story = {
+  parameters: urlState(""),
+  play: async ({ canvas, userEvent, parameters }) => {
+    await userEvent.type(canvas.getByRole("textbox", { name: "Where" }), "Par");
+    await sleep(DEBOUNCE_MS / 2);
+    await expect(urlUpdates(parameters)).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(cityUpdates(parameters)).toEqual(["Par"]), {
+      timeout: DEBOUNCE_MS,
+    });
+  },
+};
+
+export const SuggestionDiscardsPendingTypedUpdate: Story = {
+  parameters: urlState(""),
+  play: async ({ canvas, userEvent, parameters }) => {
+    await userEvent.type(canvas.getByRole("textbox", { name: "Where" }), "Pa");
+    await userEvent.click(await screen.findByRole("button", { name: "Paris" }));
+    await sleep(DEBOUNCE_MS + 200);
+
+    await expect(cityUpdates(parameters)).toEqual(["Paris"]);
+  },
+};
+
 export const SeparateBurstsUpdateTwice: Story = {
   parameters: urlState(""),
   play: async ({ canvas, userEvent, parameters }) => {
