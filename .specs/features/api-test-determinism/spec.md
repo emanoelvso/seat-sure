@@ -122,8 +122,8 @@ Three API test defects make runs nondeterministic or non-terminating: the `event
 | TDET-03 | P1: Event factory fits the schema | Done (T1) | Verified |
 | TDET-04 | P1: Profile tests do not depend on wall clocks | Done (T2) | Verified |
 | TDET-05 | P1: Profile tests do not depend on wall clocks | Done (T2) | Verified |
-| TDET-06 | P1: Profile tests do not depend on wall clocks | Tasks | Pending |
-| TDET-07 | P1: Profile tests do not depend on wall clocks | Tasks | Pending |
+| TDET-06 | P1: Profile tests do not depend on wall clocks | Done (T3) | Verified |
+| TDET-07 | P1: Profile tests do not depend on wall clocks | Done (T3) | Verified |
 | TDET-08 | P1: Jest exits on its own | Tasks | Pending |
 | TDET-09 | P1: Jest exits on its own | Tasks | Pending |
 | TDET-10 | P1: Jest exits on its own | Tasks | Pending |

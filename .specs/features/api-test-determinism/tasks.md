@@ -4,7 +4,7 @@
 
 Use tlc-spec-driven: one verified atomic commit per task (apps/api only, succinct, no attribution), then independent verifier. Planning only in this session; no implementation authorized yet. Five tasks fit one inline batch.
 
-Status: In progress (T1, T2 done).
+Status: In progress (T1–T3 done).
 
 ## Test Coverage Matrix
 
@@ -52,7 +52,7 @@ T1 → T2 → T3 → T4 → T5
 **Done when**:
 - [x] The test `accepts the current date in the app time zone` uses the fixed-`now` service path; the spec passes with the system clock faked at 10:00 UTC.
 
-### T3: Remove the sleep from the updatedAt test
+### T3: Remove the sleep from the updatedAt test ✅
 
 **Where**: `apps/api/src/module/user-profile/__test__/integration/user-profile-user-repository.spec.ts`
 **Depends on**: T2
@@ -60,7 +60,7 @@ T1 → T2 → T3 → T4 → T5
 **Tests**: integration
 **Gate**: quick
 **Done when**:
-- [ ] `refreshes updatedAt` seeds `updatedAt` to 2000-01-01T00:00:00Z via knex, has no `setTimeout`, and asserts the stored value is later.
+- [x] `refreshes updatedAt` seeds `updatedAt` to 2000-01-01T00:00:00Z via knex, has no `setTimeout`, and asserts the stored value is later.
 
 ### T4: Diagnose and close leaked Jest handles
 
