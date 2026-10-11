@@ -1,4 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useQueryState, parseAsString } from "nuqs";
+import { useState } from "react";
 import type { OnUrlUpdateFunction } from "nuqs/adapters/testing";
 import { expect, fn, screen, waitFor, within } from "storybook/test";
 import { EventsFilters } from "./events-filters";
@@ -284,5 +286,152 @@ export const KeyboardOpensAndClosesCalendar: Story = {
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
     await expect(button).toHaveFocus();
+  },
+};
+
+const DEBOUNCE_MS = 300;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const cityUpdates = (parameters: Record<string, unknown>) =>
+  urlUpdates(parameters).mock.calls.map(([update]) => update.searchParams.get("city"));
+
+export const TypedTextShowsImmediately: Story = {
+  parameters: urlState(""),
+  play: async ({ canvas, userEvent, parameters }) => {
+    const input = canvas.getByRole("textbox", { name: "Where" });
+    await userEvent.type(input, "Par");
+
+    await expect(input).toHaveValue("Par");
+    await expect(urlUpdates(parameters)).not.toHaveBeenCalled();
+  },
+};
+
+export const TypingBurstUpdatesUrlOnce: Story = {
+  parameters: urlState("?type=SHOW&page=3"),
+  play: async ({ canvas, userEvent, parameters }) => {
+    await userEvent.type(canvas.getByRole("textbox", { name: "Where" }), "Paris");
+    await expect(urlUpdates(parameters)).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1), {
+      timeout: 1500,
+    });
+    await sleep(DEBOUNCE_MS + 200);
+
+    await expect(cityUpdates(parameters)).toEqual(["Paris"]);
+    const { searchParams, options } = lastUpdate(parameters);
+    await expect(searchParams.get("type")).toBe("SHOW");
+    await expect(searchParams.has("page")).toBe(false);
+    await expect(options.history).toBe("replace");
+  },
+};
+
+export const SeparateBurstsUpdateTwice: Story = {
+  parameters: urlState(""),
+  play: async ({ canvas, userEvent, parameters }) => {
+    const input = canvas.getByRole("textbox", { name: "Where" });
+    await userEvent.type(input, "Pa");
+    await sleep(DEBOUNCE_MS + 200);
+    await userEvent.type(input, "ris");
+    await sleep(DEBOUNCE_MS + 200);
+
+    await expect(cityUpdates(parameters)).toEqual(["Pa", "Paris"]);
+  },
+};
+
+export const SuggestionAppliesImmediately: Story = {
+  parameters: urlState(""),
+  play: async ({ canvas, userEvent, parameters }) => {
+    await userEvent.click(canvas.getByRole("textbox", { name: "Where" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Lyon" }));
+
+    await expect(cityUpdates(parameters)).toEqual(["Lyon"]);
+    await sleep(DEBOUNCE_MS + 200);
+    await expect(cityUpdates(parameters)).toEqual(["Lyon"]);
+  },
+};
+
+export const EmptyingTheBoxDropsCity: Story = {
+  parameters: urlState("?city=Paris&type=SHOW"),
+  play: async ({ canvas, userEvent, parameters }) => {
+    await userEvent.clear(canvas.getByRole("textbox", { name: "Where" }));
+    await sleep(DEBOUNCE_MS + 200);
+
+    await expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1);
+    const { searchParams } = lastUpdate(parameters);
+    await expect(searchParams.has("city")).toBe(false);
+    await expect(searchParams.get("type")).toBe("SHOW");
+  },
+};
+
+export const PillKeepsAppliedCityWhilePending: Story = {
+  parameters: urlState("?city=Paris"),
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.type(canvas.getByRole("textbox", { name: "Where" }), "x");
+
+    await expect(pills(canvas)).toEqual(["Paris"]);
+    await waitFor(() => expect(pills(canvas)).toEqual(["Parisx"]), { timeout: 1500 });
+  },
+};
+
+export const NoMatchShowsEmptyListWhilePending: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.type(canvas.getByRole("textbox", { name: "Where" }), "zzz");
+
+    await expect(await screen.findByText("No cities found")).toBeVisible();
+  },
+};
+
+export const LoadedCityShowsInBoxAndPill: Story = {
+  parameters: urlState("?city=Paris"),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("textbox", { name: "Where" })).toHaveValue("Paris");
+    await expect(pills(canvas)).toEqual(["Paris"]);
+  },
+};
+
+// Stands in for back/forward: another writer changes the URL city.
+function NavigateTo({ city }: { city: string }) {
+  const [, setCity] = useQueryState("city", parseAsString);
+  return <button onClick={() => setCity(city)}>Navigate to {city}</button>;
+}
+
+export const NavigationBeatsPendingUpdate: Story = {
+  parameters: urlState("?city=Paris"),
+  render: (args) => (
+    <>
+      <NavigateTo city="Berlin" />
+      <EventsFilters {...args} />
+    </>
+  ),
+  play: async ({ canvas, userEvent, parameters }) => {
+    const input = canvas.getByRole("textbox", { name: "Where" });
+    await userEvent.type(input, "Lyon");
+    await userEvent.click(canvas.getByRole("button", { name: "Navigate to Berlin" }));
+
+    await expect(input).toHaveValue("Berlin");
+    await sleep(DEBOUNCE_MS + 200);
+    await expect(input).toHaveValue("Berlin");
+    await expect(cityUpdates(parameters)).not.toContain("ParisLyon");
+    await expect(pills(canvas)).toEqual(["Berlin"]);
+  },
+};
+
+export const UnmountCancelsPendingUpdate: Story = {
+  parameters: urlState(""),
+  render: function Render(args) {
+    const [mounted, setMounted] = useState(true);
+    return (
+      <>
+        <button onClick={() => setMounted(false)}>Leave</button>
+        {mounted && <EventsFilters {...args} />}
+      </>
+    );
+  },
+  play: async ({ canvas, userEvent, parameters }) => {
+    await userEvent.type(canvas.getByRole("textbox", { name: "Where" }), "Par");
+    await userEvent.click(canvas.getByRole("button", { name: "Leave" }));
+    await sleep(DEBOUNCE_MS + 200);
+
+    await expect(urlUpdates(parameters)).not.toHaveBeenCalled();
   },
 };

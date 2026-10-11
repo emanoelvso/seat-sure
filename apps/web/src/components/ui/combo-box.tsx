@@ -8,6 +8,8 @@ interface ComboBoxProps {
   options: string[];
   value?: string | undefined;
   onChange: (value: string | undefined) => void;
+  // A picked suggestion; `onChange` receives it too when this is omitted.
+  onSelect?: (value: string) => void;
   label?: string;
   placeholder?: string;
   leftIcon?: Icon;
@@ -17,6 +19,7 @@ export function ComboBox({
   options,
   value,
   onChange,
+  onSelect = onChange,
   label,
   placeholder,
   leftIcon,
@@ -29,7 +32,7 @@ export function ComboBox({
     : options;
 
   function handleSelect(city: string) {
-    onChange(city);
+    onSelect(city);
     setOpen(false);
   }
 
