@@ -27,7 +27,7 @@ Status: Implemented (T1–T5 done); awaiting independent verification.
 ### Phase 1: Deterministic tests
 
 ```text
-T1 → T2 → T3 → T4 → T5
+T1 → T2 → T3 → T4 → T5 → T6
 ```
 
 ## Task Breakdown
@@ -81,3 +81,13 @@ T1 → T2 → T3 → T4 → T5
 **Gate**: full
 **Done when**:
 - [x] 20 isolated `--testPathPatterns=user-profile` runs pass with no parse error; if it reproduces, the cause and fix are recorded in the Assumptions table.
+
+### T6: Cover the double-close edge case (verifier fix)
+
+**Where**: `apps/api/src/module/user-profile/__test__/integration/data-sources-teardown.spec.ts`
+**Depends on**: T4
+**Requirement**: TDET-11 (edge case: a second close SHALL NOT throw)
+**Tests**: integration
+**Gate**: full
+**Done when**:
+- [x] `destroyDataSources` is called twice on one module and the second call resolves; a module that lacks some named data sources is skipped without error. Removing the `isInitialized` guard fails the spec.
