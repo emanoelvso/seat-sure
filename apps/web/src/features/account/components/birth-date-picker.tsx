@@ -187,7 +187,7 @@ export function BirthDatePicker({
           </Popover.Trigger>
         </fieldset>
         {isError && (
-          <p id={errorId} className="text-xs text-error-300">
+          <p id={errorId} role="alert" className="text-xs text-error-300">
             {error}
           </p>
         )}

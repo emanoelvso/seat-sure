@@ -337,3 +337,38 @@ export const TodayCellSelected: Story = {
     await expect(getComputedStyle(today).color).toBe("rgb(255, 255, 255)");
   },
 };
+
+// BDATE-03 AC 1, 2 and 4: the error is an alert, the trigger is described
+// by it, and the button carries no aria-invalid (unsupported on a button).
+export const ErrorIsAnnounced: Story = {
+  render: () => (
+    <BirthDatePicker
+      value=""
+      today={TODAY}
+      onChange={onChange}
+      error="Enter a valid date of birth."
+    />
+  ),
+  play: async ({ canvas }) => {
+    const field = canvas.getByRole("button", { name: /Date of birth/ });
+
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "Enter a valid date of birth.",
+    );
+    await expect(field).toHaveAccessibleDescription(
+      "Enter a valid date of birth.",
+    );
+    await expect(field).not.toHaveAttribute("aria-invalid");
+  },
+};
+
+// BDATE-03 AC 3: without an error there is no alert and no description.
+export const NoErrorNoAlert: Story = {
+  render: () => <Controlled initial="1995-08-17" />,
+  play: async ({ canvas }) => {
+    const field = canvas.getByRole("button", { name: /Date of birth/ });
+
+    await expect(canvas.queryByRole("alert")).toBeNull();
+    await expect(field).not.toHaveAttribute("aria-describedby");
+  },
+};
