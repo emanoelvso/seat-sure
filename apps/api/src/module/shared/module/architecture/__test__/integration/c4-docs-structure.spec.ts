@@ -209,3 +209,15 @@ describe('C4 docs structure', () => {
     });
   });
 });
+
+describe('planned tags (C4-01)', () => {
+  it.each([
+    ['context.md', /System_Ext\(gateway,.*\$tags="planned"\)/],
+    ['context.md', /Rel\(seatSure, gateway,.*\$tags="planned"\)/],
+    ['container.md', /ContainerDb\(redis,.*\$tags="planned"\)/],
+    ['container.md', /Rel\(api, redis,.*\$tags="planned"\)/],
+    ['deployment.md', /Rel\(api, redis,.*\$tags="planned"\)/],
+  ])('%s tags %s with planned', (file, element) => {
+    expect(read(resolve(C4_DIR, file))).toMatch(element);
+  });
+});
