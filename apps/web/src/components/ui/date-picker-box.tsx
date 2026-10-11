@@ -3,7 +3,7 @@ import { formatDateLabel } from "@/utils/format-date-label";
 import { Icon } from "@solar-icons/react/lib/types";
 import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import { Popover } from "radix-ui";
-import { createElement, useState } from "react";
+import { createElement, useId, useState } from "react";
 import { DateRange, DayPicker } from "react-day-picker";
 
 interface DatePickerBoxProps {
@@ -20,16 +20,20 @@ export function DatePickerBox({
   onChange,
 }: DatePickerBoxProps) {
   const [open, setOpen] = useState(false);
+  const legendId = useId();
+  const buttonId = useId();
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <div className="w-full max-w-xl flex flex-col gap-1">
         <fieldset className="relative w-full bg-neutral-700 border rounded-lg border-neutral-800">
-          <legend className="ml-e px-1 text-xs text-neutral-200 leading-none">
+          <legend id={legendId} className="ml-3 px-1 text-xs text-neutral-200 leading-none">
             {label}
           </legend>
           <Popover.Trigger asChild>
             <button
+              id={buttonId}
+              aria-labelledby={`${legendId} ${buttonId}`}
               className={`flex items-center justify-between gap-3 w-full bg-transparent outline-none text-sm pl-12 pr-4 py-2 cursor-pointer relative ${value?.from ? "text-white" : "text-neutral-200"}`}
             >
               {createElement(leftIcon, {

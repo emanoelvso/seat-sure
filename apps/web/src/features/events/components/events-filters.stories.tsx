@@ -201,3 +201,88 @@ export const RemovePills: Story = {
     await expect(pills(canvas)).toEqual([]);
   },
 };
+
+export const ControlsHaveAccessibleNames: Story = {
+  parameters: urlState("?type=SHOW&price=100-300&from=2026-10-01&to=2026-10-05"),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("combobox", { name: "What" })).toBeVisible();
+    await expect(canvas.getByRole("combobox", { name: "Price" })).toBeVisible();
+    await expect(canvas.getByRole("textbox", { name: "Where" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /^When/ })).toHaveAccessibleName(
+      "When Oct 1 - Oct 5, 2026",
+    );
+    for (const label of ["What", "When", "Where", "Price"]) {
+      await expect(canvas.getByRole("group", { name: label })).toBeVisible();
+    }
+  },
+};
+
+export const WhenNameWithoutDates: Story = {
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: /^When/ })).toHaveAccessibleName(
+      "When Select dates",
+    );
+  },
+};
+
+export const WhenLegendHasSameMarginAsOthers: Story = {
+  play: async ({ canvas }) => {
+    const legend = (label: string) =>
+      within(canvas.getByRole("group", { name: label })).getByText(label);
+    await expect(legend("When")).toHaveClass("ml-3");
+    await expect(legend("When")).not.toHaveClass("ml-e");
+  },
+};
+
+export const TabOrder: Story = {
+  play: async ({ canvas, userEvent }) => {
+    for (const control of [
+      canvas.getByRole("combobox", { name: "What" }),
+      canvas.getByRole("button", { name: /^When/ }),
+      canvas.getByRole("textbox", { name: "Where" }),
+      canvas.getByRole("combobox", { name: "Price" }),
+    ]) {
+      await userEvent.tab();
+      await expect(control).toHaveFocus();
+    }
+  },
+};
+
+export const KeyboardSelectType: Story = {
+  parameters: urlState("?page=3"),
+  play: async ({ canvas, userEvent, parameters }) => {
+    canvas.getByRole("combobox", { name: "What" }).focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("listbox");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    await expect(lastUpdate(parameters).searchParams.get("type")).toBe("SHOW");
+  },
+};
+
+export const KeyboardSelectPrice: Story = {
+  parameters: urlState("?page=3"),
+  play: async ({ canvas, userEvent, parameters }) => {
+    canvas.getByRole("combobox", { name: "Price" }).focus();
+    await userEvent.keyboard(" ");
+    await screen.findByRole("listbox");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    await expect(lastUpdate(parameters).searchParams.get("price")).toBe("100-300");
+  },
+};
+
+export const KeyboardOpensAndClosesCalendar: Story = {
+  play: async ({ canvas, userEvent }) => {
+    const button = canvas.getByRole("button", { name: /^When/ });
+    button.focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("grid");
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
+    await expect(button).toHaveFocus();
+  },
+};

@@ -1,7 +1,7 @@
 "use client";
 import { Popover } from "radix-ui";
 import { Icon } from "@solar-icons/react/lib/types";
-import { createElement, useState } from "react";
+import { createElement, useId, useState } from "react";
 import { CheckCircleIcon } from "@solar-icons/react/outline";
 
 interface ComboBoxProps {
@@ -22,6 +22,7 @@ export function ComboBox({
   leftIcon,
 }: ComboBoxProps) {
   const [open, setOpen] = useState(false);
+  const legendId = useId();
 
   const filtered = value
     ? options.filter((o) => o.toLowerCase().includes(value.toLowerCase()))
@@ -37,7 +38,7 @@ export function ComboBox({
       <div className="w-full max-w-xl flex flex-col gap-1">
         <fieldset className="relative w-full bg-neutral-700 border rounded-lg border-neutral-800">
           {label && (
-            <legend className="ml-3 px-1 text-xs text-neutral-200 leading-none">
+            <legend id={legendId} className="ml-3 px-1 text-xs text-neutral-200 leading-none">
               {label}
             </legend>
           )}
@@ -51,6 +52,7 @@ export function ComboBox({
                 })}
               <input
                 type="text"
+                aria-labelledby={label ? legendId : undefined}
                 value={value ?? ""}
                 placeholder={placeholder}
                 onChange={(e) => {
