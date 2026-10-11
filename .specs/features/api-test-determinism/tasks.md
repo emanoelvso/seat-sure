@@ -4,7 +4,7 @@
 
 Use tlc-spec-driven: one verified atomic commit per task (apps/api only, succinct, no attribution), then independent verifier. Planning only in this session; no implementation authorized yet. Five tasks fit one inline batch.
 
-Status: In progress (T1 done).
+Status: In progress (T1, T2 done).
 
 ## Test Coverage Matrix
 
@@ -42,7 +42,7 @@ T1 → T2 → T3 → T4 → T5
 **Done when**:
 - [x] `name` and `description` are capped at 100 characters; a new spec generates 10,000 rows and asserts both lengths, and the 101-event e2e test still passes.
 
-### T2: Use the fixed clock in the update-my-profile e2e
+### T2: Use the fixed clock in the update-my-profile e2e ✅
 
 **Where**: `apps/api/src/module/user-profile/__test__/e2e/update-my-profile/update-my-profile.spec.ts`
 **Depends on**: T1
@@ -50,7 +50,7 @@ T1 → T2 → T3 → T4 → T5
 **Tests**: e2e
 **Gate**: quick
 **Done when**:
-- [ ] The test `accepts the current date in the app time zone` uses the fixed-`now` service path; the spec passes with the system clock faked at 10:00 UTC.
+- [x] The test `accepts the current date in the app time zone` uses the fixed-`now` service path; the spec passes with the system clock faked at 10:00 UTC.
 
 ### T3: Remove the sleep from the updatedAt test
 

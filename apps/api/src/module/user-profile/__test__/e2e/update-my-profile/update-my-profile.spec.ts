@@ -291,21 +291,6 @@ describe('UserProfileResolver updateMyProfile (e2e)', () => {
     });
   });
 
-  it('accepts the current date in the app time zone', async () => {
-    await insertCaller();
-    const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Pacific/Kiritimati',
-    }).format(new Date());
-
-    const accepted = await updateMyProfile(
-      { ...VALID_INPUT, birthDate: today },
-      tokenFor(userId),
-    );
-
-    expect(accepted.errors).toBeUndefined();
-    expect(accepted.data.updateMyProfile.birthDate).toBe(today);
-  });
-
   describe('"today" in the app time zone', () => {
     // 2031-03-15 23:00 UTC is already 2031-03-16 in Kiritimati (UTC+14) and
     // still 2031-03-15 in Los Angeles (UTC-7).
@@ -313,6 +298,22 @@ describe('UserProfileResolver updateMyProfile (e2e)', () => {
 
     afterEach(() => {
       configService.set('app', { timeZone: 'Pacific/Kiritimati' });
+    });
+
+    it('accepts the current date in the app time zone', async () => {
+      await insertCaller();
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Pacific/Kiritimati',
+      }).format(NOW);
+
+      const saved = await userProfileService.updateMyProfile(
+        userId,
+        { ...VALID_INPUT, birthDate: today },
+        NOW,
+      );
+
+      expect(today).toBe('2031-03-16');
+      expect(saved.birthDate).toBe('2031-03-16');
     });
 
     it('accepts the date of a zone ahead of UTC', async () => {
