@@ -5,7 +5,8 @@ export type BillingExceptionReason =
   | 'DUPLICATE_CARD'
   | 'CARD_LIMIT_REACHED'
   | 'CARD_DECLINED'
-  | 'CARD_NOT_FOUND';
+  | 'CARD_NOT_FOUND'
+  | 'CARD_ATTEMPTS_LIMITED';
 
 // Mirrors IdentityException (AD-018): a business error carried as a typed
 // reason + field errors, not a generic 500.
