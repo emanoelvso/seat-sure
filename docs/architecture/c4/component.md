@@ -1,6 +1,6 @@
 # C4 Level 3: API Components
 
-The bounded contexts inside the API container. There is one component per directory in `apps/api/src/module`, plus the shared kernel. Component ids are the directory names; `c4-component-drift.spec.ts` compares them with the directories.
+The bounded contexts inside the API container. There is one component per directory in `apps/api/src/module`, plus the shared kernel. Component ids are the directory names.
 
 ```mermaid
 C4Component

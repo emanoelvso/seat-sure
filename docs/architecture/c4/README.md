@@ -15,9 +15,7 @@ Mermaid C4 diagrams of Seat Sure as built. Each file holds one diagram and tags 
 - [ADR-002](../../adrs/002-postgresql-and-redis-as-database-stack.md): the PostgreSQL and Redis stack.
 - [ADR-001](../../adrs/001-graphql-primary-api-with-rest-for-specialized-endpoints.md): GraphQL as the primary API.
 - [architecture.mmd](../architecture.mmd): the older microservices diagram. It is the target state, not the current system.
-- [scaling-lessons.md](../scaling-lessons.md): scaling lessons from a ticketing talk, mapped to ADRs and modules.
 
 ## Notes
 
 - Social Proof is a planned bounded context in [bounded-contexts.md](../bounded-contexts.md). It has no module yet, so the component diagram omits it.
-- The component diagram is checked against `apps/api/src/module` by `c4-component-drift.spec.ts`. Adding or removing a module directory fails that test until `component.md` is updated.
