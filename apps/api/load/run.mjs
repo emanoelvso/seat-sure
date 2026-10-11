@@ -94,6 +94,7 @@ const k6Status = await new Promise((resolve) => {
       'grafana/k6',
       'run',
       '--summary-export=/run/summary.json',
+      '--summary-trend-stats=avg,min,med,p(90),p(95),p(99),max',
       `/scripts/${name}.js`,
     ],
     { stdio: 'inherit' },

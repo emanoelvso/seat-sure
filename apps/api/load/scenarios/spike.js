@@ -37,6 +37,13 @@ export const options = {
       `p(95)<${__ENV.DISCOVERY_P95_MS || 500}`,
     ],
     unexpected_errors: ['rate<0.01'],
+    // Never fail: they only make k6 export per-operation figures in the summary.
+    ...Object.fromEntries(
+      ['discovery', 'hold', 'pay'].flatMap((op) => [
+        [`unexpected_errors{op:${op}}`, ['rate>=0']],
+        [`http_reqs{op:${op}}`, ['count>=0']],
+      ]),
+    ),
   },
 };
 
@@ -106,12 +113,12 @@ const holdSeat = (seatId) =>
   );
 
 // true for a success or an expected business error, false for anything else.
-const classify = (result, expectedReasons) => {
+const classify = (result, expectedReasons, op) => {
   const { response, body } = result;
   const ok = response.status === 200 && !body?.errors && Boolean(body?.data);
   const reason = reasonOf(body);
   const expected = !ok && expectedReasons.includes(reason);
-  unexpected.add(!ok && !expected);
+  unexpected.add(!ok && !expected, { op });
   return { ok, reason };
 };
 
@@ -122,19 +129,21 @@ export default function () {
     [FIND_UNAVAILABLE_SEATS, { input: { eventId: fixture.eventId } }],
   ]) {
     const { response, body } = gql(query, variables, null, { op: 'discovery' });
-    unexpected.add(response.status !== 200 || Boolean(body?.errors));
+    unexpected.add(response.status !== 200 || Boolean(body?.errors), {
+      op: 'discovery',
+    });
   }
   sleep(0.2 + Math.random() * 0.5);
 
   // Hold, retrying once with another seat when the first is taken
   let seatId = pickSeat();
   let hold = holdSeat(seatId);
-  let outcome = classify(hold, ['SEATS_UNAVAILABLE']);
+  let outcome = classify(hold, ['SEATS_UNAVAILABLE'], 'hold');
   if (!outcome.ok && outcome.reason === 'SEATS_UNAVAILABLE') {
     seatsUnavailable.add(1);
     seatId = pick(fixture.seatIds.filter((candidate) => candidate !== seatId));
     hold = holdSeat(seatId);
-    outcome = classify(hold, ['SEATS_UNAVAILABLE']);
+    outcome = classify(hold, ['SEATS_UNAVAILABLE'], 'hold');
     if (!outcome.ok && outcome.reason === 'SEATS_UNAVAILABLE') {
       seatsUnavailable.add(1);
     }
@@ -157,7 +166,7 @@ export default function () {
     },
     'pay',
   );
-  const paid = classify(payment, ['ORDER_EXPIRED']);
+  const paid = classify(payment, ['ORDER_EXPIRED'], 'pay');
   if (paid.ok) {
     sold.add(1);
   } else if (paid.reason === 'ORDER_EXPIRED') {

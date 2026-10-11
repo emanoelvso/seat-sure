@@ -17,6 +17,7 @@ pnpm docker:start:deps
 
 # 2. Create a dedicated database and migrate it
 docker exec seat-sure-db psql -U postgres -c 'CREATE DATABASE "seat-sure-load"'
+set -a; . ./.env.test; set +a
 for module in catalog ticketing user-profile identity billing notifications; do
   DATABASE_NAME=seat-sure-load pnpm $module:db:migrate
 done
