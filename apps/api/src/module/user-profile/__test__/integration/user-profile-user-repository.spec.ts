@@ -161,12 +161,14 @@ describe('UserProfileUserRepository (integration)', () => {
 
   it('refreshes updatedAt', async () => {
     const id = await insertUser();
-    const before = (await stored(id)).updatedAt as Date;
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const seeded = new Date('2000-01-01T00:00:00Z');
+    await testDbClient(Tables.UserProfileUser)
+      .where({ id })
+      .update({ updatedAt: seeded });
 
     await repository.updateProfile(id, FULL_PROFILE);
 
     const after = (await stored(id)).updatedAt as Date;
-    expect(after.getTime()).toBeGreaterThan(before.getTime());
+    expect(after.getTime()).toBeGreaterThan(seeded.getTime());
   });
 });

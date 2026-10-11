@@ -2,10 +2,10 @@ import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { billingPaymentFactory } from '@billingModule/__test__/factory/billing-payment.factory';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
+import { destroyDataSources } from '@testInfra/data-sources.teardown';
 import { createNestApp } from '@testInfra/test-e2e.setup';
 import {
   orderFactory,
@@ -14,7 +14,6 @@ import {
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
 import { TicketingModule } from '@ticketingModule/ticketing.module';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 
 const FIND_ACCOUNT_ORDER = `
   query FindAccountOrder($input: FindAccountOrderInput!) {
@@ -77,12 +76,7 @@ describe('TicketingResolver findAccountOrder (e2e)', () => {
   afterAll(async () => {
     await deleteRows();
     await testDbClient.destroy();
-    for (const name of ['ticketing', 'catalog', 'billing']) {
-      const dataSource = module.get<DataSource>(getDataSourceToken(name));
-      if (dataSource.isInitialized) {
-        await dataSource.destroy();
-      }
-    }
+    await destroyDataSources(module);
     await app.getHttpServer().close();
   });
 

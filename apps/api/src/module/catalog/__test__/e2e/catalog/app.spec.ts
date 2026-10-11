@@ -4,12 +4,11 @@ import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { EventType } from '@catalogModule/core/enum/event-type.enum';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { AppModule } from '@src/app.module';
 import { Tables } from '@testInfra/enum/table.enum';
+import { destroyDataSources } from '@testInfra/data-sources.teardown';
 import { testDbClient } from '@testInfra/knex.database';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
 import { initializeTransactionalContext } from 'typeorm-transactional';
 
 describe('AppModule (e2e)', () => {
@@ -37,10 +36,7 @@ describe('AppModule (e2e)', () => {
     await testDbClient(Tables.Event).del();
     await testDbClient(Tables.Venue).where({ id: venue.id }).del();
     await testDbClient.destroy();
-    const dataSource = module.get<DataSource>(getDataSourceToken('catalog'));
-    if (dataSource.isInitialized) {
-      await dataSource.destroy();
-    }
+    await destroyDataSources(module);
     await app.getHttpServer().close();
   });
 
