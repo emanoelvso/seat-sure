@@ -103,6 +103,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await testDbClient(Tables.Order).del();
     await testDbClient(Tables.BillingPayment).del();
     await testDbClient(Tables.BillingPaymentCard).del();
+    await testDbClient(Tables.BillingCardThrottle).del();
     await testDbClient(Tables.NotificationsNotification).del();
   };
 
@@ -687,6 +688,37 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
       expect((await orderRow(order.id)).status).toBe('pending');
       expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+    });
+
+    it('fails with CARD_ATTEMPTS_LIMITED when the user is locked, charging nothing and leaving the order payable (CARDABUSE-01 AC 2)', async () => {
+      const { order } = await insertOrder();
+      const savedCard = await insertSavedCard();
+      await testDbClient(Tables.BillingCardThrottle).insert({
+        id: randomUUID(),
+        userId,
+        failedCount: 0,
+        windowStartedAt: new Date(),
+        lockedUntil: new Date(Date.now() + 10 * 60_000),
+      });
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_ATTEMPTS_LIMITED');
+      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+      expect((await orderRow(order.id)).status).toBe('pending');
+
+      await testDbClient(Tables.BillingCardThrottle).where({ userId }).del();
+      const retried = await payOrderWith({
+        orderId: order.id,
+        savedCardId: savedCard.id,
+      });
+
+      expect(retried.errors).toBeUndefined();
+      expect(retried.data.payOrder.status).toBe('PAID');
     });
 
     it.each([

@@ -18,5 +18,6 @@ export enum Tables {
   IdentityPasswordResetGrant = 'IdentityPasswordResetGrant',
   BillingPayment = 'BillingPayment',
   BillingPaymentCard = 'BillingPaymentCard',
+  BillingCardThrottle = 'BillingCardThrottle',
   NotificationsNotification = 'NotificationsNotification',
 }

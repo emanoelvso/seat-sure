@@ -95,8 +95,13 @@ describe("payOrderAction", () => {
     expect(mockedWithAccessToken).not.toHaveBeenCalled();
   });
 
-  it.each(["CARD_DECLINED", "SEATS_UNAVAILABLE", "ORDER_EXPIRED"] as const)(
-    "passes %s through as the reason (PAY-50, PAY-51, PAY-61)",
+  it.each([
+    "CARD_DECLINED",
+    "SEATS_UNAVAILABLE",
+    "ORDER_EXPIRED",
+    "CARD_ATTEMPTS_LIMITED",
+  ] as const)(
+    "passes %s through as the reason (PAY-50, PAY-51, PAY-61, CARDABUSE-03 AC 2)",
     async (reason) => {
       mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
       mockedFetch.mockRejectedValueOnce(
@@ -107,6 +112,7 @@ describe("payOrderAction", () => {
 
       expect(result).toEqual({ reason });
       expect(redirect).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
     },
   );
 

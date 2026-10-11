@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { BillingService } from '@billingModule/core/service/billing.service';
+import { CardThrottleService } from '@billingModule/core/service/card-throttle.service';
 import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import { BillingResolver } from '@billingModule/http/graphql/billing.resolver';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
@@ -16,6 +17,7 @@ import { BillingApi } from '@sharedModules/integration/interface/billing-integra
     { provide: PaymentGateway, useClass: SimulatedPaymentGateway },
     BillingService,
     PaymentCardService,
+    CardThrottleService,
     BillingResolver,
     { provide: BillingApi, useClass: BillingPublicApiProvider },
   ],

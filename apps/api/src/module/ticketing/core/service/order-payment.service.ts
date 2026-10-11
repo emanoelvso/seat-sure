@@ -238,6 +238,14 @@ export class OrderPaymentService {
           'CARD_NOT_FOUND',
           'This card is no longer available.',
         );
+      case 'card_attempts_limited':
+        // Too many failed card attempts: nothing was charged, and the order
+        // stays payable (CARDABUSE-01 AC 2)
+        await this.orderRepository.releasePayment(order.id);
+        throw new TicketingException(
+          'CARD_ATTEMPTS_LIMITED',
+          'Too many card attempts. Try again in 15 minutes.',
+        );
       default: {
         const unhandled: never = charge;
         throw new Error(`Unhandled charge outcome: ${String(unhandled)}`);

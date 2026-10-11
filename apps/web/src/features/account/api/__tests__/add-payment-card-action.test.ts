@@ -156,6 +156,25 @@ describe("addPaymentCardAction", () => {
     expectNoCardData(result);
   });
 
+  it('returns "Too many card attempts. Try again in 15 minutes." and no field errors for CARD_ATTEMPTS_LIMITED (CARDABUSE-03 AC 1)', async () => {
+    mockedFetch.mockRejectedValue(
+      new GraphQLRequestError(
+        "Too many card attempts. Try again in 15 minutes.",
+        undefined,
+        "CARD_ATTEMPTS_LIMITED",
+      ),
+    );
+
+    const result = await addPaymentCardAction(initialState, card);
+
+    expect(result).toEqual({
+      status: "error",
+      fieldErrors: {},
+      formError: "Too many card attempts. Try again in 15 minutes.",
+    });
+    expectNoCardData(result);
+  });
+
   it('returns "This card was declined. Try another card." for CARD_DECLINED (CARD-05 AC 12)', async () => {
     mockedFetch.mockRejectedValue(
       new GraphQLRequestError(
