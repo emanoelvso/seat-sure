@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import { billingPaymentFactory } from '@billingModule/__test__/factory/billing-payment.factory';
+import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import { BillingModule } from '@billingModule/billing.module';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -25,7 +26,10 @@ const DECLINED_CARD = { ...VALID_CARD, number: '4000 0000 0000 0002' };
 
 // Narrows an outcome that recorded a payment
 const recorded = (outcome: ChargeOutcome) => {
-  if (outcome.status === 'card_not_found') {
+  if (
+    outcome.status === 'card_not_found' ||
+    outcome.status === 'card_attempts_limited'
+  ) {
     throw new Error('Expected a recorded payment');
   }
   return outcome;
@@ -322,6 +326,200 @@ describe('BillingPublicApiProvider (integration)', () => {
         failureReason: 'card_declined',
         cardLast4: '0341',
       });
+    });
+  });
+
+  // CARDABUSE-01, CARDABUSE-02 (AD-028)
+  describe('saved-card charge throttle', () => {
+    afterEach(async () => {
+      await testDbClient(Tables.BillingPaymentCard).del();
+      await testDbClient(Tables.BillingCardThrottle).del();
+      jest.restoreAllMocks();
+    });
+
+    const chargeSaved = (userId: string, savedCardId: string) =>
+      billingApi.charge({
+        userId,
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'savedCard', savedCardId },
+      });
+
+    const declinedCard = (userId: string) =>
+      billingPaymentCardFactory.build({
+        userId,
+        providerToken: `sim_pm_decline_${randomUUID()}`,
+        last4: '0341',
+      });
+
+    const expiredCard = (userId: string) =>
+      billingPaymentCardFactory.build({
+        userId,
+        expMonth: 1,
+        expYear: 2020,
+      });
+
+    const okCard = (userId: string) =>
+      billingPaymentCardFactory.build({ userId });
+
+    const failedCount = async (userId: string) => {
+      const row = await testDbClient(Tables.BillingCardThrottle)
+        .where({ userId })
+        .first();
+      return row ? Number(row.failedCount) : 0;
+    };
+
+    const paymentRows = (userId: string) =>
+      testDbClient(Tables.BillingPayment).where({ userId });
+
+    const lockOut = async (userId: string, cardId: string) => {
+      for (let i = 0; i < 5; i += 1) {
+        expect((await chargeSaved(userId, cardId)).status).toBe('failed');
+      }
+    };
+
+    it('returns card_attempts_limited after 5 declined charges, with no gateway call and no payment row (AC 2)', async () => {
+      const userId = randomUUID();
+      const declined = declinedCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
+      await lockOut(userId, declined.id);
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+
+      const outcome = await chargeSaved(userId, declined.id);
+
+      expect(outcome).toEqual({ status: 'card_attempts_limited' });
+      expect(chargeSpy).not.toHaveBeenCalled();
+      expect(await paymentRows(userId)).toHaveLength(5);
+    });
+
+    it('counts a declined and an expired saved-card charge, 1 each (AC 7)', async () => {
+      const userId = randomUUID();
+      const declined = declinedCard(userId);
+      const expired = expiredCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [
+        declined,
+        expired,
+      ]);
+
+      await chargeSaved(userId, declined.id);
+      expect(await failedCount(userId)).toBe(1);
+
+      await chargeSaved(userId, expired.id);
+      expect(await failedCount(userId)).toBe(2);
+    });
+
+    it('does not count card_not_found (AC 8)', async () => {
+      const userId = randomUUID();
+
+      for (let i = 0; i < 6; i += 1) {
+        expect(await chargeSaved(userId, randomUUID())).toEqual({
+          status: 'card_not_found',
+        });
+      }
+
+      expect(await failedCount(userId)).toBe(0);
+    });
+
+    it('shares one counter with addPaymentCard: 3 failed charges and 2 declined adds lock both (AC 1, 2)', async () => {
+      const userId = randomUUID();
+      const declined = declinedCard(userId);
+      const ok = okCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined, ok]);
+      const cards = module.get(PaymentCardService);
+      for (let i = 0; i < 3; i += 1) {
+        await chargeSaved(userId, declined.id);
+      }
+      for (let i = 0; i < 2; i += 1) {
+        await expect(
+          cards.add(
+            userId,
+            { ...VALID_CARD, number: '4000 0000 0000 0002' },
+            new Date(),
+          ),
+        ).rejects.toMatchObject({ reason: 'CARD_DECLINED' });
+      }
+
+      expect(await chargeSaved(userId, ok.id)).toEqual({
+        status: 'card_attempts_limited',
+      });
+    });
+
+    it('still processes a typed-card charge while locked (AC 3)', async () => {
+      const userId = randomUUID();
+      const declined = declinedCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
+      await lockOut(userId, declined.id);
+
+      const outcome = await billingApi.charge({
+        userId,
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card: VALID_CARD },
+      });
+
+      expect(outcome.status).toBe('succeeded');
+    });
+
+    it('resets the count on a successful saved-card charge (AC 5)', async () => {
+      const userId = randomUUID();
+      const declined = declinedCard(userId);
+      const ok = okCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined, ok]);
+      for (let i = 0; i < 4; i += 1) {
+        await chargeSaved(userId, declined.id);
+      }
+      expect(await failedCount(userId)).toBe(4);
+
+      expect((await chargeSaved(userId, ok.id)).status).toBe('succeeded');
+      expect(await failedCount(userId)).toBe(0);
+
+      for (let i = 0; i < 4; i += 1) {
+        await chargeSaved(userId, declined.id);
+      }
+      expect((await chargeSaved(userId, ok.id)).status).toBe('succeeded');
+    });
+
+    it('charges again once the lock has ended (AC 4)', async () => {
+      const userId = randomUUID();
+      const declined = declinedCard(userId);
+      const ok = okCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined, ok]);
+      await lockOut(userId, declined.id);
+      await testDbClient(Tables.BillingCardThrottle)
+        .where({ userId })
+        .update({ lockedUntil: new Date(Date.now() - 1000) });
+
+      expect((await chargeSaved(userId, ok.id)).status).toBe('succeeded');
+    });
+
+    it("keeps each user's counter separate (AC 9)", async () => {
+      const blocked = randomUUID();
+      const declined = declinedCard(blocked);
+      const other = okCard(randomUUID());
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [
+        declined,
+        other,
+      ]);
+      await lockOut(blocked, declined.id);
+
+      expect((await chargeSaved(other.userId, other.id)).status).toBe(
+        'succeeded',
+      );
+    });
+
+    it('does not count an unexpected gateway error (edge case)', async () => {
+      const userId = randomUUID();
+      const ok = okCard(userId);
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [ok]);
+      jest
+        .spyOn(module.get(PaymentGateway), 'charge')
+        .mockRejectedValue(new Error('gateway down'));
+
+      await expect(chargeSaved(userId, ok.id)).rejects.toThrow('gateway down');
+
+      expect(await failedCount(userId)).toBe(0);
     });
   });
 

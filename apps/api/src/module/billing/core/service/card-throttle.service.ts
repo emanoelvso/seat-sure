@@ -11,9 +11,13 @@ export class CardThrottleService {
     private readonly cardThrottleRepository: CardThrottleRepository,
   ) {}
 
-  async assertNotLocked(userId: string, now: Date): Promise<void> {
+  async isLocked(userId: string, now: Date): Promise<boolean> {
     const row = await this.cardThrottleRepository.findByUserId(userId);
-    if (row?.lockedUntil && now.getTime() < row.lockedUntil.getTime()) {
+    return !!row?.lockedUntil && now.getTime() < row.lockedUntil.getTime();
+  }
+
+  async assertNotLocked(userId: string, now: Date): Promise<void> {
+    if (await this.isLocked(userId, now)) {
       throw new BillingException(
         'CARD_ATTEMPTS_LIMITED',
         'Too many card attempts. Try again in 15 minutes.',
