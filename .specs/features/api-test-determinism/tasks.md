@@ -4,7 +4,7 @@
 
 Use tlc-spec-driven: one verified atomic commit per task (apps/api only, succinct, no attribution), then independent verifier. Planning only in this session; no implementation authorized yet. Five tasks fit one inline batch.
 
-Status: In progress (T1–T4 done).
+Status: Implemented (T1–T5 done); awaiting independent verification.
 
 ## Test Coverage Matrix
 
@@ -72,7 +72,7 @@ T1 → T2 → T3 → T4 → T5
 **Done when**:
 - [x] `--detectOpenHandles` output is recorded, each leaked handle (DataSource, knex `testDbClient`, HTTP server, Nest app) is closed in its owning `afterAll`, `--detectOpenHandles` reports zero handles, and the full suite exits without `--forceExit` 3 times in a row.
 
-### T5: Investigate the HTTP parsing error
+### T5: Investigate the HTTP parsing error ✅
 
 **Where**: `apps/api/src/module/user-profile/__test__/`, this spec's Assumptions table
 **Depends on**: T4
@@ -80,4 +80,4 @@ T1 → T2 → T3 → T4 → T5
 **Tests**: e2e
 **Gate**: full
 **Done when**:
-- [ ] 20 isolated `--testPathPatterns=user-profile` runs pass with no parse error; if it reproduces, the cause and fix are recorded in the Assumptions table.
+- [x] 20 isolated `--testPathPatterns=user-profile` runs pass with no parse error; if it reproduces, the cause and fix are recorded in the Assumptions table.

@@ -33,7 +33,7 @@ Three API test defects make runs nondeterministic or non-terminating: the `event
 | Fix for the `updatedAt` sleep | Seed `updatedAt` to a fixed past timestamp with knex, then assert the repository moves it past that value | `DefaultEntity` stamps `new Date()` in app code, so a fixed past seed removes the sleep without a clock injection | n |
 | Description cap | Cap `description` at 100 and `name` at 100 using a shorter faker source or truncation in the factory | Column is `varchar(100)`; `name` shares the limit | n |
 | Open-handle root cause | Found in T4. `--detectOpenHandles` printed no handles, but 7 suites logged "Jest did not exit one second after the test run" and held the process 5-10 s after the last result: they booted modules whose `DataSource`s they never closed (for example `notifications`, `identity`, `user-profile` pulled in transitively). Fixed with `destroyDataSources(module)` (`test/data-sources.teardown.ts`), which closes every initialized module `DataSource` and is safe to call twice. `app.close()` is not usable: `@nestjs/typeorm` shutdown throws "could not find DataSource element" for the named sources | Measured per suite and across the full suite: exit tail 0.1-0.2 s, no warning | y |
-| HTTP parsing error | May share a cause with the leaked handles (a closed server or reused connection); if it does not reproduce in 20 isolated runs it is recorded as not reproduced | Seen once | n |
+| HTTP parsing error | Not reproduced. 20 isolated `--testPathPatterns=user-profile` runs after T1-T4 all passed (138 tests each) with no parse error and no "did not exit" warning. No fix made; the leaked-`DataSource` cleanup in T4 is the only change that could have affected it, and the leak was not in the profile suites | 20/20 clean runs | y |
 
 **Open questions:** none - all resolved or logged above.
 
@@ -128,8 +128,8 @@ Three API test defects make runs nondeterministic or non-terminating: the `event
 | TDET-09 | P1: Jest exits on its own | Done (T4) | Verified |
 | TDET-10 | P1: Jest exits on its own | Done (T4) | Verified |
 | TDET-11 | P1: Jest exits on its own | Done (T4) | Verified |
-| TDET-12 | P2: HTTP parsing error is explained | Tasks | Pending |
-| TDET-13 | P2: HTTP parsing error is explained | Tasks | Pending |
+| TDET-12 | P2: HTTP parsing error is explained | Done (T5) | Verified |
+| TDET-13 | P2: HTTP parsing error is explained | Done (T5) | Verified |
 
 **Coverage:** 13 total, 13 mapped to tasks, 0 unmapped
 
