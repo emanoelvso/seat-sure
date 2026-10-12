@@ -8,6 +8,7 @@
   - [ADR-006: Modular Monolith with State Isolation per Bounded Context](./006-modular-monolith-with-state-isolation-per-bounded-context.md)
   - [ADR-012: Money as Integer Minor Units with Currency](./012-money-as-integer-minor-units-with-currency.md)
   - [ADR-018: Business Errors as Unprocessable Entity with a Reason Code](./018-business-errors-as-unprocessable-entity-with-a-reason-code.md)
+  - [ADR-021: Card Operations Throttled per User in Billing](./021-card-operations-throttled-per-user-in-billing.md)
 
 ## Context
 
