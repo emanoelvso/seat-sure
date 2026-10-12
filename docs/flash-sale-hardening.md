@@ -170,3 +170,54 @@ The loop stopped after three iterations with discovery and the unexpected-error 
 - Busy responses were high: 85.5% of holds at limit 100 and 96.5% at limit 20. Hold p95 passes only when the limit is low enough that few holds do real work, which also means few orders are paid (43 of 500 seats in 71 s at limit 20).
 - Pool tuning was not applied: the process is CPU-bound at about 100% and the shed holds and pays answer in 13 to 18 ms at the median, so a larger pool cannot lower discovery latency. Per-pool wait metrics still do not exist, so the pool risk from the Before section is unchanged.
 - The levers in scope (claim, pool, admission on checkout) do not reduce discovery cost. Meeting the discovery and error thresholds needs something outside them: more than one API process, cheaper or cached discovery queries, or admission applied to discovery with the scenario accepting `BUSY` there. That choice is left to the decision on this evidence.
+
+## Result: thresholds not met on a single node
+
+The hardened API on one Node process does not meet the spec thresholds at 2,000 VUs. Hold and pay pass at a low admission limit; discovery p95 and the unexpected-error rate fail at every limit tried. Oversell never occurred.
+
+| Run | Limit | Hold p95 | Pay p95 | Discovery p95 | Unexpected | Hold busy | Orders paid | Results directory |
+| --- | ----- | -------- | ------- | ------------- | ---------- | --------- | ----------- | ----------------- |
+| Before | none | 8,372 ms | 20,601 ms | 7,806 ms | 2.31% | n/a | 500 | `spike-2026-10-11T17-57-28-521Z` |
+| A | 100 (default) | 3,053 ms | 2,921 ms | 9,350 ms | 1.62% | 85.5% | 188 | `spike-2026-10-11T18-11-08-278Z` |
+| B | 20 | 110 ms | 125 ms | 3,803 ms | 1.62% | 96.5% | 43 | `spike-2026-10-11T18-21-36-614Z` |
+| C | 50 | 1,411 ms | 1,182 ms | 6,334 ms | 1.16% | 91.1% | 157 | `spike-2026-10-11T18-25-01-887Z` |
+| D | 10 | 85 ms | 151 ms | 3,740 ms | 1.19% | 98.1% | 36 | `spike-2026-10-11T18-28-07-676Z` |
+
+All figures come from `summary.json`, `oversell.json` and `resources.jsonl` in those directories under `apps/api/load/results/`. Runs A to D use API commit `9c20bfb`; the Before run used `9c5e75d`.
+
+Contention, 200 VUs on one seat:
+
+| Limit | Winners | `SEATS_UNAVAILABLE` | `BUSY` | k6 exit | Results directory |
+| ----- | ------- | ------------------- | ------ | ------- | ----------------- |
+| 100 (default) | 1 | 123 | 76 | 99 | `contention-2026-10-11T18-31-09-824Z` |
+| 200 | 1 | 199 | 0 | 0 | `contention-2026-10-11T18-31-44-731Z` |
+
+With the default, the scenario's expectation of 199 `SEATS_UNAVAILABLE` and 0 unexpected cannot hold, because 76 callers are shed by design. The scenario was not changed.
+
+The hold and pay passes come at a cost: at limit 20, 96.5% of holds were shed and 43 of 500 seats were paid in the run, against 188 at limit 100. Total requests per second rose from 315 (Before) to 702 to 967 because shed buyers browse again.
+
+## Lever outcomes
+
+| Lever | Outcome | Evidence and commit |
+| ----- | ------- | ------------------- |
+| Locking and claim strategy | Unnecessary, not changed | `waitingLocks` was 0 in every sample of the baseline and runs A to D; hold had 0 unexpected errors; oversell passed in all runs; contention gives 1 winner. T21 skipped. |
+| Pool tuning | Not applied, not ruled out | Connections peaked at 37 to 45 of 100 (`resources.jsonl`); the process was CPU-bound near 100% in every run and shed requests answered in 13 to 18 ms at the median. Per-pool wait metrics do not exist. T14 to T20 skipped. |
+| Queueing and admission control | Applied to `startCheckout` and `payOrder` | Limiter `9f123f9`, applied in `1a59927`, `BUSY` counted apart in the spike by `9c20bfb`. Hold and pay p95 pass at limits 20 and 10 (runs B, D). Limit 100 (the default) and 50 fail hold p95. The default was chosen, not derived; see [ADR-021](./adrs/021-flash-sale-concurrency-hardening.md). |
+
+The fix-run loop (three env-only changes of `ADMISSION_MAX_CONCURRENT`: 20, 50, 10) is in the After section. No code changed during it.
+
+## Unexplained: discovery connection-level failures
+
+Every unexpected error in runs A to D is a discovery response (680 to 1,199 per run; hold and pay show 0, `unexpected_errors{op:*}` in `summary.json`). The baseline had 615. They look like connection failures while 2,000 VUs connect at once (`http_req_connecting` max 5.9 s in run B), but the scenario exports the count, not the error text, so the cause is not confirmed. Capturing the status or error code per failed request is the first step before changing anything here.
+
+## Remaining limits and what a larger deployment needs
+
+Not done; options only:
+
+- Several API processes behind a load balancer, since one Node process is capped at about one core (`apiCpuPercent` near 100% in all runs). The limiter is per process, so the limit would apply to each.
+- Cheaper or cached discovery (`findEventTickets`, `findUnavailableSeats`), which is now 35k to 49k of 55k to 74k requests per run.
+- Admission on discovery, which would require the spike scenario to accept `BUSY` there.
+- Per-pool wait metrics, and pool tuning (`max`, `connectionTimeoutMillis`) if those metrics show waits.
+- A limit chosen per machine; the default of 100 fails hold p95 here.
+- A shared limiter if a global limit across processes is wanted.
+- Load generation from a separate machine: here the API, k6 container and Postgres share one host.
