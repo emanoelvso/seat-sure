@@ -6,10 +6,11 @@ import { testDbClient } from '@testInfra/knex.database';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
 import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
+import { Ticket } from '@ticketingModule/persistence/entity/ticket.entity';
 import { SeatHoldRepository } from '@ticketingModule/persistence/repository/seat-hold.repository';
 import { TicketRepository } from '@ticketingModule/persistence/repository/ticket.repository';
 import { TicketingPersistenceModule } from '@ticketingModule/persistence/ticketing-persistence.module';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { initializeTransactionalContext } from 'typeorm-transactional';
 
 // A fixed clock far from the database's own: every comparison must use the
@@ -329,5 +330,89 @@ describe('Seat hold claims and live tickets (integration)', () => {
     expect([...seatIds].sort()).toEqual(
       [issued.seatId!, transferred.seatId!].sort(),
     );
+  });
+
+  describe('one live ticket per event seat', () => {
+    const issuedTicket = (fields: { eventId: string; seatId: string }) =>
+      new Ticket({
+        ...ticketFactory.build({ ...fields, status: TicketStatus.ISSUED }),
+        orderItemId: null,
+      });
+
+    const issue = (ticket: Ticket) =>
+      dataSource.transaction((manager) => tickets.issue(manager, [ticket]));
+
+    const issuedRowsFor = (seatId: string) =>
+      testDbClient(Tables.Ticket).where({
+        seatId,
+        status: TicketStatus.ISSUED,
+      });
+
+    it('commits only the first of two issued tickets for the same seat when the second insert waits on it (HOLDV-04)', async () => {
+      const seatId = randomUUID();
+      const firstTicket = issuedTicket({ eventId, seatId });
+      const secondTicket = issuedTicket({ eventId, seatId });
+      const firstMayCommit = deferred();
+      const firstHasInserted = deferred();
+
+      const first = dataSource.transaction(async (manager) => {
+        await tickets.issue(manager, [firstTicket]);
+        firstHasInserted.resolve();
+        await firstMayCommit.promise;
+      });
+      await firstHasInserted.promise;
+      const second = issue(secondTicket).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      try {
+        await waitUntilBlocked(`INSERT INTO "${Tables.Ticket}"`);
+      } finally {
+        firstMayCommit.resolve();
+      }
+
+      await first;
+      const secondError = await second;
+      expect(secondError).toBeInstanceOf(QueryFailedError);
+      expect(secondError).toMatchObject({ driverError: { code: '23505' } });
+      const rows = await issuedRowsFor(seatId);
+      expect(rows.map((row) => row.id)).toEqual([firstTicket.id]);
+    });
+
+    it('issues a ticket for a seat that has an issued ticket only for another event (HOLDV-05)', async () => {
+      const otherEventTicket = ticketFactory.build({
+        status: TicketStatus.ISSUED,
+      });
+      await testDbClient.batchInsert(Tables.Ticket, [otherEventTicket]);
+      const ticket = issuedTicket({
+        eventId,
+        seatId: otherEventTicket.seatId!,
+      });
+
+      await issue(ticket);
+
+      const rows = await issuedRowsFor(otherEventTicket.seatId!);
+      expect(rows.map((row) => ({ id: row.id, eventId: row.eventId }))).toEqual(
+        expect.arrayContaining([
+          { id: otherEventTicket.id, eventId: otherEventTicket.eventId },
+          { id: ticket.id, eventId },
+        ]),
+      );
+      expect(rows).toHaveLength(2);
+    });
+
+    it('issues a ticket for a seat whose only ticket for the event is cancelled (HOLDV-08)', async () => {
+      const cancelled = ticketFactory.build({
+        eventId,
+        status: TicketStatus.CANCELLED,
+      });
+      await testDbClient.batchInsert(Tables.Ticket, [cancelled]);
+      const ticket = issuedTicket({ eventId, seatId: cancelled.seatId! });
+
+      await issue(ticket);
+
+      const rows = await issuedRowsFor(cancelled.seatId!);
+      expect(rows.map((row) => row.id)).toEqual([ticket.id]);
+    });
   });
 });
