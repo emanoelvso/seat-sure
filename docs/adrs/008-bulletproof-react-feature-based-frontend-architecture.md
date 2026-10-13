@@ -32,7 +32,7 @@ We will organize `apps/web` following **Bulletproof React**, adapted to the Next
 - **Server Components by default**, with `"use client"` only at interactive leaves. Server data stays in its cache, and filters and pagination live in the URL.
 - **Conventions**: kebab-case files, named exports, no barrel files.
 
-Existing code migrates incrementally (see "Frontend Architecture Migration" in `todo.md`). New code follows the structure.
+Existing code migrates incrementally (tracked on the [project board](https://github.com/users/emanoelvso/projects/3)). New code follows the structure.
 
 ## Consequences
 
@@ -45,7 +45,7 @@ Existing code migrates incrementally (see "Frontend Architecture Migration" in `
 ### Challenges
 
 - Until the migration is done, two structures coexist, and contributors must know that old folders are frozen.
-- Two data clients (server fetcher and Apollo) mean two caching models. It is still unconfirmed whether Next's fetch cache applies to GraphQL `POST` requests (tracked in `todo.md`).
+- Two data clients (server fetcher and Apollo) mean two caching models. It is still unconfirmed whether Next's fetch cache applies to GraphQL `POST` requests (tracked on the [project board](https://github.com/users/emanoelvso/projects/3)).
 - Pages already built client-side (artist, tickets) must move their first render to the server, and the tickets filters to URL search params.
 
 ### Trade-offs

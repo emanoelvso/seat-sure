@@ -24,7 +24,7 @@ const boundaryZones = [
   // session primitives (session cookies, refresh, withAccessToken): every
   // protected feature needs them, same as the API's public-API-provider
   // pattern for cross-module reads (buy-ticket-checkout design.md, Code
-  // Reuse Analysis). See todo.md, "Frontend Architecture Migration".
+  // Reuse Analysis). See ADR-008.
   ...features.map((feature) => ({
     target: `./src/features/${feature}`,
     from: "./src/features",

@@ -25,7 +25,7 @@ A ticketing platform's worst bugs live where code meets infrastructure. Filters 
 - `unit` runs pure functions (`*.test.ts`) in Node.
 - `storybook` runs story `play()` functions in headless Chromium, through `@storybook/addon-vitest` and Playwright.
 - Stories are the component and page test harness. Containers use Apollo `MockedProvider`.
-- Playwright end-to-end flows are planned (tracked in `todo.md`).
+- Playwright end-to-end flows are planned (tracked in #38).
 
 Each acceptance criterion maps to at least one test asserting its spec-defined value. At the end of each feature, an independent verification injects deliberate faults to confirm the tests catch them.
 

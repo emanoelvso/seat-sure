@@ -4,7 +4,7 @@ A worked example of [domain-identification-guidelines.md](./domain-identificatio
 
 - **Snapshot**: commit `fb6a0cc`, 2026-09-29. The code will move on; re-run the analysis instead of trusting these numbers later.
 - **Scope**: `apps/api/src/module/catalog/` (the only module in code), checked against the planned contexts in [`docs/architecture/bounded-contexts.md`](../../../docs/architecture/bounded-contexts.md).
-- **Source of truth**: `bounded-contexts.md` and the ADRs. Findings that need work are tracked in `todo.md`.
+- **Source of truth**: `bounded-contexts.md` and the ADRs. Findings that need work are tracked on the [project board](https://github.com/users/emanoelvso/projects/3).
 
 ## Example: Analyzing the Catalog Module
 
@@ -32,7 +32,7 @@ A worked example of [domain-identification-guidelines.md](./domain-identificatio
 - Mutation: `createEvent`
 - Queries: `getHomeSections`, `findEvents`, `findArtistBySlug`, `findEventTickets`
 
-**Planned, not in code** (`bounded-contexts.md`, `todo.md`): `Seat` in Catalog; `SeatHold`, `Order`, `OrderItem`, `Ticket` in Ticketing.
+**Planned, not in code** (`bounded-contexts.md`, the project board): `Seat` in Catalog; `SeatHold`, `Order`, `OrderItem`, `Ticket` in Ticketing.
 
 ### Step 2: Group by Ubiquitous Language
 
@@ -157,7 +157,7 @@ The subdomain types are proposals. `bounded-contexts.md` only classifies whole c
 
 - `Event` names its venue in free text. `Venue` (address, coordinates, capacity) is only referenced by `SeatMap`.
 - An event can name one venue and use a seat map that belongs to another (`Event → SeatMap → Venue`).
-- "Events near you" (in `todo.md`) needs the event's coordinates, and those live only on `Venue`.
+- "Events near you" (issue #26) needs the event's coordinates, and those live only on `Venue`.
 
 **Rule**: Unclear Boundaries (Rule 5)
 
@@ -280,7 +280,7 @@ LEGEND:
 5. **Document the Ubiquitous Language**
    - A glossary of terms per context in `bounded-contexts.md` ("seat", "user", and "event" mean different things in different contexts; see [ddd-strategic-design-theory.md](./ddd-strategic-design-theory.md#ubiquitous-language))
 
-Already tracked in `todo.md` and not repeated here: prefixing Catalog table names, deriving `Event.price` from ticket types (ADR-012), and removing cross-context FKs from `bounded-contexts.md`.
+Already tracked on the [project board](https://github.com/users/emanoelvso/projects/3) and not repeated here: prefixing Catalog table names, deriving `Event.price` from ticket types (ADR-012), and removing cross-context FKs from `bounded-contexts.md`.
 
 ### Step 8: Final Domain Map
 

@@ -22,7 +22,7 @@ New money fields are stored as **integer minor units** plus a **currency code**:
 - **GraphQL**: `Int` for the amount and `String` for the currency.
 - **Formatting**: clients format money with `Intl.NumberFormat` (web: `formatPrice(cents, currency)`). The API never sends formatted strings.
 
-`Event.price` stays a `float` for now. Deriving it from the lowest ticket-type price, or migrating it to cents, is a follow-up tracked in `todo.md`.
+`Event.price` stays a `float` for now. Deriving it from the lowest ticket-type price, or migrating it to cents, is a follow-up tracked in #44.
 
 ## Consequences
 

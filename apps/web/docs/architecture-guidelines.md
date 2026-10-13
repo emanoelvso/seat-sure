@@ -426,7 +426,7 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 - Unit tests live in a `__tests__` folder inside the folder they cover (e.g. `src/utils/__tests__/share.test.ts`), and import the code with `@/`.
 - Fixtures, mocks, and test helpers live in `src/testing/` (e.g. `src/testing/seat-map.fixture.ts`), never next to components or utilities.
 - Every story renders inside nuqs's `NuqsTestingAdapter` (`.storybook/preview.tsx`). `parameters.nuqs.searchParams` seeds the URL and `parameters.nuqs.onUrlUpdate` receives each update, so a story can assert the params a control writes.
-- The testing roadmap is in `todo.md` under "Frontend Testing".
+- The testing roadmap is on the [project board](https://github.com/users/emanoelvso/projects/3) (issues #38 and #39).
 
 ---
 
