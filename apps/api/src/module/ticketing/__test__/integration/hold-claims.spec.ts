@@ -27,7 +27,7 @@ const deferred = () => {
 // Waits until a statement containing `statement` is waiting on a lock held by
 // another transaction, so a race runs in a known order.
 const waitUntilBlocked = async (statement: string) => {
-  for (let attempt = 0; attempt < 250; attempt++) {
+  for (let attempt = 0; attempt < 100; attempt++) {
     const { rows } = await testDbClient.raw<{ rows: { waiting: number }[] }>(
       `SELECT count(*)::int AS waiting FROM pg_stat_activity
         WHERE datname = current_database() AND wait_event_type = 'Lock'
@@ -39,7 +39,7 @@ const waitUntilBlocked = async (statement: string) => {
     }
     await new Promise((done) => setTimeout(done, 20));
   }
-  throw new Error(`No statement "${statement}" waited on a lock within 5 s`);
+  throw new Error(`No statement "${statement}" waited on a lock within 2 s`);
 };
 
 describe('Seat hold claims and live tickets (integration)', () => {
