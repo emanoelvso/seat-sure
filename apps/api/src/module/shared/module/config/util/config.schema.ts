@@ -46,6 +46,10 @@ export const appSchema = z.object({
   timeZone: timeZoneSchema,
 });
 
+export const admissionSchema = z.object({
+  maxConcurrent: z.coerce.number().int().positive().default(100),
+});
+
 export const configSchema = z
   .object({
     env: environmentSchema,
@@ -55,6 +59,7 @@ export const configSchema = z
     auth: authSchema,
     billing: billingSchema,
     app: appSchema.default({ timeZone: 'UTC' }),
+    admission: admissionSchema.default({ maxConcurrent: 100 }),
   })
   .refine(
     (config) =>
