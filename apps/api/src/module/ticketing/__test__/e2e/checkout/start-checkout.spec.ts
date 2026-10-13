@@ -136,7 +136,10 @@ describe('TicketingResolver startCheckout (e2e)', () => {
   const setupCatalog = async (
     eventOptions: { status?: EventStatus; startAt?: Date } = {},
   ) => {
-    const seatMap = seatMapFactory.build({ name: 'Concentric Arena' });
+    const seatMap = seatMapFactory.build({
+      name: 'Concentric Arena',
+      venueId: venue.id,
+    });
     await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
     const event = await insertEvent(seatMap.id, eventOptions);
     const ticketType = ticketTypeFactory.build({

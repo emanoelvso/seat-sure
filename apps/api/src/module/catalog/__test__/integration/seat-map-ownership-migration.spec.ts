@@ -5,6 +5,8 @@ import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.f
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogPersistenceModule } from '@catalogModule/persistence/catalog-persistence.module';
 import { Migration1791923400000 } from '@catalogModule/persistence/migration/1791923400000-migration';
+import { Migration1791923802769 } from '@catalogModule/persistence/migration/1791923802769-migration';
+import { faker } from '@faker-js/faker';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { Tables } from '@testInfra/enum/table.enum';
@@ -19,9 +21,10 @@ const FOOTBALL_STADIUM_ID = '22222222-2222-4222-8222-222222222222';
 const CAESARS_PALACE_ID = 'a0000000-0000-4000-8000-000000000023';
 const MARACANA_ID = 'a0000000-0000-4000-8000-000000000013';
 
-// Every row is written and read inside one transaction that is rolled back,
-// so the legacy shape (unowned maps shared across venues) never outlives the
-// test.
+// Every row is written and read inside one transaction that is rolled back.
+// The transaction first undoes the ownership schema (Migration1791923802769),
+// so the legacy shape (unowned maps shared across venues) can be written and
+// never outlives the test.
 describe('Seat map ownership migration (Migration1791923400000)', () => {
   let module: TestingModule;
   let dataSource: DataSource;
@@ -31,16 +34,20 @@ describe('Seat map ownership migration (Migration1791923400000)', () => {
   const maracana = venueFactory.build({ id: MARACANA_ID });
   const allianzParque = venueFactory.build({ name: 'Allianz Parque' });
 
-  const concentricArena = seatMapFactory.build({
-    id: CONCENTRIC_ARENA_ID,
-    name: 'Concentric Arena',
+  // A CatalogSeatMap row as the seeds left it, with no venue.
+  const unownedSeatMap = (id: string, name: string) => ({
+    ...seatMapFactory.build({ id, name }),
     venueId: null,
   });
-  const footballStadium = seatMapFactory.build({
-    id: FOOTBALL_STADIUM_ID,
-    name: 'Football Stadium',
-    venueId: null,
-  });
+
+  const concentricArena = unownedSeatMap(
+    CONCENTRIC_ARENA_ID,
+    'Concentric Arena',
+  );
+  const footballStadium = unownedSeatMap(
+    FOOTBALL_STADIUM_ID,
+    'Football Stadium',
+  );
   const allianzMap = seatMapFactory.build({
     name: 'Allianz Parque Map',
     venueId: allianzParque.id,
@@ -128,6 +135,7 @@ describe('Seat map ownership migration (Migration1791923400000)', () => {
   beforeEach(async () => {
     queryRunner = dataSource.createQueryRunner();
     await queryRunner.startTransaction();
+    await new Migration1791923802769().down(queryRunner);
     // Start from empty tables inside the transaction; the rollback restores
     // whatever the test database held.
     for (const table of [
@@ -211,8 +219,8 @@ describe('Seat map ownership migration (Migration1791923400000)', () => {
   });
 
   it('throws naming each other unowned seat map and changes no map or event (VMAP-09)', async () => {
-    const orphanA = seatMapFactory.build({ name: 'Orphan A', venueId: null });
-    const orphanB = seatMapFactory.build({ name: 'Orphan B', venueId: null });
+    const orphanA = unownedSeatMap(faker.string.uuid(), 'Orphan A');
+    const orphanB = unownedSeatMap(faker.string.uuid(), 'Orphan B');
     await seedLegacyShape([orphanA, orphanB]);
     const linksBefore = await select(
       `SELECT id, "seatMapId" FROM "CatalogEvent" ORDER BY id`,
@@ -242,5 +250,20 @@ describe('Seat map ownership migration (Migration1791923400000)', () => {
     expect(await select(`SELECT id FROM "CatalogSeatMap"`)).toEqual([
       { id: allianzMap.id },
     ]);
+  });
+
+  it('leaves data the ownership schema accepts (VMAP-05..07 with Migration1791923802769)', async () => {
+    await seedLegacyShape();
+
+    await new Migration1791923400000().up(queryRunner);
+    await new Migration1791923802769().up(queryRunner);
+
+    expect(
+      await select(
+        `SELECT conname FROM pg_constraint
+          WHERE conrelid = '"CatalogEvent"'::regclass
+            AND conname = 'FK_beed187020460d1eb83e3f63e54'`,
+      ),
+    ).toEqual([{ conname: 'FK_beed187020460d1eb83e3f63e54' }]);
   });
 });

@@ -52,8 +52,13 @@ export class Event extends DefaultEntity<Event> {
   @Column({ type: 'simple-array', nullable: true })
   tags?: string[];
 
-  @ManyToOne(() => SeatMap, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'seatMapId' })
+  // The map is referenced with the event's own venueId, so the database
+  // rejects a map of another venue. RESTRICT: SET NULL would also null venueId.
+  @ManyToOne(() => SeatMap, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn([
+    { name: 'seatMapId', referencedColumnName: 'id' },
+    { name: 'venueId', referencedColumnName: 'venueId' },
+  ])
   seatMap?: SeatMap | null;
 
   @OneToMany(() => TicketType, (ticketType) => ticketType.event)

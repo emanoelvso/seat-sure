@@ -2,10 +2,12 @@ import * as Factory from 'factory.ts';
 import { faker } from '@faker-js/faker';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
 
+// A CatalogSeatMap row. The venue is referenced by id, so insert the venue
+// first; an event using the map must be at the same venue.
 interface SeatMapRow {
   id: string;
   name: string;
-  venueId: string | null;
+  venueId: string;
   layout: string;
 }
 
@@ -48,6 +50,6 @@ const defaultLayout: SeatMapLayout = {
 export const seatMapFactory = Factory.Sync.makeFactory<SeatMapRow>({
   id: Factory.each(() => faker.string.uuid()),
   name: Factory.each(() => faker.company.name()),
-  venueId: null,
+  venueId: Factory.each(() => faker.string.uuid()),
   layout: Factory.each(() => JSON.stringify(defaultLayout)),
 });

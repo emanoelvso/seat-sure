@@ -381,7 +381,10 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
 
   describe('seatMap', () => {
     const insertEventWithLayout = async (layout: SeatMapLayout) => {
-      const seatMap = seatMapFactory.build({ layout: JSON.stringify(layout) });
+      const seatMap = seatMapFactory.build({
+        venueId: venue.id,
+        layout: JSON.stringify(layout),
+      });
       await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
 
       const event = {
@@ -691,6 +694,7 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
 
     it('serves a migrated v1 layout with label style 24/700, one #999999 stage shape and one unrotated shape per section in stored order (STAD-02)', async () => {
       const seatMap = seatMapFactory.build({
+        venueId: venue.id,
         layout: JSON.stringify(v1Layout),
       });
       await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
@@ -803,9 +807,11 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
         ],
       };
       const v1SeatMap = seatMapFactory.build({
+        venueId: venue.id,
         layout: JSON.stringify(v1Layout),
       });
       const v2SeatMap = seatMapFactory.build({
+        venueId: venue.id,
         layout: JSON.stringify(v2Layout),
       });
       await testDbClient.batchInsert(Tables.SeatMap, [v1SeatMap, v2SeatMap]);
