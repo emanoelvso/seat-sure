@@ -1,6 +1,6 @@
 - [ ] C4 Model Documentation
 - [ ] Chaos Engineering (Chaos Monkey)
-- [ ] Load Testing (k6)
+- [x] Load Testing (k6)
 
 # Implementações
 
