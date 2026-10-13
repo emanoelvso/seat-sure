@@ -9,7 +9,8 @@
 | Date | 2026-10-11, spike started 17:57:28 UTC |
 | Machine | Apple M1 Pro, 8 cores, 16 GB RAM, macOS 26.6.2 |
 | Docker | Engine 28.4.0, VM with 8 CPUs and 8.2 GB RAM |
-| API commit | `9c5e75dd3adf2912b7d015d3a525a45f7144c7a8` (no change under `apps/api/src` since `2dfceaa`, the commit of the first run) |
+| API commit | `2d2bbae851ec8e210e04a994453eb2ea84341bb9` (no change under `apps/api/src` since `ee95735`, the commit of the first run) |
+| Note | The runs were made on this change set based on commit `299cf1c`. The hashes in this document are the same commits replayed on top of `main`; the code under `apps/api/src` is identical |
 | k6 | v2.3.0 (grafana/k6 image, linux/arm64) |
 | API | `node dist/main.js`, one process, port 3000, `.env.test` (NODE_ENV=test); API, k6 container and Postgres share the host |
 | Database | Dedicated `seat-sure-load` database on the `seat-sure-db` container (`max_connections=100`), dropped, recreated and migrated for all six modules before the run |
@@ -58,7 +59,7 @@ Authentication: the sessions were created minutes before the spike, inside the 1
 
 ### Prior run
 
-A first run on the same API code (`apps/api/load/results/spike-2026-10-11T17-45-55-996Z/`, commit `2dfceaa`) had the same outcome: all four thresholds failed (hold p95 9,427 ms, pay p95 20,699 ms, discovery p95 7,485 ms, 7.11% unexpected), oversell passed, API CPU 84 to 115%. Its summary had no p99 or per-operation error rates, so the harness was fixed (`9c5e75d`) and the spike repeated. The numbers above are the baseline.
+A first run on the same API code (`apps/api/load/results/spike-2026-10-11T17-45-55-996Z/`, commit `ee95735`) had the same outcome: all four thresholds failed (hold p95 9,427 ms, pay p95 20,699 ms, discovery p95 7,485 ms, 7.11% unexpected), oversell passed, API CPU 84 to 115%. Its summary had no p99 or per-operation error rates, so the harness was fixed (`2d2bbae`) and the spike repeated. The numbers above are the baseline.
 
 ## Fix levers
 
@@ -70,13 +71,13 @@ Chosen from the baseline evidence above, one decision per lever. These decisions
 | Pool tuning | Not implicated by the evidence (inconclusive) | Postgres connections peaked at 45 of 100 and the run has no pool-wait metrics. The process was CPU-bound (`apiCpuPercent` averaged 107%, queueing medians of 7 to 13 s), which explains the latency without a pool limit. |
 | Queueing and admission control | Apply | One Node process saturated about one core and requests queued behind it (hold p50 7.1 s, pay p50 12.8 s) while Postgres stayed idle. Bounding the concurrent `startCheckout` and `payOrder` work and answering the excess with a retryable `BUSY` business error (HTTP 422) sheds load instead of letting every request wait. |
 
-Known risk, not changed: the datasource factories leave the pool unset (`pg` default `max = 10`, no acquire timeout; see `apps/api/src/module/ticketing/persistence/typeorm-datasource.factory.ts`). Pool tuning is revisited in the hardened run (T24) only if that run shows pool waits.
+Known risk, not changed: the datasource factories leave the pool unset (`pg` default `max = 10`, no acquire timeout; see `apps/api/src/module/ticketing/persistence/typeorm-datasource.factory.ts`). Pool tuning is revisited after the hardened run only if that run shows pool waits.
 
-Consequences for the task list: the pool tasks (T14 to T20) and the claim strategy task (T21) are skipped; the admission limiter tasks (T22, T23) apply.
+Consequences: pool tuning and a claim strategy change are skipped; the admission limiter applies.
 
 ## After (hardened API)
 
-The admission limiter (`9f123f9`, applied to checkout in `1a59927`) is the only lever applied. The spike harness counts `BUSY` apart from errors since `9c20bfb`. The hardened API did not meet the spec thresholds in any run: hold and pay pass at low limits, discovery p95 and the unexpected-error rate always fail.
+The admission limiter (`067ed5a`, applied to checkout in `e69852d`) is the only lever applied. The spike harness counts `BUSY` apart from errors since `c01a83c`. The hardened API did not meet the spec thresholds in any run: hold and pay pass at low limits, discovery p95 and the unexpected-error rate always fail.
 
 ### Setup
 
@@ -84,7 +85,7 @@ The admission limiter (`9f123f9`, applied to checkout in `1a59927`) is the only 
 | ---- | ----- |
 | Date | 2026-10-11, runs between 18:11 and 18:32 UTC |
 | Machine | Apple M1 Pro, 8 cores, 16 GB RAM, macOS 26.6.2; Docker VM with 8 CPUs and 8.2 GB RAM |
-| API commit | `9c20bfb8399063e4fab6bd1b56721184d388e444` (`git rev-parse HEAD`, `dist` rebuilt from it before every run) |
+| API commit | `c01a83cef68ee61bd9cf052dac2eec33701783fa` (`git rev-parse HEAD`, `dist` rebuilt from it before every run) |
 | k6 | v2.3.0 (grafana/k6 image, linux/arm64) |
 | Database | `seat-sure-load` dropped, recreated and migrated for all six modules before every spike |
 | Scenario | Same as the baseline: 2,000 VUs, 10 s ramp, 60 s hold, 500 seats |
@@ -183,7 +184,7 @@ The hardened API on one Node process does not meet the spec thresholds at 2,000 
 | C | 50 | 1,411 ms | 1,182 ms | 6,334 ms | 1.16% | 91.1% | 157 | `spike-2026-10-11T18-25-01-887Z` |
 | D | 10 | 85 ms | 151 ms | 3,740 ms | 1.19% | 98.1% | 36 | `spike-2026-10-11T18-28-07-676Z` |
 
-All figures come from `summary.json`, `oversell.json` and `resources.jsonl` in those directories under `apps/api/load/results/`. Runs A to D use API commit `9c20bfb`; the Before run used `9c5e75d`.
+All figures come from `summary.json`, `oversell.json` and `resources.jsonl` in those directories under `apps/api/load/results/`. Runs A to D use API commit `c01a83c`; the Before run used `2d2bbae`.
 
 Contention, 200 VUs on one seat:
 
@@ -200,9 +201,9 @@ The hold and pay passes come at a cost: at limit 20, 96.5% of holds were shed an
 
 | Lever | Outcome | Evidence and commit |
 | ----- | ------- | ------------------- |
-| Locking and claim strategy | Unnecessary, not changed | `waitingLocks` was 0 in every sample of the baseline and runs A to D; hold had 0 unexpected errors; oversell passed in all runs; contention gives 1 winner. T21 skipped. |
-| Pool tuning | Not applied, not ruled out | Connections peaked at 37 to 45 of 100 (`resources.jsonl`); the process was CPU-bound near 100% in every run and shed requests answered in 13 to 18 ms at the median. Per-pool wait metrics do not exist. T14 to T20 skipped. |
-| Queueing and admission control | Applied to `startCheckout` and `payOrder` | Limiter `9f123f9`, applied in `1a59927`, `BUSY` counted apart in the spike by `9c20bfb`. Hold and pay p95 pass at limits 20 and 10 (runs B, D). Limit 100 (the default) and 50 fail hold p95. The default was chosen, not derived; see [ADR-021](./adrs/021-flash-sale-concurrency-hardening.md). |
+| Locking and claim strategy | Unnecessary, not changed | `waitingLocks` was 0 in every sample of the baseline and runs A to D; hold had 0 unexpected errors; oversell passed in all runs; contention gives 1 winner. |
+| Pool tuning | Not applied, not ruled out | Connections peaked at 37 to 45 of 100 (`resources.jsonl`); the process was CPU-bound near 100% in every run and shed requests answered in 13 to 18 ms at the median. Per-pool wait metrics do not exist. |
+| Queueing and admission control | Applied to `startCheckout` and `payOrder` | Limiter `067ed5a`, applied in `e69852d`, `BUSY` counted apart in the spike by `c01a83c`. Hold and pay p95 pass at limits 20 and 10 (runs B, D). Limit 100 (the default) and 50 fail hold p95. The default was chosen, not derived; see [ADR-021](./adrs/021-flash-sale-concurrency-hardening.md). |
 
 The fix-run loop (three env-only changes of `ADMISSION_MAX_CONCURRENT`: 20, 50, 10) is in the After section. No code changed during it.
 

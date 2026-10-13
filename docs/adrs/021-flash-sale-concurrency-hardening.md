@@ -7,7 +7,6 @@
 - **Links**:
   - [ADR-015: Seat Holds Owned by Ticketing](./015-seat-holds-owned-by-ticketing.md)
   - [Flash-sale hardening write-up](../flash-sale-hardening.md)
-  - Feature `.specs/features/k6-load-tests/`
 
 ## Context
 
@@ -17,10 +16,10 @@ A k6 spike of 2,000 buyers against one 500-seat event on the unmodified API miss
 
 Add an admission limiter and apply it to `startCheckout` and `payOrder` only.
 
-- `AdmissionLimiter` (`9f123f9`) counts the work in flight. At the limit it rejects at once with `AdmissionBusyException`, a 422 business error with reason `BUSY` that the client may retry. The slot is released after success and after a throw.
-- The ticketing resolver wraps the two mutations in the limiter (`1a59927`).
+- `AdmissionLimiter` (`067ed5a`) counts the work in flight. At the limit it rejects at once with `AdmissionBusyException`, a 422 business error with reason `BUSY` that the client may retry. The slot is released after success and after a throw.
+- The ticketing resolver wraps the two mutations in the limiter (`e69852d`).
 - The limit comes from `ADMISSION_MAX_CONCURRENT` and defaults to 100. The default was chosen, not derived from measurements.
-- The spike harness counts `BUSY` apart from errors as `busy_responses{op}` (`9c20bfb`).
+- The spike harness counts `BUSY` apart from errors as `busy_responses{op}` (`c01a83c`).
 
 Hardened runs at limits 100, 20, 50 and 10 (`spike-2026-10-11T18-11-08-278Z`, `18-21-36-614Z`, `18-25-01-887Z`, `18-28-07-676Z`) show that a limit of 20 or 10 brings hold p95 to 110 and 85 ms and pay p95 to 125 and 151 ms, while 50 and 100 fail hold p95 (1,411 and 3,053 ms). The default of 100 therefore fails the hold threshold on this machine; operators should lower it through the environment. Changing the default is a separate decision.
 
@@ -32,7 +31,7 @@ Hardened runs at limits 100, 20, 50 and 10 (`spike-2026-10-11T18-11-08-278Z`, `1
 - Seat claims are unaffected, so oversell stays impossible: the check passed in all runs, and 200 simultaneous buyers for one seat give one winner.
 - The limit is tunable per deployment without a code change.
 
-### Challanges
+### Challenges
 
 - Thresholds were not met. Discovery p95 stayed at 3.7 to 9.4 s and unexpected errors at 1.16 to 1.62% in every run, all of them discovery responses. The process is still CPU-bound near 100% of one core, and discovery, which is outside the limiter, is now most of the requests.
 - The limiter is per process. A deployment with several API processes admits the limit on each of them.
