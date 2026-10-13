@@ -6,16 +6,41 @@ import { testDbClient } from '@testInfra/knex.database';
 import { seatHoldFactory } from '@ticketingModule/__test__/factory/seat-hold.factory';
 import { ticketFactory } from '@ticketingModule/__test__/factory/ticket.factory';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
+import { Ticket } from '@ticketingModule/persistence/entity/ticket.entity';
 import { SeatHoldRepository } from '@ticketingModule/persistence/repository/seat-hold.repository';
 import { TicketRepository } from '@ticketingModule/persistence/repository/ticket.repository';
 import { TicketingPersistenceModule } from '@ticketingModule/persistence/ticketing-persistence.module';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { initializeTransactionalContext } from 'typeorm-transactional';
 
 // A fixed clock far from the database's own: every comparison must use the
 // `now` passed in, never Postgres now() (AD-025).
 const NOW = new Date('2031-03-15T12:00:00.000Z');
 const at = (ms: number) => new Date(NOW.getTime() + ms);
+
+const deferred = () => {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => (resolve = done));
+  return { promise, resolve };
+};
+
+// Waits until a statement containing `statement` is waiting on a lock held by
+// another transaction, so a race runs in a known order.
+const waitUntilBlocked = async (statement: string) => {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const { rows } = await testDbClient.raw<{ rows: { waiting: number }[] }>(
+      `SELECT count(*)::int AS waiting FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND query LIKE ?`,
+      [`%${statement}%`],
+    );
+    if (rows[0].waiting > 0) {
+      return;
+    }
+    await new Promise((done) => setTimeout(done, 20));
+  }
+  throw new Error(`No statement "${statement}" waited on a lock within 2 s`);
+};
 
 describe('Seat hold claims and live tickets (integration)', () => {
   let module: TestingModule;
@@ -103,6 +128,31 @@ describe('Seat hold claims and live tickets (integration)', () => {
     expect(rows[0].expiresAt).toEqual(hold.expiresAt);
   });
 
+  it("returns null and leaves the row unchanged for another user's hold that expires exactly at now (HOLDV-01)", async () => {
+    const hold = seatHoldFactory.build({
+      eventId,
+      userId: otherUserId,
+      expiresAt: NOW,
+    });
+    await testDbClient.batchInsert(Tables.SeatHold, [hold]);
+
+    const holdId = await dataSource.transaction((manager) =>
+      seatHolds.claim(manager, {
+        eventId,
+        seatId: hold.seatId,
+        userId,
+        expiresAt: at(10 * 60_000),
+        now: NOW,
+      }),
+    );
+
+    expect(holdId).toBeNull();
+    const rows = await holdRowsFor(hold.seatId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: hold.id, userId: otherUserId });
+    expect(rows[0].expiresAt).toEqual(NOW);
+  });
+
   it('reclaims a hold that expired 1 s before now for the new user and expiresAt (PAY-10)', async () => {
     const hold = seatHoldFactory.build({
       eventId,
@@ -127,6 +177,54 @@ describe('Seat hold claims and live tickets (integration)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: hold.id, userId });
     expect(rows[0].expiresAt).toEqual(expiresAt);
+  });
+
+  it('lets only the first of two users reclaim the same expired hold when the second claim waits on it (HOLDV-02)', async () => {
+    const hold = seatHoldFactory.build({
+      eventId,
+      userId: otherUserId,
+      expiresAt: at(-1_000),
+    });
+    await testDbClient.batchInsert(Tables.SeatHold, [hold]);
+    const thirdUserId = randomUUID();
+    const firstExpiresAt = at(10 * 60_000);
+    const firstMayCommit = deferred();
+    const firstHasClaimed = deferred();
+
+    const first = dataSource.transaction(async (manager) => {
+      const holdId = await seatHolds.claim(manager, {
+        eventId,
+        seatId: hold.seatId,
+        userId,
+        expiresAt: firstExpiresAt,
+        now: NOW,
+      });
+      firstHasClaimed.resolve();
+      await firstMayCommit.promise;
+      return holdId;
+    });
+    await firstHasClaimed.promise;
+    const second = dataSource.transaction((manager) =>
+      seatHolds.claim(manager, {
+        eventId,
+        seatId: hold.seatId,
+        userId: thirdUserId,
+        expiresAt: at(10 * 60_000 + 1_000),
+        now: NOW,
+      }),
+    );
+    try {
+      await waitUntilBlocked(`INSERT INTO "${Tables.SeatHold}"`);
+    } finally {
+      firstMayCommit.resolve();
+    }
+
+    expect(await first).toBe(hold.id);
+    expect(await second).toBeNull();
+    const rows = await holdRowsFor(hold.seatId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: hold.id, userId });
+    expect(rows[0].expiresAt).toEqual(firstExpiresAt);
   });
 
   it('leaves no row when the transaction throws after a claim (AD-023)', async () => {
@@ -232,5 +330,89 @@ describe('Seat hold claims and live tickets (integration)', () => {
     expect([...seatIds].sort()).toEqual(
       [issued.seatId!, transferred.seatId!].sort(),
     );
+  });
+
+  describe('one live ticket per event seat', () => {
+    const issuedTicket = (fields: { eventId: string; seatId: string }) =>
+      new Ticket({
+        ...ticketFactory.build({ ...fields, status: TicketStatus.ISSUED }),
+        orderItemId: null,
+      });
+
+    const issue = (ticket: Ticket) =>
+      dataSource.transaction((manager) => tickets.issue(manager, [ticket]));
+
+    const issuedRowsFor = (seatId: string) =>
+      testDbClient(Tables.Ticket).where({
+        seatId,
+        status: TicketStatus.ISSUED,
+      });
+
+    it('commits only the first of two issued tickets for the same seat when the second insert waits on it (HOLDV-04)', async () => {
+      const seatId = randomUUID();
+      const firstTicket = issuedTicket({ eventId, seatId });
+      const secondTicket = issuedTicket({ eventId, seatId });
+      const firstMayCommit = deferred();
+      const firstHasInserted = deferred();
+
+      const first = dataSource.transaction(async (manager) => {
+        await tickets.issue(manager, [firstTicket]);
+        firstHasInserted.resolve();
+        await firstMayCommit.promise;
+      });
+      await firstHasInserted.promise;
+      const second = issue(secondTicket).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      try {
+        await waitUntilBlocked(`INSERT INTO "${Tables.Ticket}"`);
+      } finally {
+        firstMayCommit.resolve();
+      }
+
+      await first;
+      const secondError = await second;
+      expect(secondError).toBeInstanceOf(QueryFailedError);
+      expect(secondError).toMatchObject({ driverError: { code: '23505' } });
+      const rows = await issuedRowsFor(seatId);
+      expect(rows.map((row) => row.id)).toEqual([firstTicket.id]);
+    });
+
+    it('issues a ticket for a seat that has an issued ticket only for another event (HOLDV-05)', async () => {
+      const otherEventTicket = ticketFactory.build({
+        status: TicketStatus.ISSUED,
+      });
+      await testDbClient.batchInsert(Tables.Ticket, [otherEventTicket]);
+      const ticket = issuedTicket({
+        eventId,
+        seatId: otherEventTicket.seatId!,
+      });
+
+      await issue(ticket);
+
+      const rows = await issuedRowsFor(otherEventTicket.seatId!);
+      expect(rows.map((row) => ({ id: row.id, eventId: row.eventId }))).toEqual(
+        expect.arrayContaining([
+          { id: otherEventTicket.id, eventId: otherEventTicket.eventId },
+          { id: ticket.id, eventId },
+        ]),
+      );
+      expect(rows).toHaveLength(2);
+    });
+
+    it('issues a ticket for a seat whose only ticket for the event is cancelled (HOLDV-08)', async () => {
+      const cancelled = ticketFactory.build({
+        eventId,
+        status: TicketStatus.CANCELLED,
+      });
+      await testDbClient.batchInsert(Tables.Ticket, [cancelled]);
+      const ticket = issuedTicket({ eventId, seatId: cancelled.seatId! });
+
+      await issue(ticket);
+
+      const rows = await issuedRowsFor(cancelled.seatId!);
+      expect(rows.map((row) => row.id)).toEqual([ticket.id]);
+    });
   });
 });
