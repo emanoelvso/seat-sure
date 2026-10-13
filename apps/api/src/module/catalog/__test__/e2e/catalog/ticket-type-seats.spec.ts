@@ -160,6 +160,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
   const insertSeatMap = async (name: string, layout?: SeatMapLayout) => {
     const seatMap = seatMapFactory.build({
       name,
+      venueId: venue.id,
       ...(layout && { layout: JSON.stringify(layout) }),
     });
     await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);

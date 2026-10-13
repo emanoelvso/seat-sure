@@ -1,10 +1,22 @@
 import { DefaultEntity } from '@sharedModules/persistence/typeorm/entity/default.entity';
-import { Column, Entity, Index, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import {
+  Check,
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  Unique,
+} from 'typeorm';
 import { SeatMap } from './seat-map.entity';
 
 @Entity('CatalogSeat')
 @Unique(['seatMap', 'sectionKey', 'row', 'number'])
 @Index(['seatMap', 'sectionKey'])
+@Check(`btrim("sectionKey") <> ''`)
+@Check(`btrim("row") <> ''`)
+@Check(`btrim("number") <> ''`)
+@Check(`"x" >= 0 AND "y" >= 0`)
 export class Seat extends DefaultEntity<Seat> {
   @ManyToOne(() => SeatMap, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'seatMapId' })

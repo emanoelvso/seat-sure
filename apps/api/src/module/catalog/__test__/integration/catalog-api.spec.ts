@@ -61,7 +61,10 @@ describe('CatalogPublicApiProvider.findCheckoutSelection (integration)', () => {
   });
 
   const insertSeatMap = async () => {
-    const seatMap = seatMapFactory.build({ name: 'Concentric Arena' });
+    const seatMap = seatMapFactory.build({
+      name: 'Concentric Arena',
+      venueId: venue.id,
+    });
     await testDbClient.batchInsert(Tables.SeatMap, [seatMap]);
     return seatMap;
   };

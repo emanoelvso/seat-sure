@@ -40,6 +40,11 @@ export class EventInput {
   @Field()
   venueId: string;
 
+  @IsOptional()
+  @IsUUID()
+  @Field({ nullable: true })
+  seatMapId?: string;
+
   @IsNotEmpty()
   @IsDateString()
   @Field()

@@ -1,7 +1,7 @@
 # ADR-011: Catalog Owns Ticket Types and Seat Maps Until Ticketing Has Behavior
 
 - **Date**: 2026-09-27
-- **Status**: Accepted
+- **Status**: Accepted, amended 2026-10-13 (seat maps belong to their venue)
 - **Deciders**: emanoelvso
 - **Tags**: architecture, backend, bounded-contexts, catalog, ticketing
 - **Links**:
@@ -17,7 +17,7 @@ The buy-ticket "choose section" screen needs, for one event, the venue seat map 
 
 **Catalog** owns ticket types and seat maps:
 - `TicketType` has one row per event section, with `sectionKey`, `name`, `priceCents`, `currency`, `seatsAvailable`, `maxPerOrder` and `tags`. It has a foreign key to `Event` (`ON DELETE CASCADE`) and is unique on (`eventId`, `sectionKey`).
-- `Event.seatMapId` references `SeatMap` (`ON DELETE SET NULL`).
+- `Event.seatMapId` references `SeatMap` (`ON DELETE SET NULL`). Superseded: see the 2026-10-13 amendment.
 - Catalog serves the event, seat map and ticket types in one query (`findEventTickets`).
 
 When Ticketing is built, it will read ticket types through Catalog's public API provider. Its holds, orders and tickets will reference `ticketTypeId` by plain UUID, with no foreign key.
@@ -39,3 +39,21 @@ We did not create a Ticketing module now to own `TicketType`. That would need it
 ### Trade-offs
 
 - Owning ticket types in Ticketing would match "Ticketing sells" more literally, and inventory and holds would share a transaction. The cost is a new module and cross-context reads today, for no current behavior.
+
+## Amendment (2026-10-13): Seat Maps Belong to Their Venue
+
+Issue #29. The two seeded seat maps had no venue, and every published concert or football match used one of them, whatever its venue. A seat map is one venue's layout, so:
+
+- `CatalogSeatMap.venueId` is required, and (`id`, `venueId`) is unique.
+- `CatalogEvent` references its map with a composite foreign key, (`seatMapId`, `venueId`) → `CatalogSeatMap` (`id`, `venueId`). The database rejects an event whose map belongs to another venue. An event without a map (`seatMapId` NULL) is not checked.
+- The event→map foreign key is `ON DELETE RESTRICT`. `SET NULL` would also null the event's required `venueId`, so a map in use can't be hard-deleted.
+- `createEvent` takes an optional `seatMapId`. An unknown map returns `Seat map not found`; a map of another venue returns 422 `SEAT_MAP_VENUE_MISMATCH` (ADR-018) before the database is reached.
+- Seed data: Concentric Arena belongs to The Colosseum at Caesars Palace and Football Stadium to Maracanã. Events at other venues lost their map and show "Seat selection isn't available" until their venue gets its own layout. Ticketing dropped the demo tickets and holds left on those events.
+
+`CatalogSeat` also rejects blank `row`, `number` and `sectionKey` and negative `x`/`y`.
+
+### Consequences
+
+- Every writer (the API, migrations, the load-test seed) gets the same guarantee, because the rule lives in the schema.
+- Ten arena venues and one stadium venue have no seat map until layouts are authored for them.
+- Deleting a seat map in use now requires unlinking its events first.

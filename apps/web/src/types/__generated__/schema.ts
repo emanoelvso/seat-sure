@@ -237,6 +237,7 @@ export type EventInput = {
   endsAt: Scalars['String']['input'];
   name: Scalars['String']['input'];
   price: Scalars['Float']['input'];
+  seatMapId?: InputMaybe<Scalars['String']['input']>;
   startAt: Scalars['String']['input'];
   status: Scalars['String']['input'];
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
