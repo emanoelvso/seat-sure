@@ -25,9 +25,12 @@ export interface ChargeDto {
 
 // `card_not_found`: the saved card isn't the user's or no longer exists.
 // Nothing was charged and no payment was recorded.
+// `card_attempts_limited`: too many failed card attempts (AD-028); nothing
+// was charged and no payment was recorded.
 export type ChargeOutcome =
   | { status: 'succeeded' | 'failed'; paymentId: string }
-  | { status: 'card_not_found' };
+  | { status: 'card_not_found' }
+  | { status: 'card_attempts_limited' };
 
 export interface BillingPaymentCard {
   brand: string;

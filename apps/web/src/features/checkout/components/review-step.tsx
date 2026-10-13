@@ -6,7 +6,10 @@ import {
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
-export type ReviewError = "CARD_DECLINED" | "GENERIC";
+export type ReviewError =
+  | "CARD_DECLINED"
+  | "CARD_ATTEMPTS_LIMITED"
+  | "GENERIC";
 
 interface ReviewStepProps {
   user: { firstName: string; lastName: string; email: string };
@@ -19,6 +22,7 @@ interface ReviewStepProps {
 
 const ERROR_COPY: Record<ReviewError, string> = {
   CARD_DECLINED: "Your card was declined. Check the details or use another card.",
+  CARD_ATTEMPTS_LIMITED: "Too many card attempts. Try again in 15 minutes.",
   GENERIC: "We couldn't process your payment. Try again.",
 };
 

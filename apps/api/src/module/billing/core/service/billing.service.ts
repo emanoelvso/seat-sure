@@ -4,6 +4,7 @@ import {
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { isCardExpired } from '@billingModule/core/model/payment-card.model';
+import { CardThrottleService } from '@billingModule/core/service/card-throttle.service';
 import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import {
   CardFieldErrors,
@@ -32,7 +33,8 @@ export interface ChargeDto {
 
 export type ChargeOutcome =
   | { status: 'succeeded' | 'failed'; paymentId: string }
-  | { status: 'card_not_found' };
+  | { status: 'card_not_found' }
+  | { status: 'card_attempts_limited' };
 
 export type SaveCardOutcome = 'saved' | 'duplicate' | 'limit' | 'declined';
 
@@ -60,6 +62,7 @@ export class BillingService {
     @Inject(PaymentGateway) private readonly gateway: PaymentGateway,
     private readonly paymentRepository: BillingPaymentRepository,
     private readonly paymentCardService: PaymentCardService,
+    private readonly cardThrottleService: CardThrottleService,
   ) {}
 
   validateCard(card: CardInput, now: Date): CardFieldErrors {
@@ -85,25 +88,36 @@ export class BillingService {
       return { status: 'card_not_found' };
     }
 
+    // Slows card testing (AD-028): a locked user is charged nothing and no
+    // payment is recorded
+    const now = new Date();
+    if (await this.cardThrottleService.isLocked(payment.userId, now)) {
+      return { status: 'card_attempts_limited' };
+    }
+
     const card = { brand: savedCard.brand, last4: savedCard.last4 };
 
     // An expired card would be refused by a real gateway: record the same
     // outcome without calling it
-    if (isCardExpired(savedCard, new Date())) {
-      return this.record(payment, card, {
-        status: 'failed',
-        reason: 'card_expired',
-      });
-    }
-
-    const result = await this.gateway.charge({
-      amountCents: payment.amountCents,
-      currency: payment.currency,
-      source: { type: 'token', token: savedCard.providerToken },
-    });
+    const result: ChargeResult | { status: 'failed'; reason: 'card_expired' } =
+      isCardExpired(savedCard, now)
+        ? { status: 'failed', reason: 'card_expired' }
+        : await this.gateway.charge({
+            amountCents: payment.amountCents,
+            currency: payment.currency,
+            source: { type: 'token', token: savedCard.providerToken },
+          });
 
     // The saved card's brand and last 4 (CARD-08 AC 11)
-    return this.record(payment, card, result);
+    const outcome = await this.record(payment, card, result);
+
+    if (result.status === 'failed') {
+      await this.cardThrottleService.recordFailure(payment.userId, now);
+    } else {
+      await this.cardThrottleService.clear(payment.userId);
+    }
+
+    return outcome;
   }
 
   private async chargeTypedCard(

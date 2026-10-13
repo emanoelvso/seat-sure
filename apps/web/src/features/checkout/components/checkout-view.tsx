@@ -180,7 +180,9 @@ export function CheckoutView({
   const showPicker = usePicker && cards.length > 0;
 
   const reviewError =
-    payState.reason === "CARD_DECLINED" || payState.reason === "GENERIC"
+    payState.reason === "CARD_DECLINED" ||
+    payState.reason === "CARD_ATTEMPTS_LIMITED" ||
+    payState.reason === "GENERIC"
       ? payState.reason
       : undefined;
 
