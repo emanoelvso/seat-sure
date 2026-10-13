@@ -539,7 +539,9 @@ describe('TicketingResolver startCheckout (e2e)', () => {
         'userId',
         userIds,
       );
-      expect(orders.map((order) => order.userId)).toEqual([winner]);
+      expect(
+        orders.map((order) => ({ userId: order.userId, status: order.status })),
+      ).toEqual([{ userId: winner, status: 'pending' }]);
     });
   });
 
