@@ -71,12 +71,3 @@ Every run writes `results/<scenario>-<timestamp>/` (gitignored):
 Expected business errors (`SEATS_UNAVAILABLE`, `ORDER_EXPIRED`) are counted apart. 5xx, timeouts and connection errors count as unexpected, and the spike fails above 1%.
 
 Run the oversell check again by hand with `node load/verify/oversell.mjs <eventId>`.
-
-## Tests for the helpers
-
-```bash
-pnpm build          # the integration tests start dist/main.js
-pnpm test:load
-```
-
-They are jest specs under `load/__test__/integration/`, run with `test/jest.load.ts`. The helpers are native ESM so they also run as plain Node scripts; `test:load` sets `--experimental-vm-modules` for that reason. The specs use the local `seat-sure-test` database (`pnpm test:db:reset` sets it up).
