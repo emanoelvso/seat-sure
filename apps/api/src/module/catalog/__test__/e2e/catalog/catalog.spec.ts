@@ -380,6 +380,9 @@ describe('CatalogResolver (e2e)', () => {
         });
 
         expect(response.body.errors[0].message).toBe('Seat map not found');
+        expect(
+          response.body.errors[0].extensions.originalError.statusCode,
+        ).toBe(404);
         expect(await storedEvents()).toEqual([]);
       });
 
@@ -393,6 +396,9 @@ describe('CatalogResolver (e2e)', () => {
         });
 
         expect(response.body.errors[0].message).toBe('Seat map not found');
+        expect(
+          response.body.errors[0].extensions.originalError.statusCode,
+        ).toBe(404);
         expect(await storedEvents()).toEqual([]);
       });
 

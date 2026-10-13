@@ -57,6 +57,12 @@ describe('Stale demo rows migration (Migration1791923900000)', () => {
   const unmappedDemoHold = demoHold(unmappedEvent.id!, seatB.id);
   const otherMapDemoTicket = demoTicket(keptEvent.id!, otherMapSeat.id);
   const otherMapDemoHold = demoHold(keptEvent.id!, otherMapSeat.id);
+  // A demo ticket without a seat references no seat at all, so it stays.
+  const seatlessDemoTicket = ticketFactory.build({
+    eventId: unmappedEvent.id!,
+    seatId: null,
+    userId: DEMO_USER_ID,
+  });
 
   // Non-demo rows on seats of their event's map, or without a seat
   const buyerTicket = ticketFactory.build({
@@ -105,6 +111,7 @@ describe('Stale demo rows migration (Migration1791923900000)', () => {
       otherMapDemoTicket,
       buyerTicket,
       seatlessTicket,
+      seatlessDemoTicket,
     ]);
     await insert(Tables.SeatHold, [
       keptDemoHold,
@@ -175,7 +182,12 @@ describe('Stale demo rows migration (Migration1791923900000)', () => {
     await new Migration1791923900000().up(queryRunner);
 
     expect(await idsIn(Tables.Ticket)).toEqual(
-      sorted([keptDemoTicket.id, buyerTicket.id, seatlessTicket.id]),
+      sorted([
+        keptDemoTicket.id,
+        buyerTicket.id,
+        seatlessTicket.id,
+        seatlessDemoTicket.id,
+      ]),
     );
     expect(await idsIn(Tables.SeatHold)).toEqual(
       sorted([keptDemoHold.id, buyerHold.id]),

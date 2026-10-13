@@ -233,6 +233,9 @@ describe('Seat map ownership migration (Migration1791923400000)', () => {
     await expect(result).rejects.toThrow(/^Seat maps have no venue: /);
     expect(await venueIdOf(CONCENTRIC_ARENA_ID)).toBeNull();
     expect(await venueIdOf(FOOTBALL_STADIUM_ID)).toBeNull();
+    expect(await venueIdOf(orphanA.id)).toBeNull();
+    expect(await venueIdOf(orphanB.id)).toBeNull();
+    expect(await venueIdOf(allianzMap.id)).toBe(allianzParque.id);
     expect(
       await select(`SELECT id, "seatMapId" FROM "CatalogEvent" ORDER BY id`),
     ).toEqual(linksBefore);
