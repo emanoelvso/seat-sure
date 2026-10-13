@@ -507,6 +507,84 @@ describe('TicketingResolver startCheckout (e2e)', () => {
     });
   });
 
+  describe('HOLDV-03: concurrent starts by 10 users', () => {
+    it('gives the seat to exactly one of 10 users racing for it; the other 9 fail with SEATS_UNAVAILABLE', async () => {
+      const { event, ticketType, seats } = await setupCatalog();
+      const [seat] = seats;
+      const userIds = Array.from({ length: 10 }, () => randomUUID());
+
+      const bodies = await Promise.all(
+        userIds.map((userId) =>
+          startCheckout(
+            {
+              eventId: event.id!,
+              ticketTypeId: ticketType.id,
+              seatIds: [seat.id],
+            },
+            tokenFor(userId),
+          ),
+        ),
+      );
+
+      const winners = userIds.filter((_, index) => !bodies[index].errors);
+      expect(winners).toHaveLength(1);
+      const losers = bodies.filter((body) => body.errors);
+      expect(losers.map(reasonOf)).toEqual(Array(9).fill('SEATS_UNAVAILABLE'));
+      const [winner] = winners;
+      const holds = await testDbClient(Tables.SeatHold).where({
+        seatId: seat.id,
+      });
+      expect(holds.map((hold) => hold.userId)).toEqual([winner]);
+      const orders = await testDbClient(Tables.Order).whereIn(
+        'userId',
+        userIds,
+      );
+      expect(orders.map((order) => order.userId)).toEqual([winner]);
+    });
+  });
+
+  describe('HOLDV-06, HOLDV-07: seats freed by a cancelled or refunded ticket', () => {
+    it.each([
+      ['cancelled', TicketStatus.CANCELLED],
+      ['refunded', TicketStatus.REFUNDED],
+    ])(
+      'holds a seat whose only ticket is %s and creates a pending order for it',
+      async (_, status) => {
+        const { event, ticketType, seats } = await setupCatalog();
+        const [seat] = seats;
+        await testDbClient.batchInsert(Tables.Ticket, [
+          ticketFactory.build({ eventId: event.id!, seatId: seat.id, status }),
+        ]);
+        const userId = randomUUID();
+
+        const body = await startCheckout(
+          {
+            eventId: event.id!,
+            ticketTypeId: ticketType.id,
+            seatIds: [seat.id],
+          },
+          tokenFor(userId),
+        );
+
+        expect(body.errors).toBeUndefined();
+        expect(body.data.startCheckout).toMatchObject({
+          status: 'PENDING',
+          items: [{ seatId: seat.id }],
+        });
+        const holds = await testDbClient(Tables.SeatHold).where({
+          seatId: seat.id,
+        });
+        expect(holds.map((hold) => hold.userId)).toEqual([userId]);
+        const orders = await testDbClient(Tables.Order).where({ userId });
+        expect(orders).toHaveLength(1);
+        expect(orders[0]).toMatchObject({
+          id: body.data.startCheckout.id,
+          status: 'pending',
+        });
+      },
+    );
+  });
+
   describe('PAY-14, PAY-15: one active checkout per event', () => {
     it('cancels the pending order and frees its seats when the user starts again with other seats (PAY-14)', async () => {
       const { event, ticketType, seats } = await setupCatalog();
