@@ -22,7 +22,7 @@ A worked example on the Catalog module is in [domain-identification-example.md](
 ### Where Results Go
 
 - Report the analysis in the conversation, using the [Output Format](#output-format). Don't write it to a file unless asked.
-- Findings that need code changes go into `todo.md` ("Backend Architecture Alignment"). Don't fix them as a side effect.
+- Findings that need code changes go on the [project board](https://github.com/users/emanoelvso/projects/3) as issues. Don't fix them as a side effect.
 - Changes to the contexts themselves (a new context, a concept moving between contexts, a new subdomain type) go into `bounded-contexts.md` or a new ADR, only after the project owner agrees.
 
 ---

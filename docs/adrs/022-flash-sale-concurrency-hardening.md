@@ -1,4 +1,4 @@
-# ADR-021: Flash-Sale Concurrency Hardening with an Admission Limiter
+# ADR-022: Flash-Sale Concurrency Hardening with an Admission Limiter
 
 - **Date**: 2026-10-12
 - **Status**: Accepted. The spike thresholds were NOT all met on a single node; see Consequences.

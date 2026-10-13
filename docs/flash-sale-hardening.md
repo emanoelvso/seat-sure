@@ -203,7 +203,7 @@ The hold and pay passes come at a cost: at limit 20, 96.5% of holds were shed an
 | ----- | ------- | ------------------- |
 | Locking and claim strategy | Unnecessary, not changed | `waitingLocks` was 0 in every sample of the baseline and runs A to D; hold had 0 unexpected errors; oversell passed in all runs; contention gives 1 winner. |
 | Pool tuning | Not applied, not ruled out | Connections peaked at 37 to 45 of 100 (`resources.jsonl`); the process was CPU-bound near 100% in every run and shed requests answered in 13 to 18 ms at the median. Per-pool wait metrics do not exist. |
-| Queueing and admission control | Applied to `startCheckout` and `payOrder` | Limiter `067ed5a`, applied in `e69852d`, `BUSY` counted apart in the spike by `c01a83c`. Hold and pay p95 pass at limits 20 and 10 (runs B, D). Limit 100 (the default) and 50 fail hold p95. The default was chosen, not derived; see [ADR-021](./adrs/021-flash-sale-concurrency-hardening.md). |
+| Queueing and admission control | Applied to `startCheckout` and `payOrder` | Limiter `067ed5a`, applied in `e69852d`, `BUSY` counted apart in the spike by `c01a83c`. Hold and pay p95 pass at limits 20 and 10 (runs B, D). Limit 100 (the default) and 50 fail hold p95. The default was chosen, not derived; see [ADR-022](./adrs/022-flash-sale-concurrency-hardening.md). |
 
 The fix-run loop (three env-only changes of `ADMISSION_MAX_CONCURRENT`: 20, 50, 10) is in the After section. No code changed during it.
 

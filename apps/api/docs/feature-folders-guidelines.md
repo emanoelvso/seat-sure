@@ -792,7 +792,7 @@ catalog/
 
 ## Candidate Split for Catalog
 
-Not planned yet. This is the likely split once Catalog reaches the threshold, most likely when the admin panel adds event, artist, and venue management (`todo.md` → "Painel de Admin"). The subdomains come from [domain-identification-example.md](./domain-identification-example.md).
+Not planned yet. This is the likely split once Catalog reaches the threshold, most likely when the admin panel adds event, artist, and venue management (not on the board yet). The subdomains come from [domain-identification-example.md](./domain-identification-example.md).
 
 | Feature    | Services (after splitting `CatalogService`)                                   | Entities                              | Operations                                         |
 | ---------- | ----------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------- |
