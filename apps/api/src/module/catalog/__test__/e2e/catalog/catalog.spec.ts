@@ -1,6 +1,7 @@
 import { artistFactory } from '@catalogModule/__test__/factory/artist.factory';
 import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist.factory';
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
+import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
@@ -103,12 +104,14 @@ describe('CatalogResolver (e2e)', () => {
     await testDbClient(Tables.EventArtist).del();
     await testDbClient(Tables.Artist).del();
     await testDbClient(Tables.Event).del();
+    await testDbClient(Tables.SeatMap).del();
   });
 
   afterAll(async () => {
     await testDbClient(Tables.EventArtist).del();
     await testDbClient(Tables.Artist).del();
     await testDbClient(Tables.Event).del();
+    await testDbClient(Tables.SeatMap).del();
     await testDbClient(Tables.Venue)
       .whereIn(
         'id',
@@ -278,7 +281,10 @@ describe('CatalogResolver (e2e)', () => {
       );
     });
 
-    const createEventAt = (venueId: string) =>
+    const createEventAt = (
+      venueId: string,
+      extraInput: { seatMapId?: string } = {},
+    ) =>
       request(app.getHttpServer())
         .post('/graphql')
         .send({
@@ -304,6 +310,7 @@ describe('CatalogResolver (e2e)', () => {
               price: 239.99,
               category: 'Hip-Hop',
               type: 'concert',
+              ...extraInput,
             },
           },
         });
@@ -324,6 +331,94 @@ describe('CatalogResolver (e2e)', () => {
         response.body.errors[0].extensions.originalError.message,
       ).toContain('venueId must be a UUID');
       expect(await testDbClient(Tables.Event).select('id')).toEqual([]);
+    });
+
+    describe('with a seat map', () => {
+      // The seat map is owned by Allianz Parque.
+      const allianzMap = seatMapFactory.build({
+        name: 'Allianz Parque Map',
+        venueId: allianzParque.id,
+      });
+
+      const storedEvents = () =>
+        testDbClient(Tables.Event).select('id', 'venueId', 'seatMapId');
+
+      beforeEach(async () => {
+        await testDbClient.batchInsert(Tables.SeatMap, [allianzMap]);
+      });
+
+      it("stores the event with its venue's seat map (VMAP-13)", async () => {
+        const response = await createEventAt(allianzParque.id, {
+          seatMapId: allianzMap.id,
+        });
+
+        expect(response.body.errors).toBeUndefined();
+        expect(await storedEvents()).toEqual([
+          {
+            id: response.body.data.createEvent.id,
+            venueId: allianzParque.id,
+            seatMapId: allianzMap.id,
+          },
+        ]);
+      });
+
+      it('returns SEAT_MAP_VENUE_MISMATCH (422) and stores no event for a seat map of another venue (VMAP-14)', async () => {
+        const response = await createEventAt(theO2Arena.id, {
+          seatMapId: allianzMap.id,
+        });
+
+        const { originalError } = response.body.errors[0].extensions;
+        expect(originalError.statusCode).toBe(422);
+        expect(originalError.reason).toBe('SEAT_MAP_VENUE_MISMATCH');
+        expect(response.body.data).toBeNull();
+        expect(await storedEvents()).toEqual([]);
+      });
+
+      it('returns Seat map not found and stores no event for an unknown seatMapId (VMAP-15)', async () => {
+        const response = await createEventAt(allianzParque.id, {
+          seatMapId: 'b2000000-0000-4000-8000-000000000002',
+        });
+
+        expect(response.body.errors[0].message).toBe('Seat map not found');
+        expect(await storedEvents()).toEqual([]);
+      });
+
+      it('returns Seat map not found and stores no event for a soft-deleted seat map (VMAP-15 edge)', async () => {
+        await testDbClient(Tables.SeatMap)
+          .where('id', allianzMap.id)
+          .update({ deletedAt: new Date() });
+
+        const response = await createEventAt(allianzParque.id, {
+          seatMapId: allianzMap.id,
+        });
+
+        expect(response.body.errors[0].message).toBe('Seat map not found');
+        expect(await storedEvents()).toEqual([]);
+      });
+
+      it('stores the event without a seat map when seatMapId is omitted (VMAP-16)', async () => {
+        const response = await createEventAt(allianzParque.id);
+
+        expect(response.body.errors).toBeUndefined();
+        expect(await storedEvents()).toEqual([
+          {
+            id: response.body.data.createEvent.id,
+            venueId: allianzParque.id,
+            seatMapId: null,
+          },
+        ]);
+      });
+
+      it('returns a validation error and stores no event for a seatMapId that is not a UUID (VMAP-19)', async () => {
+        const response = await createEventAt(allianzParque.id, {
+          seatMapId: 'not-a-uuid',
+        });
+
+        expect(
+          response.body.errors[0].extensions.originalError.message,
+        ).toContain('seatMapId must be a UUID');
+        expect(await storedEvents()).toEqual([]);
+      });
     });
   });
 

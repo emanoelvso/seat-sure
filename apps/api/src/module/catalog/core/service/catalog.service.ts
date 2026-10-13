@@ -28,6 +28,9 @@ import {
 import { VenueRepository } from '@catalogModule/persistence/repository/venue.repository';
 import { EventArtistRepository } from '@catalogModule/persistence/repository/event-artist.repository';
 import { VenueNotFoundException } from '@catalogModule/core/exception/venue-not-found.exception';
+import { SeatMapNotFoundException } from '@catalogModule/core/exception/seat-map-not-found.exception';
+import { CatalogException } from '@catalogModule/core/exception/catalog.exception';
+import { SeatMapRepository } from '@catalogModule/persistence/repository/seat-map.repository';
 import { isUUID } from 'class-validator';
 import { Transactional } from 'typeorm-transactional';
 
@@ -37,6 +40,7 @@ export interface CreateEventDto {
   description?: string;
   coverImage: string;
   venueId: string;
+  seatMapId?: string;
   date: Date;
   startAt: Date;
   endsAt: Date;
@@ -74,11 +78,13 @@ export class CatalogService {
     private readonly venueRepository: VenueRepository,
     private readonly eventArtistRepository: EventArtistRepository,
     private readonly seatRepository: SeatRepository,
+    private readonly seatMapRepository: SeatMapRepository,
   ) {}
 
   @Transactional({ connectionName: 'catalog' })
   async createEvent({
     venueId,
+    seatMapId,
     ...event
   }: CreateEventDto): Promise<EventModel> {
     const venue = await this.venueRepository.findOneById(venueId);
@@ -87,7 +93,11 @@ export class CatalogService {
       throw new VenueNotFoundException();
     }
 
-    const newEvent = new Event({ ...event, venue });
+    const seatMap = seatMapId
+      ? await this.findVenueSeatMap(seatMapId, venueId)
+      : undefined;
+
+    const newEvent = new Event({ ...event, venue, seatMap });
     await this.eventRepository.save(newEvent);
     const [eventModel] = await this.toEventModels([newEvent]);
     return eventModel;
@@ -373,6 +383,25 @@ export class CatalogService {
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
       seats: seats.map((seat) => this.mapSeat(seat)),
     };
+  }
+
+  // The database also rejects a map of another venue; checking first returns
+  // a reason instead of a foreign-key error.
+  private async findVenueSeatMap(seatMapId: string, venueId: string) {
+    const seatMap = await this.seatMapRepository.findOneById(seatMapId);
+
+    if (!seatMap) {
+      throw new SeatMapNotFoundException();
+    }
+
+    if (seatMap.venueId !== venueId) {
+      throw new CatalogException(
+        'SEAT_MAP_VENUE_MISMATCH',
+        'The seat map belongs to another venue',
+      );
+    }
+
+    return seatMap;
   }
 
   // Maps events with their headliner, read in one query. The rows come ordered

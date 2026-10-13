@@ -9,6 +9,7 @@ import { EventRepository } from '@catalogModule/persistence/repository/catalog.r
 import { ArtistRepository } from './repository/artist.repository';
 import { EventArtistRepository } from './repository/event-artist.repository';
 import { SeatRepository } from './repository/seat.repository';
+import { SeatMapRepository } from './repository/seat-map.repository';
 import { TicketTypeRepository } from './repository/ticket-type.repository';
 import { VenueRepository } from './repository/venue.repository';
 
@@ -42,6 +43,7 @@ import { VenueRepository } from './repository/venue.repository';
     VenueRepository,
     EventArtistRepository,
     SeatRepository,
+    SeatMapRepository,
   ],
   exports: [
     EventRepository,
@@ -50,6 +52,7 @@ import { VenueRepository } from './repository/venue.repository';
     VenueRepository,
     EventArtistRepository,
     SeatRepository,
+    SeatMapRepository,
   ],
 })
 export class CatalogPersistenceModule {}
