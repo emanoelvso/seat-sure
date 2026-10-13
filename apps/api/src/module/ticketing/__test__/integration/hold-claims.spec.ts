@@ -17,6 +17,30 @@ import { initializeTransactionalContext } from 'typeorm-transactional';
 const NOW = new Date('2031-03-15T12:00:00.000Z');
 const at = (ms: number) => new Date(NOW.getTime() + ms);
 
+const deferred = () => {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => (resolve = done));
+  return { promise, resolve };
+};
+
+// Waits until a statement containing `statement` is waiting on a lock held by
+// another transaction, so a race runs in a known order.
+const waitUntilBlocked = async (statement: string) => {
+  for (let attempt = 0; attempt < 250; attempt++) {
+    const { rows } = await testDbClient.raw<{ rows: { waiting: number }[] }>(
+      `SELECT count(*)::int AS waiting FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'
+          AND query LIKE ?`,
+      [`%${statement}%`],
+    );
+    if (rows[0].waiting > 0) {
+      return;
+    }
+    await new Promise((done) => setTimeout(done, 20));
+  }
+  throw new Error(`No statement "${statement}" waited on a lock within 5 s`);
+};
+
 describe('Seat hold claims and live tickets (integration)', () => {
   let module: TestingModule;
   let dataSource: DataSource;
@@ -103,6 +127,31 @@ describe('Seat hold claims and live tickets (integration)', () => {
     expect(rows[0].expiresAt).toEqual(hold.expiresAt);
   });
 
+  it("returns null and leaves the row unchanged for another user's hold that expires exactly at now (HOLDV-01)", async () => {
+    const hold = seatHoldFactory.build({
+      eventId,
+      userId: otherUserId,
+      expiresAt: NOW,
+    });
+    await testDbClient.batchInsert(Tables.SeatHold, [hold]);
+
+    const holdId = await dataSource.transaction((manager) =>
+      seatHolds.claim(manager, {
+        eventId,
+        seatId: hold.seatId,
+        userId,
+        expiresAt: at(10 * 60_000),
+        now: NOW,
+      }),
+    );
+
+    expect(holdId).toBeNull();
+    const rows = await holdRowsFor(hold.seatId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: hold.id, userId: otherUserId });
+    expect(rows[0].expiresAt).toEqual(NOW);
+  });
+
   it('reclaims a hold that expired 1 s before now for the new user and expiresAt (PAY-10)', async () => {
     const hold = seatHoldFactory.build({
       eventId,
@@ -127,6 +176,54 @@ describe('Seat hold claims and live tickets (integration)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: hold.id, userId });
     expect(rows[0].expiresAt).toEqual(expiresAt);
+  });
+
+  it('lets only the first of two users reclaim the same expired hold when the second claim waits on it (HOLDV-02)', async () => {
+    const hold = seatHoldFactory.build({
+      eventId,
+      userId: otherUserId,
+      expiresAt: at(-1_000),
+    });
+    await testDbClient.batchInsert(Tables.SeatHold, [hold]);
+    const thirdUserId = randomUUID();
+    const firstExpiresAt = at(10 * 60_000);
+    const firstMayCommit = deferred();
+    const firstHasClaimed = deferred();
+
+    const first = dataSource.transaction(async (manager) => {
+      const holdId = await seatHolds.claim(manager, {
+        eventId,
+        seatId: hold.seatId,
+        userId,
+        expiresAt: firstExpiresAt,
+        now: NOW,
+      });
+      firstHasClaimed.resolve();
+      await firstMayCommit.promise;
+      return holdId;
+    });
+    await firstHasClaimed.promise;
+    const second = dataSource.transaction((manager) =>
+      seatHolds.claim(manager, {
+        eventId,
+        seatId: hold.seatId,
+        userId: thirdUserId,
+        expiresAt: at(10 * 60_000 + 1_000),
+        now: NOW,
+      }),
+    );
+    try {
+      await waitUntilBlocked(`INSERT INTO "${Tables.SeatHold}"`);
+    } finally {
+      firstMayCommit.resolve();
+    }
+
+    expect(await first).toBe(hold.id);
+    expect(await second).toBeNull();
+    const rows = await holdRowsFor(hold.seatId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: hold.id, userId });
+    expect(rows[0].expiresAt).toEqual(firstExpiresAt);
   });
 
   it('leaves no row when the transaction throws after a claim (AD-023)', async () => {
