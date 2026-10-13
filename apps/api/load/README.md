@@ -75,8 +75,8 @@ Run the oversell check again by hand with `node load/verify/oversell.mjs <eventI
 ## Tests for the helpers
 
 ```bash
-pnpm build                              # the integration tests start dist/main.js
-pnpm exec node --test "load/**/*.test.mjs"
+pnpm build          # the integration tests start dist/main.js
+pnpm test:load
 ```
 
-They use the local `seat-sure-test` database (`pnpm test:db:reset` sets it up).
+They are jest specs under `load/__test__/integration/`, run with `test/jest.load.ts`. The helpers are native ESM so they also run as plain Node scripts; `test:load` sets `--experimental-vm-modules` for that reason. The specs use the local `seat-sure-test` database (`pnpm test:db:reset` sets it up).
