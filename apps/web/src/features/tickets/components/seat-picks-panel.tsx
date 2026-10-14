@@ -41,7 +41,12 @@ export function SeatPicksPanel({
         Section {ticketType.name}
       </h2>
 
-      <TicketTotals ticketType={ticketType} quantity={quantity} />
+      <TicketTotals
+        unitCents={ticketType.priceCents}
+        totalCents={ticketType.priceCents * quantity}
+        currency={ticketType.currency}
+        quantity={quantity}
+      />
 
       <div className="flex items-center justify-between gap-4 text-neutral-100">
         <span className="flex items-center gap-2">

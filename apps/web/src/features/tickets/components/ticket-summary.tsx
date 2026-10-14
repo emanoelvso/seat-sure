@@ -4,14 +4,8 @@ import {
   TicketIcon,
 } from "@solar-icons/react/outline";
 import { TagPill } from "@/components/ui/tag-pill";
-import {
-  TicketsEvent,
-  TicketType,
-} from "@/features/tickets/api/find-event-tickets";
-import {
-  formatEventDate,
-  formatEventTimeRange,
-} from "@/utils/event-format";
+import { TicketsEvent } from "@/features/tickets/api/find-event-tickets";
+import { formatEventDate, formatEventTimeRange } from "@/utils/event-format";
 import { formatPrice } from "@/utils/price";
 
 // The parts of a ticket summary shared by the section detail panel and the
@@ -22,21 +16,27 @@ function quantityLine(quantity: number) {
 }
 
 export function TicketTotals({
-  ticketType,
+  unitCents,
+  totalCents,
+  currency,
   quantity,
+  from = false,
 }: {
-  ticketType: Pick<TicketType, "priceCents" | "currency">;
+  unitCents: number;
+  totalCents: number;
+  currency: string;
   quantity: number;
+  /** Prefix the unit price with "From " when rows cost more than it. */
+  from?: boolean;
 }) {
-  const { priceCents, currency } = ticketType;
-
   return (
     <dl className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <dt className="text-neutral-100">Price</dt>
         <dd className="text-tint-500">
           <span className="text-2xl font-bold">
-            {formatPrice(priceCents, currency)}
+            {from && "From "}
+            {formatPrice(unitCents, currency)}
           </span>
           <span className="text-sm">/per</span>
         </dd>
@@ -48,7 +48,7 @@ export function TicketTotals({
       <div className="flex items-center justify-between gap-4 border-t border-neutral-700 pt-3">
         <dt className="text-neutral-100">Total</dt>
         <dd className="text-2xl font-bold">
-          {formatPrice(priceCents * quantity, currency)}
+          {formatPrice(totalCents, currency)}
         </dd>
       </div>
     </dl>

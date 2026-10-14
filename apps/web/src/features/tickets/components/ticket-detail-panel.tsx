@@ -33,7 +33,12 @@ export function TicketDetailPanel({
       <section className="flex flex-col gap-6 rounded-2xl bg-neutral-800 px-4 py-6">
         <h2 className="text-2xl font-bold">Section {ticketType.name}</h2>
 
-        <TicketTotals ticketType={ticketType} quantity={quantity} />
+        <TicketTotals
+          unitCents={ticketType.priceCents}
+          totalCents={ticketType.priceCents * quantity}
+          currency={ticketType.currency}
+          quantity={quantity}
+        />
         <TicketFacts event={event} quantity={quantity} />
         <TicketTags tags={ticketType.tags} />
 
