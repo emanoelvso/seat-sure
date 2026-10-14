@@ -154,7 +154,9 @@ export const NoTags: Story = {
 
 export const ContinueDisabledUntilAllPicked: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("button", { name: "Continue" })).toBeDisabled();
+    await expect(
+      canvas.getByRole("button", { name: "Continue" }),
+    ).toBeDisabled();
   },
 };
 
@@ -179,5 +181,49 @@ export const ContinueRef: Story = {
     await expect(continueRef.current).toBe(
       canvas.getByRole("button", { name: "Continue" }),
     );
+  },
+};
+
+// Base $450, quantity 2: each slot not picked yet costs the base price.
+const withPrice = (base: Seat, priceCents: number): Seat => ({
+  ...base,
+  priceCents,
+});
+const dear = withPrice(seat10, 60000);
+const cheap = withPrice(seat2, 45000);
+
+const definitions = (values: HTMLElement[]) =>
+  values.map((value) => value.textContent);
+
+export const NoPicksShowsBasePrice: Story = {
+  args: { quantity: 2, pickedSeats: [] },
+  play: async ({ canvas }) => {
+    await expect(definitions(canvas.getAllByRole("definition"))).toEqual([
+      "$450/per",
+      "2",
+      "$900",
+    ]);
+  },
+};
+
+export const OnePickShowsItsPriceAndTopsUpWithBase: Story = {
+  args: { quantity: 2, pickedSeats: [dear] },
+  play: async ({ canvas }) => {
+    await expect(definitions(canvas.getAllByRole("definition"))).toEqual([
+      "$600/per",
+      "2",
+      "$1,050",
+    ]);
+  },
+};
+
+export const LatestPickSetsTheUnitPrice: Story = {
+  args: { quantity: 2, pickedSeats: [dear, cheap] },
+  play: async ({ canvas }) => {
+    await expect(definitions(canvas.getAllByRole("definition"))).toEqual([
+      "$450/per",
+      "2",
+      "$1,050",
+    ]);
   },
 };
