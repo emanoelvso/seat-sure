@@ -2,6 +2,7 @@ import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { seatFactory } from '@catalogModule/__test__/factory/seat.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
+import { ticketTypeRowPriceFactory } from '@catalogModule/__test__/factory/ticket-type-row-price.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
@@ -159,10 +160,41 @@ describe('CatalogPublicApiProvider.findCheckoutSelection (integration)', () => {
         maxPerOrder: 6,
       },
       seats: [
-        { id: seats[0].id, row: '4', number: '09' },
-        { id: seats[1].id, row: '4', number: '10' },
+        { id: seats[0].id, row: '4', number: '09', priceCents: 45000 },
+        { id: seats[1].id, row: '4', number: '10', priceCents: 45000 },
       ],
     });
+  });
+
+  it("returns each selected seat with its row's price: the base plus the row premium (PRICE-01, PRICE-03)", async () => {
+    const seatMap = await insertSeatMap();
+    const event = await insertEvent({ seatMapId: seatMap.id });
+    const ticketType = await insertVipTicketType(event.id!, {
+      priceCents: 45000,
+    });
+    const seats = await insertSeats(seatMap.id, 'vip', [
+      { row: '1', number: '01' },
+      { row: '7', number: '01' },
+    ]);
+    await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+      ticketTypeRowPriceFactory.build({
+        ticketTypeId: ticketType.id,
+        row: '1',
+        premiumCents: 15000,
+      }),
+    ]);
+
+    const selection = await catalogApi.findCheckoutSelection({
+      eventId: event.id!,
+      ticketTypeId: ticketType.id,
+      seatIds: seats.map((seat) => seat.id),
+    });
+
+    expect(selection?.seats).toEqual([
+      { id: seats[0].id, row: '1', number: '01', priceCents: 60000 },
+      { id: seats[1].id, row: '7', number: '01', priceCents: 45000 },
+    ]);
+    expect(selection?.ticketType.priceCents).toBe(45000);
   });
 
   describe('PAY-13: returns null for an invalid selection', () => {

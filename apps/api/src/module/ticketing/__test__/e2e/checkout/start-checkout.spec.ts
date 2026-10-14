@@ -3,6 +3,7 @@ import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { seatFactory } from '@catalogModule/__test__/factory/seat.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
+import { ticketTypeRowPriceFactory } from '@catalogModule/__test__/factory/ticket-type-row-price.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
 import { INestApplication } from '@nestjs/common';
@@ -350,6 +351,111 @@ describe('TicketingResolver startCheckout (e2e)', () => {
         { seatId: first.id, row: '4', number: '09' },
         { seatId: second.id, row: '5', number: '12' },
       ]);
+    });
+  });
+
+  describe('PRICE-03, PRICE-04, PRICE-12: seats priced by row', () => {
+    // Seats in rows 4 and 5 of a ticket type with base 45000, fee 1000 and
+    // tax 500, where row 4 costs 15000 more.
+    const setupRowPrices = async () => {
+      const catalog = await setupCatalog();
+      await testDbClient(Tables.TicketType)
+        .where({ id: catalog.ticketType.id })
+        .update({ serviceFeeCents: 1000, taxCents: 500 });
+      await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: catalog.ticketType.id,
+          row: '4',
+          premiumCents: 15000,
+        }),
+      ]);
+      const [row4, row5] = catalog.seats;
+      return { ...catalog, row4, row5 };
+    };
+
+    const startRows = async (
+      catalog: Awaited<ReturnType<typeof setupRowPrices>>,
+    ) => {
+      const body = await startCheckout(
+        {
+          eventId: catalog.event.id!,
+          ticketTypeId: catalog.ticketType.id,
+          seatIds: [catalog.row4.id, catalog.row5.id],
+        },
+        tokenFor(randomUUID()),
+      );
+      expect(body.errors).toBeUndefined();
+      return body.data.startCheckout;
+    };
+
+    it("stores each item at its seat's row price and the order at the sum plus fee and tax per seat", async () => {
+      const catalog = await setupRowPrices();
+
+      const result = await startRows(catalog);
+
+      const items = await testDbClient(Tables.OrderItem)
+        .where({ orderId: result.id })
+        .orderBy('seatRow');
+      expect(
+        items.map(({ seatRow, unitPriceCents, serviceFeeCents, taxCents }) => ({
+          seatRow,
+          unitPriceCents,
+          serviceFeeCents,
+          taxCents,
+        })),
+      ).toEqual([
+        {
+          seatRow: '4',
+          unitPriceCents: 60000,
+          serviceFeeCents: 1000,
+          taxCents: 500,
+        },
+        {
+          seatRow: '5',
+          unitPriceCents: 45000,
+          serviceFeeCents: 1000,
+          taxCents: 500,
+        },
+      ]);
+      expect(
+        await testDbClient(Tables.Order).where({ id: result.id }).first(),
+      ).toMatchObject({
+        subtotalCents: 105000,
+        serviceFeeCents: 2000,
+        taxCents: 1000,
+        totalCents: 108000,
+      });
+      expect(result).toMatchObject({
+        subtotalCents: 105000,
+        totalCents: 108000,
+      });
+    });
+
+    it('prices from the current premium when it changed after the page was read', async () => {
+      const catalog = await setupRowPrices();
+      await testDbClient(Tables.TicketTypeRowPrice)
+        .where({ ticketTypeId: catalog.ticketType.id, row: '4' })
+        .update({ premiumCents: 20000 });
+
+      const result = await startRows(catalog);
+
+      const items = await testDbClient(Tables.OrderItem)
+        .where({ orderId: result.id })
+        .orderBy('seatRow');
+      expect(items.map((item) => item.unitPriceCents)).toEqual([65000, 45000]);
+      expect(result).toMatchObject({
+        subtotalCents: 110000,
+        totalCents: 113000,
+      });
+    });
+
+    it('charges the base price for every seat of a ticket type without row prices', async () => {
+      const catalog = await setupRowPrices();
+      await testDbClient(Tables.TicketTypeRowPrice).del();
+
+      const result = await startRows(catalog);
+
+      expect(result).toMatchObject({ subtotalCents: 90000, totalCents: 93000 });
     });
   });
 
