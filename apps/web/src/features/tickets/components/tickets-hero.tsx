@@ -28,6 +28,8 @@ interface TicketsHeroProps {
   seat?: { row: string; number: string };
   /** Overrides the selected type's price, e.g. "From" on the listing page. */
   price?: { cents: number; from: boolean };
+  /** Shown for an empty SEC, ROW or SEAT. The seat page passes "?". */
+  emptyValue?: string;
 }
 
 const PLACEHOLDER = "—";
@@ -67,6 +69,7 @@ export function TicketsHero({
   selected,
   seat,
   price,
+  emptyValue = PLACEHOLDER,
 }: TicketsHeroProps) {
   return (
     <section
@@ -139,19 +142,19 @@ export function TicketsHero({
         <div className="flex items-center justify-between">
           <SeatDetail
             label="SEC"
-            value={selected?.name ?? PLACEHOLDER}
+            value={selected?.name ?? emptyValue}
             testId="hero-sec"
           />
           <span aria-hidden="true" className="h-[50px] w-px bg-neutral-500" />
           <SeatDetail
             label="ROW"
-            value={seat?.row ?? PLACEHOLDER}
+            value={seat?.row ?? emptyValue}
             testId="hero-row"
           />
           <span aria-hidden="true" className="h-[50px] w-px bg-neutral-500" />
           <SeatDetail
             label="SEAT"
-            value={seat?.number ?? PLACEHOLDER}
+            value={seat?.number ?? emptyValue}
             testId="hero-seat"
           />
         </div>

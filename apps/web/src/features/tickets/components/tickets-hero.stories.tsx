@@ -75,6 +75,15 @@ export const NoSelection: Story = {
   },
 };
 
+export const EmptyValueOverride: Story = {
+  args: { selected: sectionB, emptyValue: "?" },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-sec")).toHaveTextContent(/^B$/);
+    await expect(canvas.getByTestId("hero-row")).toHaveTextContent(/^\?$/);
+    await expect(canvas.getByTestId("hero-seat")).toHaveTextContent(/^\?$/);
+  },
+};
+
 export const WithSelection: Story = {
   args: { selected: sectionB },
   play: async ({ canvas }) => {
