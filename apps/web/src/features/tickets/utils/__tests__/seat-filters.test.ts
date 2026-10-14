@@ -111,6 +111,12 @@ describe("resolveSeatFilters", () => {
     ).toEqual({ min: 450, max: 600 });
   });
 
+  it("accepts a range where min equals max (SFILT-05)", () => {
+    expect(
+      resolveSeatFilters({ ...url, min: 450, max: 450 }, priced).price,
+    ).toEqual({ min: 450, max: 450 });
+  });
+
   it("falls back to the default range when only one bound is given (SFILT-05)", () => {
     expect(resolveSeatFilters({ ...url, min: 500 }, priced).price).toEqual({
       min: 450,
