@@ -4,6 +4,7 @@ import {
 } from '@catalogModule/http/graphql/type/event-tickets.type';
 import { Event } from '@catalogModule/http/graphql/type/events.type';
 import {
+  SectionViewModel,
   SeatModel,
   TicketTypeSeatsModel,
 } from '@catalogModule/core/model/seat.model';
@@ -35,6 +36,15 @@ export class Seat implements SeatModel {
 }
 
 @ObjectType()
+export class SectionView implements SectionViewModel {
+  @Field(() => Float)
+  score: number;
+
+  @Field()
+  label: string;
+}
+
+@ObjectType()
 export class TicketTypeSeats implements TicketTypeSeatsModel {
   @Field(() => Event, { nullable: true })
   event: Event | null;
@@ -47,4 +57,7 @@ export class TicketTypeSeats implements TicketTypeSeatsModel {
 
   @Field(() => [Seat])
   seats: Seat[];
+
+  @Field(() => SectionView, { nullable: true })
+  sectionView: SectionView | null;
 }

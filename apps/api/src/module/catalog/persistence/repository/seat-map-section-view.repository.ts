@@ -12,4 +12,15 @@ export class SeatMapSectionViewRepository extends DefaultTypeOrmRepository<SeatM
   ) {
     super(SeatMapSectionView, datasource.manager);
   }
+
+  async findBySection(
+    seatMapId: string,
+    sectionKey: string,
+  ): Promise<SeatMapSectionView | null> {
+    return this.entityManager
+      .createQueryBuilder(SeatMapSectionView, 'sectionView')
+      .where('sectionView.seatMapId = :seatMapId', { seatMapId })
+      .andWhere('sectionView.sectionKey = :sectionKey', { sectionKey })
+      .getOne();
+  }
 }

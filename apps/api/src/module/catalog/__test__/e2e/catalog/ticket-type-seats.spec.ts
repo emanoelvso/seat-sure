@@ -3,6 +3,7 @@ import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { seatFactory } from '@catalogModule/__test__/factory/seat.factory';
+import { seatMapSectionViewFactory } from '@catalogModule/__test__/factory/seat-map-section-view.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
 import { ticketTypeRowPriceFactory } from '@catalogModule/__test__/factory/ticket-type-row-price.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
@@ -120,6 +121,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
       eventFields = 'id name',
       seatMapFields = 'id name',
       seatFields = 'id row number x y',
+      extraFields = '',
     } = {},
   ) => {
     const response = await request(app.getHttpServer())
@@ -149,6 +151,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
               seats {
                 ${seatFields}
               }
+              ${extraFields}
             }
           }
         `,
@@ -756,6 +759,75 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
         { number: '02', perks: ['EXTRA_LEGROOM'] },
         { number: '03', perks: [] },
       ]);
+    });
+  });
+
+  describe('section view rating', () => {
+    const findSectionView = async (eventId: string, ticketTypeId: string) => {
+      const body = await findTicketTypeSeats(eventId, ticketTypeId, {
+        extraFields: 'sectionView { score label }',
+      });
+      expect(body.errors).toBeUndefined();
+      return body.data.findTicketTypeSeats.sectionView;
+    };
+
+    it("returns the rating of the ticket type's section on the event's seat map, with the score as a number (VIEW-01)", async () => {
+      const seatMap = await insertSeatMap('Concentric Arena');
+      const event = await insertEvent({ seatMapId: seatMap.id });
+      const vip = await insertVipTicketType(event.id!);
+      await testDbClient.batchInsert(Tables.SeatMapSectionView, [
+        seatMapSectionViewFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          score: 4.7,
+          label: 'Clear View',
+        }),
+        seatMapSectionViewFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'a',
+          score: 3.2,
+          label: 'Distant View',
+        }),
+      ]);
+
+      const sectionView = await findSectionView(event.id!, vip.id);
+
+      expect(sectionView).toEqual({ score: 4.7, label: 'Clear View' });
+      // The response is parsed JSON, so a string score would not equal 4.7.
+    });
+
+    it('returns null for a section without a rating (VIEW-01)', async () => {
+      const seatMap = await insertSeatMap('Concentric Arena');
+      const otherMap = await insertSeatMap('Football Stadium');
+      const event = await insertEvent({ seatMapId: seatMap.id });
+      const vip = await insertVipTicketType(event.id!);
+      // Same section on another map and another section on this map.
+      await testDbClient.batchInsert(Tables.SeatMapSectionView, [
+        seatMapSectionViewFactory.build({
+          seatMapId: otherMap.id,
+          sectionKey: 'vip',
+        }),
+        seatMapSectionViewFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'a',
+        }),
+      ]);
+
+      expect(await findSectionView(event.id!, vip.id)).toBeNull();
+    });
+
+    it('returns null for an event without a seat map (VIEW-01)', async () => {
+      const otherMap = await insertSeatMap('Football Stadium');
+      const event = await insertEvent({ seatMapId: null });
+      const vip = await insertVipTicketType(event.id!);
+      await testDbClient.batchInsert(Tables.SeatMapSectionView, [
+        seatMapSectionViewFactory.build({
+          seatMapId: otherMap.id,
+          sectionKey: 'vip',
+        }),
+      ]);
+
+      expect(await findSectionView(event.id!, vip.id)).toBeNull();
     });
   });
 });

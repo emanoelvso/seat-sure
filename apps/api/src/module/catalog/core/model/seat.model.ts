@@ -13,9 +13,15 @@ export interface SeatModel {
   perks: SeatPerk[];
 }
 
+export interface SectionViewModel {
+  score: number;
+  label: string;
+}
+
 export interface TicketTypeSeatsModel {
   event: EventModel | null;
   ticketType: TicketTypeModel | null;
   seatMap: SeatMapModel | null;
   seats: SeatModel[];
+  sectionView: SectionViewModel | null;
 }

@@ -12,6 +12,7 @@ import {
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
 import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
 import { TicketTypeRowPriceRepository } from '@catalogModule/persistence/repository/ticket-type-row-price.repository';
+import { SeatMapSectionViewRepository } from '@catalogModule/persistence/repository/seat-map-section-view.repository';
 import { SeatRepository } from '@catalogModule/persistence/repository/seat.repository';
 import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
@@ -81,6 +82,7 @@ export class CatalogService {
     private readonly seatRepository: SeatRepository,
     private readonly seatMapRepository: SeatMapRepository,
     private readonly ticketTypeRowPriceRepository: TicketTypeRowPriceRepository,
+    private readonly seatMapSectionViewRepository: SeatMapSectionViewRepository,
   ) {}
 
   @Transactional({ connectionName: 'catalog' })
@@ -354,6 +356,7 @@ export class CatalogService {
       ticketType: null,
       seatMap: null,
       seats: [],
+      sectionView: null,
     };
 
     if (!isUUID(eventId) || !isUUID(ticketTypeId)) {
@@ -369,7 +372,7 @@ export class CatalogService {
       return empty;
     }
 
-    const [[eventModel], seats, rowPrices] = await Promise.all([
+    const [[eventModel], seats, rowPrices, sectionView] = await Promise.all([
       this.toEventModels([event]),
       event.seatMap
         ? this.seatRepository.findBySection(
@@ -378,6 +381,12 @@ export class CatalogService {
           )
         : [],
       this.ticketTypeRowPriceRepository.findByTicketType(ticketType.id),
+      event.seatMap
+        ? this.seatMapSectionViewRepository.findBySection(
+            event.seatMap.id,
+            ticketType.sectionKey,
+          )
+        : null,
     ]);
     const premiumByRow = new Map(
       rowPrices.map(({ row, premiumCents }) => [row, premiumCents]),
@@ -393,6 +402,9 @@ export class CatalogService {
           ticketType.priceCents + (premiumByRow.get(seat.row) ?? 0),
         ),
       ),
+      sectionView: sectionView
+        ? { score: sectionView.score, label: sectionView.label }
+        : null,
     };
   }
 
