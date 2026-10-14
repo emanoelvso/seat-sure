@@ -33,6 +33,10 @@ export function SeatPicksPanel({
   continueRef,
 }: SeatPicksPanelProps) {
   const sorted = [...pickedSeats].sort(byNumber);
+  // Each pick costs its row's price; each slot not picked yet, the base price.
+  const totalCents =
+    pickedSeats.reduce((sum, seat) => sum + seat.priceCents, 0) +
+    ticketType.priceCents * (quantity - pickedSeats.length);
 
   return (
     <section className="flex flex-col gap-6 rounded-2xl bg-neutral-800 px-4 py-6">
@@ -41,7 +45,12 @@ export function SeatPicksPanel({
         Section {ticketType.name}
       </h2>
 
-      <TicketTotals ticketType={ticketType} quantity={quantity} />
+      <TicketTotals
+        unitCents={pickedSeats.at(-1)?.priceCents ?? ticketType.priceCents}
+        totalCents={totalCents}
+        currency={ticketType.currency}
+        quantity={quantity}
+      />
 
       <div className="flex items-center justify-between gap-4 text-neutral-100">
         <span className="flex items-center gap-2">

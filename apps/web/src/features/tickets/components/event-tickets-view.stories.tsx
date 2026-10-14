@@ -45,12 +45,14 @@ const ticketType = (
     seatsAvailable?: number;
     maxPerOrder?: number;
     tags?: string[];
+    maxPriceCents?: number;
   } = {},
 ) => ({
   id: `tt-${sectionKey}`,
   sectionKey,
   name,
   priceCents,
+  maxPriceCents: priceCents,
   currency: "USD",
   seatsAvailable: 100,
   maxPerOrder: 4,
@@ -971,7 +973,9 @@ export const QuantityUpdatesUrl: Story = {
 
     await pickQuantity(context, "4 tickets");
 
-    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1),
+    );
     const { searchParams, options } = lastUpdate(parameters);
     await expect(searchParams.get("quantity")).toBe("4");
     await expect(options.shallow).toBe(true);
@@ -988,7 +992,9 @@ export const PriceUpdatesUrl: Story = {
 
     await applyPrice(context, "$200 - $450", "250", "420");
 
-    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1),
+    );
     const { searchParams, options } = lastUpdate(parameters);
     await expect(searchParams.get("min")).toBe("250");
     await expect(searchParams.get("max")).toBe("420");
@@ -1008,10 +1014,46 @@ export const SortUpdatesUrl: Story = {
       await screen.findByRole("option", { name: "Price: low to high" }),
     );
 
-    await waitFor(() => expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(urlUpdates(parameters)).toHaveBeenCalledTimes(1),
+    );
     const { searchParams, options } = lastUpdate(parameters);
     await expect(searchParams.get("sort")).toBe("asc");
     await expect(options.shallow).toBe(true);
     await expect(options.history).toBe("replace");
+  },
+};
+
+// VIP has dearer rows, A and B do not.
+export const FromPrices: Story = {
+  args: payload({
+    ticketTypes: [B, ticketType("vip", "VIP", 45000, { maxPriceCents: 60000 })],
+  }),
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole("heading", { level: 1, name: "Adele" });
+
+    const cardPrice = (name: string) =>
+      listings(canvas).getByRole("button", { name }).textContent;
+
+    await expect(cardPrice("Section VIP")).toContain("From $450/per");
+    await expect(cardPrice("Section B")).toContain("$300/per");
+    await expect(cardPrice("Section B")).not.toContain("From");
+
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section VIP" }),
+    );
+    await expect(heroValue(canvas, "hero-price")).toBe("From $450");
+    await expect(canvas.getAllByRole("definition")[0]).toHaveTextContent(
+      "From $450/per",
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: /back/i }));
+    await userEvent.click(
+      listings(canvas).getByRole("button", { name: "Section B" }),
+    );
+    await expect(heroValue(canvas, "hero-price")).toBe("$300");
+    await expect(canvas.getAllByRole("definition")[0]).toHaveTextContent(
+      /^\$300\/per$/,
+    );
   },
 };

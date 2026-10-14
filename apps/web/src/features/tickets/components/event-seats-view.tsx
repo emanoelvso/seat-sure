@@ -7,11 +7,15 @@ import type {
   FindTicketTypeSeats,
   Seat,
 } from "@/features/tickets/api/find-ticket-type-seats";
+import { FrontRowsToggle } from "@/features/tickets/components/front-rows-toggle";
+import { PerksFilter } from "@/features/tickets/components/perks-filter";
+import { PriceRangeFilter } from "@/features/tickets/components/price-range-filter";
 import { ReviewSeatsDialog } from "@/features/tickets/components/review-seats-dialog";
 import { SeatChart } from "@/features/tickets/components/seat-chart";
 import { SeatLegend } from "@/features/tickets/components/seat-legend";
 import { SeatMapPreview } from "@/features/tickets/components/seat-map";
 import { SeatPicksPanel } from "@/features/tickets/components/seat-picks-panel";
+import { SeatViewRating } from "@/features/tickets/components/seat-view-rating";
 import { TicketsHero } from "@/features/tickets/components/tickets-hero";
 import {
   latestPick,
@@ -20,6 +24,11 @@ import {
   seatNotice,
   trimPicks,
 } from "@/features/tickets/utils/seat-picks";
+import {
+  filteredOutIds,
+  resolveSeatFilters,
+} from "@/features/tickets/utils/seat-filters";
+import type { PriceRange } from "@/features/tickets/utils/ticket-listings";
 import { seatsParsers } from "@/features/tickets/utils/seats-search-params";
 
 function ticketsOptionLabel(quantity: number) {
@@ -48,12 +57,12 @@ export function EventSeatsView({
   // returns an event with its ticket type.
   const event = ticketTypeSeats.event!;
   const ticketType = ticketTypeSeats.ticketType!;
-  const { seatMap, seats } = ticketTypeSeats;
+  const { seatMap, seats, sectionView } = ticketTypeSeats;
 
   if (!seatMap || seats.length === 0) {
     return (
       <>
-        <TicketsHero event={event} selected={ticketType} />
+        <TicketsHero event={event} selected={ticketType} emptyValue="?" />
         <p className="px-27 pb-25 pt-10 text-xl text-neutral-200">
           Seat selection isn&apos;t available for this section.
         </p>
@@ -70,12 +79,22 @@ export function EventSeatsView({
     (_, index) => index + 1,
   );
   const unavailableIds = new Set(unavailableSeatIds);
-  const notice = seatNotice(seats, unavailableIds, quantity);
+  const filters = resolveSeatFilters(urlState, seats);
+  const filteredOut = filteredOutIds(seats, filters);
+  const notice = seatNotice(seats, unavailableIds, quantity, filteredOut);
   // In pick order (PAY-01): checkout gets the seat ids in the order they
   // were picked, not the layout order `seats` arrives in.
   const pickedSeats = picks
     .map((id) => seats.find((seat) => seat.id === id))
     .filter((seat): seat is Seat => seat !== undefined);
+
+  // The hero shows the latest pick's price, or the base price before a pick
+  // (PRICE-07, PRICE-08).
+  const latest = latestPick(picks, seats);
+  const heroPrice = {
+    cents: latest?.priceCents ?? ticketType.priceCents,
+    from: false,
+  };
 
   function pick(seat: Seat) {
     setPicks((current) => pickSeat(current, seat, seats, quantity));
@@ -87,6 +106,11 @@ export function EventSeatsView({
     const nextQuantity = Number(value);
     setUrlState({ quantity: nextQuantity });
     setPicks((current) => trimPicks(current, nextQuantity));
+  }
+
+  // The filters change the chart only: picks already made stay (SFILT-07).
+  function changePrice(range: PriceRange) {
+    setUrlState({ min: range.min, max: range.max });
   }
 
   // Focus goes back to Continue explicitly, whatever element the browser
@@ -101,7 +125,9 @@ export function EventSeatsView({
       <TicketsHero
         event={event}
         selected={ticketType}
-        seat={latestPick(picks, seats)}
+        seat={latest}
+        price={heroPrice}
+        emptyValue="?"
       />
 
       <div className="flex flex-col justify-between gap-6 px-27 pb-25 pt-10 lg:flex-row">
@@ -118,6 +144,21 @@ export function EventSeatsView({
               }))}
               onChange={changeQuantity}
             />
+            <PerksFilter
+              value={filters.perks}
+              onChange={(perks) =>
+                setUrlState({ perks: perks.length > 0 ? perks : null })
+              }
+            />
+            <FrontRowsToggle
+              pressed={filters.front}
+              onPressedChange={(front) =>
+                setUrlState({ front: front ? "1" : null })
+              }
+            />
+            {filters.price && (
+              <PriceRangeFilter value={filters.price} onApply={changePrice} />
+            )}
           </div>
           {notice && <p className="text-lg text-neutral-200">{notice}</p>}
           <div className="mt-18">
@@ -125,6 +166,7 @@ export function EventSeatsView({
               seats={seats}
               unavailableIds={unavailableIds}
               pickedIds={picks}
+              filteredOutIds={filteredOut}
               ticketType={ticketType}
               onPick={pick}
             />
@@ -148,6 +190,14 @@ export function EventSeatsView({
               layout={seatMap}
               highlightKey={ticketType.sectionKey}
             />
+            {sectionView && (
+              <div className="mt-4">
+                <SeatViewRating
+                  sectionName={ticketType.name}
+                  view={sectionView}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

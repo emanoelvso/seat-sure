@@ -45,6 +45,7 @@ export function SeatListingCard({
         </span>
         <span id={`${id}-price`} className="shrink-0 text-tint-500">
           <span className="text-2xl font-bold">
+            {ticketType.maxPriceCents > ticketType.priceCents && "From "}
             {formatPrice(ticketType.priceCents, ticketType.currency)}
           </span>
           <span className="text-sm">/per</span>

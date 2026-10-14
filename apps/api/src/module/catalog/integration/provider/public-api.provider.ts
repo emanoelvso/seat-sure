@@ -57,6 +57,7 @@ export class CatalogPublicApiProvider implements CatalogApi {
         id: seat!.id,
         row: seat!.row,
         number: seat!.number,
+        priceCents: seat!.priceCents,
       })),
     };
   }

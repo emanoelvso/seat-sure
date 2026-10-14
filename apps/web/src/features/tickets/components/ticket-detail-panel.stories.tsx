@@ -32,6 +32,7 @@ const ticketType: TicketType = {
   sectionKey: "b",
   name: "B",
   priceCents: 30000,
+  maxPriceCents: 30000,
   currency: "USD",
   seatsAvailable: 100,
   maxPerOrder: 4,
@@ -144,5 +145,24 @@ export const BackToListings: Story = {
     );
 
     await expect(args.onBack).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const FromPriceWhenRowsCostMore: Story = {
+  args: { ticketType: { ...ticketType, maxPriceCents: 45000 } },
+  play: async ({ canvas }) => {
+    const [price, , total] = canvas.getAllByRole("definition");
+
+    await expect(price).toHaveTextContent("From $300/per");
+    // The total keeps the base price per ticket.
+    await expect(total).toHaveTextContent("$900");
+  },
+};
+
+export const PlainPriceWhenRowsCostTheSame: Story = {
+  play: async ({ canvas }) => {
+    await expect(canvas.getAllByRole("definition")[0]).toHaveTextContent(
+      /^\$300\/per$/,
+    );
   },
 };

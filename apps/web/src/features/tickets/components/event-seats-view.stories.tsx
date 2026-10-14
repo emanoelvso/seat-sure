@@ -40,7 +40,9 @@ const vip = {
 // seat is taken. Row "4" and row "7" are none of the seat numbers they hold.
 const unavailableSeatIds = frame12Seats
   .filter((seat) =>
-    seat.row === "4" ? seat.number === "08" : frame12UnavailableIds.has(seat.id),
+    seat.row === "4"
+      ? seat.number === "08"
+      : frame12UnavailableIds.has(seat.id),
   )
   .map((seat) => seat.id);
 
@@ -116,8 +118,8 @@ export const Default: Story = {
 
     await expect(heroValue(canvas, "hero-sec")).toBe("VIP");
     await expect(heroValue(canvas, "hero-price")).toBe("$450");
-    await expect(heroValue(canvas, "hero-row")).toBe("—");
-    await expect(heroValue(canvas, "hero-seat")).toBe("—");
+    await expect(heroValue(canvas, "hero-row")).toBe("?");
+    await expect(heroValue(canvas, "hero-seat")).toBe("?");
 
     const seats = within(chart(canvas)).getAllByRole("button");
     await expect(seats).toHaveLength(150);
@@ -383,7 +385,10 @@ export const AllSeatsTaken: Story = {
   },
   play: async ({ canvas }) => {
     await loaded(canvas);
-    await expectNoticeAboveChart(canvas, "All seats in this section are taken.");
+    await expectNoticeAboveChart(
+      canvas,
+      "All seats in this section are taken.",
+    );
   },
 };
 
@@ -515,5 +520,250 @@ export const EscapeKeepsPicks: Story = {
     await userEvent.keyboard("{Escape}");
 
     await expectReviewClosed(canvas, dialog, continueAtOpen);
+  },
+};
+
+// Seat filters (SFILT, PERK, FRONT). Every seat is free, so a filtered seat is
+// never also taken. Rows 1-3 cost $600, the others $450, as in the seed.
+const allFree = { ...payload(), unavailableSeatIds: [] };
+
+// A filtered seat's name ends in ", filtered out", so match the prefix.
+const anySeatButton = (canvas: Canvas, row: string, number: string) =>
+  within(chart(canvas)).getByRole("button", {
+    name: new RegExp(`^Row ${row}, Seat ${number}(, filtered out)?$`),
+  });
+
+const stateOfSeat = (canvas: Canvas, row: string, number: string) =>
+  anySeatButton(canvas, row, number).getAttribute("data-state");
+
+const filteredRows = (canvas: Canvas) => [
+  ...new Set(
+    frame12Seats
+      .filter(
+        (seat) => stateOfSeat(canvas, seat.row, seat.number) === "filtered",
+      )
+      .map((seat) => seat.row),
+  ),
+];
+
+const pickableSeats = (canvas: Canvas) =>
+  frame12Seats.filter(
+    (seat) => stateOfSeat(canvas, seat.row, seat.number) === "available",
+  );
+
+const rows = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
+
+const priceFilter = (canvas: Canvas) =>
+  canvas.getByRole("button", { name: /^\$450 - \$600$/ });
+
+const lastUrl = (parameters: Record<string, unknown>) =>
+  urlUpdates(parameters).mock.lastCall![0];
+
+export const PriceFilterNarrowsRows: Story = {
+  args: allFree,
+  parameters: spiedUrlState("?quantity=2"),
+  play: async ({ canvas, parameters, userEvent }) => {
+    await loaded(canvas);
+
+    await expect(filteredRows(canvas)).toEqual([]);
+    await userEvent.click(priceFilter(canvas));
+    const dialog = await screen.findByRole("dialog", { name: "Price range" });
+    await userEvent.clear(within(dialog).getByLabelText("Min"));
+    await userEvent.type(within(dialog).getByLabelText("Min"), "400");
+    await userEvent.clear(within(dialog).getByLabelText("Max"));
+    await userEvent.type(within(dialog).getByLabelText("Max"), "500");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Apply" }),
+    );
+
+    await waitFor(() => expect(filteredRows(canvas)).toEqual(rows(1, 3)));
+    const { searchParams, options } = lastUrl(parameters);
+    await expect(searchParams.get("min")).toBe("400");
+    await expect(searchParams.get("max")).toBe("500");
+    await expect(options.history).toBe("replace");
+
+    await userEvent.click(anySeatButton(canvas, "1", "05"));
+    await expect(continueButton(canvas)).toBeDisabled();
+    await expect(heroValue(canvas, "hero-row")).toBe("?");
+    await expect(anySeatButton(canvas, "1", "05")).toHaveAttribute(
+      "aria-label",
+      "Row 1, Seat 05, filtered out",
+    );
+  },
+};
+
+export const PriceRangeFromUrl: Story = {
+  args: allFree,
+  parameters: urlState("?quantity=2&min=400&max=500"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(
+      canvas.getByRole("button", { name: /^\$400 - \$500$/ }),
+    ).toBeVisible();
+    await expect(filteredRows(canvas)).toEqual(rows(1, 3));
+  },
+};
+
+export const OneSeatPriceHasNoPriceFilter: Story = {
+  args: {
+    ...allFree,
+    ticketTypeSeats: {
+      ...allFree.ticketTypeSeats,
+      seats: frame12Seats.map((seat) => ({ ...seat, priceCents: 45000 })),
+    },
+  },
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(canvas.queryByRole("button", { name: /^\$/ })).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: "Front rows" }),
+    ).toBeVisible();
+  },
+};
+
+export const InvalidPriceRangeLoadsUnfiltered: Story = {
+  args: allFree,
+  parameters: urlState("?quantity=2&min=9&max=1"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(priceFilter(canvas)).toBeVisible();
+    await expect(filteredRows(canvas)).toEqual([]);
+  },
+};
+
+export const PerksFilterAisle: Story = {
+  args: allFree,
+  parameters: spiedUrlState("?quantity=2"),
+  play: async ({ canvas, parameters, userEvent }) => {
+    await loaded(canvas);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Perks" }));
+    const popup = await screen.findByRole("dialog", { name: "Perks" });
+    await userEvent.click(
+      within(popup).getByRole("checkbox", { name: "Aisle" }),
+    );
+
+    await waitFor(() =>
+      expect(pickableSeats(canvas).length).toBeGreaterThan(0),
+    );
+    await expect(pickableSeats(canvas)).toEqual(
+      frame12Seats.filter((seat) => seat.perks.includes("AISLE")),
+    );
+    await expect(lastUrl(parameters).searchParams.get("perks")).toBe("AISLE");
+  },
+};
+
+export const UnknownPerkIgnored: Story = {
+  args: allFree,
+  parameters: urlState("?quantity=2&perks=AISLE,WINDOW"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(pickableSeats(canvas)).toEqual(
+      frame12Seats.filter((seat) => seat.perks.includes("AISLE")),
+    );
+  },
+};
+
+export const FrontRowsToggle: Story = {
+  args: allFree,
+  parameters: spiedUrlState("?quantity=2"),
+  play: async ({ canvas, parameters, userEvent }) => {
+    await loaded(canvas);
+    const toggle = canvas.getByRole("button", { name: "Front rows" });
+
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(toggle);
+
+    await waitFor(() => expect(filteredRows(canvas)).toEqual(rows(4, 12)));
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(lastUrl(parameters).searchParams.get("front")).toBe("1");
+  },
+};
+
+export const FrontRowsAndAisle: Story = {
+  args: allFree,
+  parameters: urlState("?quantity=2&front=1&perks=AISLE"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(pickableSeats(canvas)).toEqual(
+      frame12Seats.filter(
+        (seat) => Number(seat.row) <= 3 && seat.perks.includes("AISLE"),
+      ),
+    );
+  },
+};
+
+export const PickedSeatStaysPickedWhenFilteredOut: Story = {
+  args: allFree,
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+
+    await userEvent.click(seatButton(canvas, "7", "05"));
+    await userEvent.click(canvas.getByRole("button", { name: "Front rows" }));
+
+    await waitFor(() => expect(filteredRows(canvas)).toContain("7"));
+    await expect(pressed(canvas, "7", "05")).toBe("true");
+    await expect(stateOfSeat(canvas, "7", "05")).toBe("picked");
+    await expect(pickedNumbers(canvas)).toEqual(["05"]);
+    await expect(continueButton(canvas)).toBeDisabled();
+    await userEvent.click(anySeatButton(canvas, "7", "06"));
+    await expect(pickedNumbers(canvas)).toEqual(["05"]);
+  },
+};
+
+export const NoSeatMatchesFilters: Story = {
+  args: {
+    ...payload(),
+    // Only row 7 seats are free, and front rows exclude row 7.
+  },
+  parameters: urlState("?quantity=2&front=1"),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expectNoticeAboveChart(canvas, "No seats match these filters.");
+  },
+};
+
+export const ViewRatingCard: Story = {
+  args: payload({
+    sectionView: { __typename: "SectionView", score: 4.7, label: "Clear View" },
+  }),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(canvas.getByText("Section VIP selected")).toBeVisible();
+    await expect(canvas.getByText("4.7")).toBeVisible();
+    await expect(canvas.getByText("Great")).toBeVisible();
+    await expect(canvas.getByText("Clear View")).toBeVisible();
+    await expect(canvas.getByTestId("eye-icon")).toBeVisible();
+  },
+};
+
+export const NoViewRatingNoCard: Story = {
+  args: payload({ sectionView: null }),
+  play: async ({ canvas }) => {
+    await loaded(canvas);
+
+    await expect(canvas.queryByText(/selected$/)).toBeNull();
+    await expect(canvas.queryByTestId("eye-icon")).toBeNull();
+  },
+};
+
+export const PriceFollowsLatestPick: Story = {
+  args: allFree,
+  play: async ({ canvas, userEvent }) => {
+    await loaded(canvas);
+    await expect(heroValue(canvas, "hero-price")).toBe("$450");
+
+    await userEvent.click(seatButton(canvas, "1", "05"));
+    await expect(heroValue(canvas, "hero-price")).toBe("$600");
+    await userEvent.click(seatButton(canvas, "7", "05"));
+    await expect(heroValue(canvas, "hero-price")).toBe("$450");
   },
 };

@@ -58,6 +58,7 @@ export const FIND_EVENT_TICKETS: TypedDocumentNode<
         sectionKey
         name
         priceCents
+        maxPriceCents
         currency
         seatsAvailable
         maxPerOrder

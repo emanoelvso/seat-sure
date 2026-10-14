@@ -470,6 +470,8 @@ input ResetPasswordInput {
 type Seat {
   id: String!
   number: String!
+  perks: [SeatPerk!]!
+  priceCents: Int!
   row: String!
   x: Float!
   y: Float!
@@ -512,6 +514,17 @@ type SeatMapStageShape {
   path: String!
 }
 
+enum SeatPerk {
+  ACCESSIBLE
+  AISLE
+  EXTRA_LEGROOM
+}
+
+type SectionView {
+  label: String!
+  score: Float!
+}
+
 type SessionTokens {
   accessToken: String!
   expiresAt: DateTime!
@@ -542,6 +555,7 @@ type TicketType {
   currency: String!
   id: String!
   maxPerOrder: Int!
+  maxPriceCents: Int!
   name: String!
   priceCents: Int!
   seatsAvailable: Int!
@@ -555,6 +569,7 @@ type TicketTypeSeats {
   event: Event
   seatMap: SeatMap
   seats: [Seat!]!
+  sectionView: SectionView
   ticketType: TicketType
 }
 

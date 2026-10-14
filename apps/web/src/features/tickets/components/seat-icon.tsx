@@ -3,12 +3,14 @@
 export const SEAT_GLYPH_WIDTH = 28;
 export const SEAT_GLYPH_HEIGHT = 24;
 
-export type SeatState = "available" | "unavailable" | "picked";
+export type SeatState = "available" | "unavailable" | "picked" | "filtered";
 
 const seatFill: Record<SeatState, string> = {
   available: "fill-white",
   unavailable: "fill-neutral-300",
   picked: "fill-tint-500",
+  // A seat the filters exclude: the available seat, dimmed.
+  filtered: "fill-white opacity-30",
 };
 
 export function SeatGlyph({ state }: { state: SeatState }) {

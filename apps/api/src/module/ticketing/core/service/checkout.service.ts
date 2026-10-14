@@ -135,6 +135,7 @@ export class CheckoutService {
     const { event, ticketType, seats } = selection;
     const expiresAt = new Date(now.getTime() + HOLD_DURATION_MS);
     const quantity = seats.length;
+    const subtotalCents = seats.reduce((sum, seat) => sum + seat.priceCents, 0);
 
     const order = new Order({
       userId,
@@ -149,14 +150,12 @@ export class CheckoutService {
       ticketTypeName: ticketType.name,
       currency: ticketType.currency,
       status: OrderStatus.PENDING,
-      subtotalCents: quantity * ticketType.priceCents,
+      subtotalCents,
       serviceFeeCents: quantity * ticketType.serviceFeeCents,
       taxCents: quantity * ticketType.taxCents,
       totalCents:
-        quantity *
-        (ticketType.priceCents +
-          ticketType.serviceFeeCents +
-          ticketType.taxCents),
+        subtotalCents +
+        quantity * (ticketType.serviceFeeCents + ticketType.taxCents),
       expiresAt,
       paidAt: null,
       paymentId: null,
@@ -168,7 +167,7 @@ export class CheckoutService {
           seatId: seat.id,
           seatRow: seat.row,
           seatNumber: seat.number,
-          unitPriceCents: ticketType.priceCents,
+          unitPriceCents: seat.priceCents,
           serviceFeeCents: ticketType.serviceFeeCents,
           taxCents: ticketType.taxCents,
         }),

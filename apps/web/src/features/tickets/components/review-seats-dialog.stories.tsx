@@ -28,6 +28,7 @@ const vip: TicketType = {
   sectionKey: "vip",
   name: "VIP",
   priceCents: 45000,
+  maxPriceCents: 45000,
   currency: "USD",
   seatsAvailable: 150,
   maxPerOrder: 8,
@@ -42,12 +43,16 @@ const seat = (number: string, x: number): Seat => ({
   number,
   x,
   y: 190,
+  priceCents: 45000,
+  perks: [],
 });
 
 type Canvas = ReturnType<typeof within>;
 
 const dialog = (canvas: Canvas) =>
-  canvas.getByRole("dialog", { name: "Ticket Information" }) as HTMLDialogElement;
+  canvas.getByRole("dialog", {
+    name: "Ticket Information",
+  }) as HTMLDialogElement;
 
 const meta: Meta<typeof ReviewSeatsDialog> = {
   title: "Features/Tickets/ReviewSeatsDialog",
@@ -140,8 +145,26 @@ export const ThreeTickets: Story = {
 };
 
 const pickedSeatsInOrder = [
-  { __typename: "Seat" as const, id: "s07", row: "4", number: "07", x: 445, y: 190 },
-  { __typename: "Seat" as const, id: "s10", row: "4", number: "10", x: 553, y: 190 },
+  {
+    __typename: "Seat" as const,
+    id: "s07",
+    row: "4",
+    number: "07",
+    x: 445,
+    y: 190,
+    priceCents: 45000,
+    perks: [],
+  },
+  {
+    __typename: "Seat" as const,
+    id: "s10",
+    row: "4",
+    number: "10",
+    x: 553,
+    y: 190,
+    priceCents: 45000,
+    perks: [],
+  },
 ];
 
 // PAY-01: "Continue" is a link to checkout with the seats in pick order (07
@@ -192,5 +215,26 @@ export const EscapeCloses: Story = {
 
     await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(1));
     await expect(review.open).toBe(false);
+  },
+};
+
+// Seat 07 costs $600 and seat 10 $450, so each line and the total can't be
+// the base price times the count.
+export const SeatLinesUseEachSeatPrice: Story = {
+  args: {
+    pickedSeats: [
+      { ...seat("07", 391), priceCents: 60000 },
+      { ...seat("10", 553), priceCents: 45000 },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const inDialog = within(dialog(canvas));
+
+    await expect(
+      inDialog.getAllByRole("term").map((term) => term.textContent),
+    ).toEqual(["ROW", "Seat 07", "Seat 10", "Total"]);
+    await expect(
+      inDialog.getAllByRole("definition").map((value) => value.textContent),
+    ).toEqual(["4", "$600", "$450", "$1,050"]);
   },
 };

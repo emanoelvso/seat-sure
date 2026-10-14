@@ -165,6 +165,11 @@ export type ResetPasswordInput = {
   resetToken: string;
 };
 
+export type SeatPerk =
+  | 'ACCESSIBLE'
+  | 'AISLE'
+  | 'EXTRA_LEGROOM';
+
 export type SignUpInput = {
   email: string;
   firstName: string;
@@ -398,14 +403,14 @@ export type FindEventTicketsQueryVariables = Exact<{
 }>;
 
 
-export type FindEventTicketsQuery = { findEventTickets: { __typename: 'EventTickets', event: { __typename: 'Event', id: string, name: string, type: string, coverImage: string, venue: string, city: string, country: string, startAt: string, endsAt: string, headliner: { __typename: 'EventHeadliner', slug: string, name: string } | null } | null, seatMap: { __typename: 'SeatMap', id: string, name: string, viewBoxWidth: number, viewBoxHeight: number, labelSize: number, labelWeight: number, stage: { __typename: 'SeatMapStage', label: string | null, labelX: number | null, labelY: number | null, shapes: Array<{ __typename: 'SeatMapStageShape', path: string, color: string }> }, sections: Array<{ __typename: 'SeatMapSection', key: string, label: string, color: string, shapes: Array<{ __typename: 'SeatMapSectionShape', path: string, labelX: number, labelY: number, labelRotation: number }> }> } | null, ticketTypes: Array<{ __typename: 'TicketType', id: string, sectionKey: string, name: string, priceCents: number, currency: string, seatsAvailable: number, maxPerOrder: number, tags: Array<string> }> } };
+export type FindEventTicketsQuery = { findEventTickets: { __typename: 'EventTickets', event: { __typename: 'Event', id: string, name: string, type: string, coverImage: string, venue: string, city: string, country: string, startAt: string, endsAt: string, headliner: { __typename: 'EventHeadliner', slug: string, name: string } | null } | null, seatMap: { __typename: 'SeatMap', id: string, name: string, viewBoxWidth: number, viewBoxHeight: number, labelSize: number, labelWeight: number, stage: { __typename: 'SeatMapStage', label: string | null, labelX: number | null, labelY: number | null, shapes: Array<{ __typename: 'SeatMapStageShape', path: string, color: string }> }, sections: Array<{ __typename: 'SeatMapSection', key: string, label: string, color: string, shapes: Array<{ __typename: 'SeatMapSectionShape', path: string, labelX: number, labelY: number, labelRotation: number }> }> } | null, ticketTypes: Array<{ __typename: 'TicketType', id: string, sectionKey: string, name: string, priceCents: number, maxPriceCents: number, currency: string, seatsAvailable: number, maxPerOrder: number, tags: Array<string> }> } };
 
 export type FindTicketTypeSeatsQueryVariables = Exact<{
   input: FindTicketTypeSeatsInput;
 }>;
 
 
-export type FindTicketTypeSeatsQuery = { findTicketTypeSeats: { __typename: 'TicketTypeSeats', event: { __typename: 'Event', id: string, name: string, type: string, coverImage: string, venue: string, city: string, country: string, startAt: string, endsAt: string, headliner: { __typename: 'EventHeadliner', slug: string, name: string } | null } | null, ticketType: { __typename: 'TicketType', id: string, sectionKey: string, name: string, priceCents: number, currency: string, seatsAvailable: number, maxPerOrder: number, tags: Array<string> } | null, seatMap: { __typename: 'SeatMap', id: string, name: string, viewBoxWidth: number, viewBoxHeight: number, labelSize: number, labelWeight: number, stage: { __typename: 'SeatMapStage', label: string | null, labelX: number | null, labelY: number | null, shapes: Array<{ __typename: 'SeatMapStageShape', path: string, color: string }> }, sections: Array<{ __typename: 'SeatMapSection', key: string, label: string, color: string, shapes: Array<{ __typename: 'SeatMapSectionShape', path: string, labelX: number, labelY: number, labelRotation: number }> }> } | null, seats: Array<{ __typename: 'Seat', id: string, row: string, number: string, x: number, y: number }> } };
+export type FindTicketTypeSeatsQuery = { findTicketTypeSeats: { __typename: 'TicketTypeSeats', event: { __typename: 'Event', id: string, name: string, type: string, coverImage: string, venue: string, city: string, country: string, startAt: string, endsAt: string, headliner: { __typename: 'EventHeadliner', slug: string, name: string } | null } | null, ticketType: { __typename: 'TicketType', id: string, sectionKey: string, name: string, priceCents: number, maxPriceCents: number, currency: string, seatsAvailable: number, maxPerOrder: number, tags: Array<string> } | null, seatMap: { __typename: 'SeatMap', id: string, name: string, viewBoxWidth: number, viewBoxHeight: number, labelSize: number, labelWeight: number, stage: { __typename: 'SeatMapStage', label: string | null, labelX: number | null, labelY: number | null, shapes: Array<{ __typename: 'SeatMapStageShape', path: string, color: string }> }, sections: Array<{ __typename: 'SeatMapSection', key: string, label: string, color: string, shapes: Array<{ __typename: 'SeatMapSectionShape', path: string, labelX: number, labelY: number, labelRotation: number }> }> } | null, seats: Array<{ __typename: 'Seat', id: string, row: string, number: string, x: number, y: number, priceCents: number, perks: Array<SeatPerk> }>, sectionView: { __typename: 'SectionView', score: number, label: string } | null } };
 
 export type FindUnavailableSeatsQueryVariables = Exact<{
   input: FindUnavailableSeatsInput;

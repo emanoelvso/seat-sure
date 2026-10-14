@@ -22,6 +22,8 @@ export interface CheckoutSelectionSeat {
   id: string;
   row: string;
   number: string;
+  // Base price plus the seat's row premium
+  priceCents: number;
 }
 
 export interface CheckoutSelection {

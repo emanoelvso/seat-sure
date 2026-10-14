@@ -9,6 +9,7 @@ const vip: TicketType = {
   sectionKey: "vip",
   name: "VIP",
   priceCents: 45000,
+  maxPriceCents: 45000,
   currency: "USD",
   seatsAvailable: 40,
   maxPerOrder: 8,
@@ -77,5 +78,26 @@ export const Selected: Story = {
     await expect(
       canvas.getByRole("button", { name: "Section VIP" }),
     ).toHaveAttribute("aria-pressed", "true");
+  },
+};
+
+export const FromPriceWhenRowsCostMore: Story = {
+  args: { ticketType: { ...vip, maxPriceCents: 60000 } },
+  play: async ({ canvas }) => {
+    const price = canvas.getByText(
+      (_, element) => element?.id.endsWith("-price") === true,
+    );
+
+    await expect(price).toHaveTextContent("From $450/per");
+  },
+};
+
+export const PlainPriceWhenRowsCostTheSame: Story = {
+  play: async ({ canvas }) => {
+    const price = canvas.getByText(
+      (_, element) => element?.id.endsWith("-price") === true,
+    );
+
+    await expect(price).toHaveTextContent(/^\$450\/per$/);
   },
 };

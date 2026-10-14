@@ -9,6 +9,7 @@ erDiagram
 
     VENUE ||--o{ SEAT_MAP : "has configurations"
     SEAT_MAP ||--o{ SEAT : contains
+    SEAT_MAP ||--o{ SEAT_MAP_SECTION_VIEW : "rates the view of"
     SEAT_MAP ||--o{ EVENT : "used by"
 
     EVENT }o--|| VENUE : "held at"
@@ -16,6 +17,7 @@ erDiagram
     ARTIST ||--o{ EVENT_ARTIST : "performs in"
 
     EVENT ||--o{ TICKET_TYPE : "sells as"
+    TICKET_TYPE ||--o{ TICKET_TYPE_ROW_PRICE : "row premium"
     TICKET_TYPE }o--o{ SEAT : "priced for (by category)"
 
     EVENT ||--o{ ORDER : "purchased for"
@@ -56,6 +58,14 @@ erDiagram
         string category "VIP · Ouro · Prata · Bronze"
         float x
         float y
+        text[] perks "AISLE · EXTRA_LEGROOM · ACCESSIBLE"
+    }
+    SEAT_MAP_SECTION_VIEW {
+        uuid id PK
+        uuid seatMapId FK
+        string sectionKey
+        numeric score "0.0 to 5.0"
+        string label
     }
     ARTIST {
         uuid id PK
@@ -88,6 +98,12 @@ erDiagram
         string currency
         int quantityTotal
         int maxPerOrder
+    }
+    TICKET_TYPE_ROW_PRICE {
+        uuid id PK
+        uuid ticketTypeId FK
+        string row
+        int premiumCents "at least 0, added to the base price"
     }
     ORDER {
         uuid id PK

@@ -40,6 +40,7 @@ const vip: TicketType = {
   sectionKey: "vip",
   name: "VIP",
   priceCents: 45000,
+  maxPriceCents: 45000,
   currency: "USD",
   seatsAvailable: 150,
   maxPerOrder: 8,
@@ -91,9 +92,9 @@ export const Default: Story = {
     const svg = chart(canvas);
     const buttons = within(svg).getAllByRole("button");
 
-    await expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual(
-      frame12Seats.map(seatName),
-    );
+    await expect(
+      buttons.map((button) => button.getAttribute("aria-label")),
+    ).toEqual(frame12Seats.map(seatName));
 
     // Each seat is centered on its x/y, mapped to the screen by the chart.
     const toScreen = (svg as unknown as SVGSVGElement).getScreenCTM()!;
@@ -110,7 +111,10 @@ export const Default: Story = {
 // The extra id isn't a seat of this section: it's ignored.
 export const SeatStates: Story = {
   args: {
-    unavailableIds: new Set([...frame12UnavailableIds, "seat-of-another-section"]),
+    unavailableIds: new Set([
+      ...frame12UnavailableIds,
+      "seat-of-another-section",
+    ]),
   },
   play: async ({ canvas }) => {
     const buttons = within(chart(canvas)).getAllByRole("button");
@@ -128,7 +132,9 @@ export const SeatStates: Story = {
       ),
     );
     await expect(
-      buttons.filter((button) => button.getAttribute("aria-disabled") === "true"),
+      buttons.filter(
+        (button) => button.getAttribute("aria-disabled") === "true",
+      ),
     ).toHaveLength(141);
 
     await expect(glyphFill(seatButton(canvas, "7", "03"))).toBe(WHITE);
@@ -322,5 +328,117 @@ export const UnavailableSeatHasNoTooltip: Story = {
     await userEvent.hover(seatButton(canvas, "7", "08"));
 
     await expectSeatTooltip(await canvas.findByRole("tooltip"), "7", "08");
+  },
+};
+
+// Every seat free, so only the filters decide what is pickable.
+const allFree = new Set<string>();
+
+// Row 4 seat 10 is the seat the filter dims.
+export const FilteredSeatIsNotPicked: Story = {
+  args: {
+    unavailableIds: allFree,
+    filteredOutIds: new Set([findSeat("4", "10").id]),
+  },
+  play: async ({ canvas, args, userEvent }) => {
+    const filtered = within(chart(canvas)).getByRole("button", {
+      name: "Row 4, Seat 10, filtered out",
+    });
+
+    await expect(filtered).toHaveAttribute("aria-disabled", "true");
+    await expect(filtered).toHaveAttribute("data-state", "filtered");
+    // Dimmed against a free seat.
+    await expect(
+      Number(getComputedStyle(filtered.querySelector("path")!).opacity),
+    ).toBeLessThan(
+      Number(
+        getComputedStyle(seatButton(canvas, "4", "09").querySelector("path")!)
+          .opacity,
+      ),
+    );
+
+    await userEvent.click(filtered);
+    (filtered as unknown as HTMLElement).focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard(" ");
+    await expect(args.onPick).not.toHaveBeenCalled();
+
+    // Its neighbor is not filtered: pickable, with the plain name.
+    await expect(seatButton(canvas, "4", "09")).toHaveAttribute(
+      "aria-disabled",
+      "false",
+    );
+    await userEvent.click(seatButton(canvas, "4", "09"));
+    await expect(args.onPick).toHaveBeenCalledWith(findSeat("4", "09"));
+  },
+};
+
+export const PickedSeatStaysPickedWhenFiltered: Story = {
+  args: {
+    unavailableIds: allFree,
+    pickedIds: [findSeat("7", "10").id],
+    filteredOutIds: new Set([findSeat("7", "10").id]),
+  },
+  play: async ({ canvas }) => {
+    const picked = seatButton(canvas, "7", "10");
+
+    await expect(picked).toHaveAttribute("aria-pressed", "true");
+    await expect(picked).toHaveAttribute("data-state", "picked");
+    await expect(picked).toHaveAttribute("aria-label", "Row 7, Seat 10");
+  },
+};
+
+export const UnavailableSeatStaysUnavailableWhenFiltered: Story = {
+  args: { filteredOutIds: new Set([findSeat("4", "10").id]) },
+  play: async ({ canvas }) => {
+    // Row 4 seat 10 is taken in this fixture.
+    const taken = seatButton(canvas, "4", "10");
+
+    await expect(taken).toHaveAttribute("data-state", "unavailable");
+    await expect(taken).toHaveAttribute("aria-label", "Row 4, Seat 10");
+  },
+};
+
+// Row 1 seat 01 costs $600 and is on the aisle.
+export const TooltipShowsSeatPriceAndPerks: Story = {
+  args: { unavailableIds: allFree },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.hover(seatButton(canvas, "1", "01"));
+
+    const tooltip = await canvas.findByRole("tooltip");
+    const inTooltip = within(tooltip);
+
+    await expect(inTooltip.getByText("$600")).toBeVisible();
+    await expect(inTooltip.queryByText("$450")).toBeNull();
+    await expect(inTooltip.getByText("Aisle")).toBeVisible();
+    await expect(inTooltip.queryByText("Extra legroom")).toBeNull();
+  },
+};
+
+// Row 5 seat 01 is on the aisle and has extra legroom.
+export const TooltipListsEveryPerk: Story = {
+  args: { unavailableIds: allFree },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.hover(seatButton(canvas, "5", "01"));
+
+    const inTooltip = within(await canvas.findByRole("tooltip"));
+
+    await expect(inTooltip.getByText("Aisle")).toBeVisible();
+    await expect(inTooltip.getByText("Extra legroom")).toBeVisible();
+    await expect(inTooltip.queryByText("Accessible")).toBeNull();
+  },
+};
+
+export const TooltipShowsNoPerksForAPlainSeat: Story = {
+  args: { unavailableIds: allFree },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.hover(seatButton(canvas, "7", "10"));
+
+    const inTooltip = within(await canvas.findByRole("tooltip"));
+
+    await expect(inTooltip.getByText("$450")).toBeVisible();
+    for (const label of ["Aisle", "Extra legroom", "Accessible"]) {
+      await expect(inTooltip.queryByText(label)).toBeNull();
+    }
   },
 };

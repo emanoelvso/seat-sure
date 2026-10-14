@@ -33,6 +33,7 @@ export const FIND_TICKET_TYPE_SEATS: TypedDocumentNode<
         sectionKey
         name
         priceCents
+        maxPriceCents
         currency
         seatsAvailable
         maxPerOrder
@@ -72,6 +73,12 @@ export const FIND_TICKET_TYPE_SEATS: TypedDocumentNode<
         number
         x
         y
+        priceCents
+        perks
+      }
+      sectionView {
+        score
+        label
       }
     }
   }

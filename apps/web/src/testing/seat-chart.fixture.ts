@@ -5,13 +5,36 @@ type Seat = FindTicketTypeSeatsQuery["findTicketTypeSeats"]["seats"][number];
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
-const seat = (row: number, index: number, x: number, y: number): Seat => ({
+type Perk = Seat["perks"][number];
+
+// Rows 1-3 cost 15000 cents more than the base price (45000), as seeded by
+// apps/api/src/module/catalog/persistence/migration/1791941200000-migration.ts.
+const BASE_PRICE_CENTS = 45000;
+const FRONT_ROW_PREMIUM_CENTS = 15000;
+
+// The seeded perks: the first and last seat of a row are on the aisle, row 5
+// has extra legroom and seats 01-02 of row 12 are accessible.
+const perksOf = (row: number, index: number, rowSize: number): Perk[] => [
+  ...(index === 1 || index === rowSize ? (["AISLE"] as const) : []),
+  ...(row === 5 ? (["EXTRA_LEGROOM"] as const) : []),
+  ...(row === 12 && index <= 2 ? (["ACCESSIBLE"] as const) : []),
+];
+
+const seat = (
+  row: number,
+  index: number,
+  rowSize: number,
+  x: number,
+  y: number,
+): Seat => ({
   __typename: "Seat",
   id: `seat-${row}-${pad(index)}`,
   row: String(row),
   number: pad(index),
   x,
   y,
+  priceCents: BASE_PRICE_CENTS + (row <= 3 ? FRONT_ROW_PREMIUM_CENTS : 0),
+  perks: perksOf(row, index, rowSize),
 });
 
 // The frame 12 chart (150 seats) as findTicketTypeSeats returns it, with the
@@ -25,6 +48,7 @@ export const frame12Seats: Seat[] = [
       seat(
         index + 1,
         i + 1,
+        n,
         391 + (i + 1 - (n + 1) / 2) * 54,
         40 + index * 43 + 8 * Math.min(i, n - i - 1),
       ),
@@ -38,6 +62,7 @@ export const frame12Seats: Seat[] = [
       return seat(
         r + 5,
         c,
+        13,
         40 + 54 * (c - 1) + (c > 4 ? 27 : 0) + (c > 9 ? 27 : 0),
         241 + r * 48 + offset,
       );

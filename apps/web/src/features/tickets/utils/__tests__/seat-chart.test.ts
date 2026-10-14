@@ -14,7 +14,16 @@ const seat = (
   number: string,
   x: number,
   y: number,
-): Seat => ({ __typename: "Seat", id, row, number, x, y });
+): Seat => ({
+  __typename: "Seat",
+  id,
+  row,
+  number,
+  x,
+  y,
+  priceCents: 45000,
+  perks: [],
+});
 
 const half = SEAT_SIZE / 2;
 

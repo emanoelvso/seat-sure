@@ -115,7 +115,16 @@ export function EventTicketsView({
 
   return (
     <>
-      <TicketsHero event={event} selected={selected} />
+      <TicketsHero
+        event={event}
+        selected={selected}
+        price={
+          selected && {
+            cents: selected.priceCents,
+            from: selected.maxPriceCents > selected.priceCents,
+          }
+        }
+      />
 
       <div className="flex flex-col justify-between gap-6 px-27 pb-25 pt-10 lg:flex-row">
         <div className="flex min-w-0 flex-col gap-6 lg:w-[808px] lg:shrink-0">

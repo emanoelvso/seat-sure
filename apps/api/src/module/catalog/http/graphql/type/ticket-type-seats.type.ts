@@ -4,10 +4,12 @@ import {
 } from '@catalogModule/http/graphql/type/event-tickets.type';
 import { Event } from '@catalogModule/http/graphql/type/events.type';
 import {
+  SectionViewModel,
   SeatModel,
   TicketTypeSeatsModel,
 } from '@catalogModule/core/model/seat.model';
-import { Field, Float, ObjectType } from '@nestjs/graphql';
+import { SeatPerk } from '@catalogModule/core/enum/seat-perk.enum';
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class Seat implements SeatModel {
@@ -25,6 +27,21 @@ export class Seat implements SeatModel {
 
   @Field(() => Float)
   y: number;
+
+  @Field(() => Int)
+  priceCents: number;
+
+  @Field(() => [SeatPerk])
+  perks: SeatPerk[];
+}
+
+@ObjectType()
+export class SectionView implements SectionViewModel {
+  @Field(() => Float)
+  score: number;
+
+  @Field()
+  label: string;
 }
 
 @ObjectType()
@@ -40,4 +57,7 @@ export class TicketTypeSeats implements TicketTypeSeatsModel {
 
   @Field(() => [Seat])
   seats: Seat[];
+
+  @Field(() => SectionView, { nullable: true })
+  sectionView: SectionView | null;
 }

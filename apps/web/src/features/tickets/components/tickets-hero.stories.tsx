@@ -35,6 +35,7 @@ const sectionB: TicketType = {
   sectionKey: "b",
   name: "B",
   priceCents: 30000,
+  maxPriceCents: 30000,
   currency: "USD",
   seatsAvailable: 200,
   maxPerOrder: 8,
@@ -71,6 +72,15 @@ export const NoSelection: Story = {
     await expect(canvas.getByTestId("hero-row")).toHaveTextContent(/^—$/);
     await expect(canvas.getByTestId("hero-seat")).toHaveTextContent(/^—$/);
     await expect(canvas.getByTestId("hero-price")).toHaveTextContent(/^—$/);
+  },
+};
+
+export const EmptyValueOverride: Story = {
+  args: { selected: sectionB, emptyValue: "?" },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-sec")).toHaveTextContent(/^B$/);
+    await expect(canvas.getByTestId("hero-row")).toHaveTextContent(/^\?$/);
+    await expect(canvas.getByTestId("hero-seat")).toHaveTextContent(/^\?$/);
   },
 };
 
@@ -206,5 +216,21 @@ export const TitleWithoutHeadliner: Story = {
 
     await expect(title).toHaveTextContent(/^Adele$/);
     await expect(within(title).queryByRole("link")).toBeNull();
+  },
+};
+
+export const FromPrice: Story = {
+  args: { selected: vip, price: { cents: 45000, from: true } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-price")).toHaveTextContent(
+      /^From \$450$/,
+    );
+  },
+};
+
+export const PriceOverridesTheSelectedPrice: Story = {
+  args: { selected: vip, price: { cents: 60000, from: false } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-price")).toHaveTextContent(/^\$600$/);
   },
 };
