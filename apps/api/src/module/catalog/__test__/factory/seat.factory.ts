@@ -1,5 +1,6 @@
 import * as Factory from 'factory.ts';
 import { faker } from '@faker-js/faker';
+import { SeatPerk } from '@catalogModule/core/enum/seat-perk.enum';
 
 // A CatalogSeat row. The seat map is referenced by id, so insert it first.
 interface SeatRow {
@@ -10,6 +11,7 @@ interface SeatRow {
   number: string;
   x: number;
   y: number;
+  perks: SeatPerk[];
   deletedAt?: Date | null;
 }
 
@@ -21,4 +23,5 @@ export const seatFactory = Factory.Sync.makeFactory<SeatRow>({
   number: Factory.each((i) => String(i + 1).padStart(2, '0')),
   x: Factory.each(() => faker.number.float({ min: 0, max: 800 })),
   y: Factory.each(() => faker.number.float({ min: 0, max: 600 })),
+  perks: [],
 });

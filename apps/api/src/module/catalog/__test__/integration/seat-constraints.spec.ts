@@ -1,6 +1,7 @@
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { seatFactory } from '@catalogModule/__test__/factory/seat.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
+import { SeatPerk } from '@catalogModule/core/enum/seat-perk.enum';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
 
@@ -82,4 +83,39 @@ describe('CatalogSeat constraints (integration)', () => {
         .select('sectionKey', 'row', 'number', 'x', 'y'),
     ).toEqual([{ sectionKey: 'a', row: '1', number: '01', x: 0, y: 0 }]);
   });
+
+  it('reads a seat written without perks as an empty list (PERK-01)', async () => {
+    const seatWithoutPerks: Partial<ReturnType<typeof seatFactory.build>> =
+      seatFactory.build({ seatMapId: seatMap.id });
+    delete seatWithoutPerks.perks;
+    await testDbClient(Tables.Seat).insert(seatWithoutPerks);
+
+    expect(
+      await testDbClient(Tables.Seat)
+        .where({ seatMapId: seatMap.id })
+        .select('perks'),
+    ).toEqual([{ perks: [] }]);
+  });
+
+  it('stores a seat with several perks (PERK-02)', async () => {
+    await insertSeat({ perks: ['AISLE', 'ACCESSIBLE'] as SeatPerk[] });
+
+    expect(
+      await testDbClient(Tables.Seat)
+        .where({ seatMapId: seatMap.id })
+        .select('perks'),
+    ).toEqual([{ perks: ['AISLE', 'ACCESSIBLE'] }]);
+  });
+
+  it.each([[['WINDOW']], [['AISLE', 'WINDOW']]])(
+    'rejects a seat with the unknown perk list %j (PERK-02)',
+    async (perks) => {
+      await expect(
+        insertSeat({ perks: perks as SeatPerk[] }),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      expect(
+        await testDbClient(Tables.Seat).where({ seatMapId: seatMap.id }),
+      ).toEqual([]);
+    },
+  );
 });

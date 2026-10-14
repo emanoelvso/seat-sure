@@ -8,6 +8,7 @@ import {
   ManyToOne,
   Unique,
 } from 'typeorm';
+import { SeatPerk } from '@catalogModule/core/enum/seat-perk.enum';
 import { SeatMap } from './seat-map.entity';
 
 @Entity('CatalogSeat')
@@ -17,6 +18,11 @@ import { SeatMap } from './seat-map.entity';
 @Check(`btrim("row") <> ''`)
 @Check(`btrim("number") <> ''`)
 @Check(`"x" >= 0 AND "y" >= 0`)
+@Check(
+  `"perks" <@ ARRAY[${Object.values(SeatPerk)
+    .map((perk) => `'${perk}'`)
+    .join(', ')}]::text[]`,
+)
 export class Seat extends DefaultEntity<Seat> {
   @ManyToOne(() => SeatMap, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'seatMapId' })
@@ -39,4 +45,8 @@ export class Seat extends DefaultEntity<Seat> {
 
   @Column({ type: 'float' })
   y: number;
+
+  // Physical traits of the seat, e.g. next to an aisle
+  @Column({ type: 'text', array: true, default: () => `'{}'` })
+  perks: SeatPerk[];
 }
