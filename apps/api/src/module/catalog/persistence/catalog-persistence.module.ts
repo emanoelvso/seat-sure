@@ -10,6 +10,7 @@ import { ArtistRepository } from './repository/artist.repository';
 import { EventArtistRepository } from './repository/event-artist.repository';
 import { SeatRepository } from './repository/seat.repository';
 import { SeatMapRepository } from './repository/seat-map.repository';
+import { SeatMapSectionViewRepository } from './repository/seat-map-section-view.repository';
 import { TicketTypeRepository } from './repository/ticket-type.repository';
 import { TicketTypeRowPriceRepository } from './repository/ticket-type-row-price.repository';
 import { VenueRepository } from './repository/venue.repository';
@@ -46,6 +47,7 @@ import { VenueRepository } from './repository/venue.repository';
     SeatRepository,
     SeatMapRepository,
     TicketTypeRowPriceRepository,
+    SeatMapSectionViewRepository,
   ],
   exports: [
     EventRepository,
@@ -56,6 +58,7 @@ import { VenueRepository } from './repository/venue.repository';
     SeatRepository,
     SeatMapRepository,
     TicketTypeRowPriceRepository,
+    SeatMapSectionViewRepository,
   ],
 })
 export class CatalogPersistenceModule {}
