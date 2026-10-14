@@ -209,3 +209,19 @@ export const TitleWithoutHeadliner: Story = {
     await expect(within(title).queryByRole("link")).toBeNull();
   },
 };
+
+export const FromPrice: Story = {
+  args: { selected: vip, price: { cents: 45000, from: true } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-price")).toHaveTextContent(
+      /^From \$450$/,
+    );
+  },
+};
+
+export const PriceOverridesTheSelectedPrice: Story = {
+  args: { selected: vip, price: { cents: 60000, from: false } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId("hero-price")).toHaveTextContent(/^\$600$/);
+  },
+};

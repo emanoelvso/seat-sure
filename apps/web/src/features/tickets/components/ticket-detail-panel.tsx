@@ -38,6 +38,7 @@ export function TicketDetailPanel({
           totalCents={ticketType.priceCents * quantity}
           currency={ticketType.currency}
           quantity={quantity}
+          from={ticketType.maxPriceCents > ticketType.priceCents}
         />
         <TicketFacts event={event} quantity={quantity} />
         <TicketTags tags={ticketType.tags} />

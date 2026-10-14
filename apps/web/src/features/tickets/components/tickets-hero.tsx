@@ -26,6 +26,8 @@ interface TicketsHeroProps {
   selected?: TicketType;
   /** The seat page's latest pick, shown as ROW and SEAT. */
   seat?: { row: string; number: string };
+  /** Overrides the selected type's price, e.g. "From" on the listing page. */
+  price?: { cents: number; from: boolean };
 }
 
 const PLACEHOLDER = "—";
@@ -49,7 +51,23 @@ function SeatDetail({
   );
 }
 
-export function TicketsHero({ event, selected, seat }: TicketsHeroProps) {
+function heroPrice(
+  selected: TicketType | undefined,
+  price: TicketsHeroProps["price"],
+): string {
+  if (!selected) return PLACEHOLDER;
+
+  const cents = price?.cents ?? selected.priceCents;
+
+  return `${price?.from ? "From " : ""}${formatPrice(cents, selected.currency)}`;
+}
+
+export function TicketsHero({
+  event,
+  selected,
+  seat,
+  price,
+}: TicketsHeroProps) {
   return (
     <section
       aria-label={`${event.name} tickets`}
@@ -111,9 +129,7 @@ export function TicketsHero({ event, selected, seat }: TicketsHeroProps) {
                 data-testid="hero-price"
                 className="text-[22px] font-bold text-white"
               >
-                {selected
-                  ? formatPrice(selected.priceCents, selected.currency)
-                  : PLACEHOLDER}
+                {heroPrice(selected, price)}
               </span>
               /Person
             </span>
