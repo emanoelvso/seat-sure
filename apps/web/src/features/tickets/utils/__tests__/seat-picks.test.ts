@@ -159,6 +159,29 @@ describe("seatNotice", () => {
   it("shows nothing when every seat is available (edge case)", () => {
     expect(seatNotice(rows, new Set(), 3)).toBeNull();
   });
+
+  it("says no seat matches when the filters exclude every available seat (SFILT-09)", () => {
+    const unavailable = new Set([a1.id, a2.id]);
+    const filteredOut = new Set([a3.id, b1.id, b2.id, b3.id]);
+
+    expect(seatNotice(rows, unavailable, 1, filteredOut)).toBe(
+      "No seats match these filters.",
+    );
+  });
+
+  it("shows nothing while one available seat is left pickable (SFILT-09)", () => {
+    const filteredOut = new Set([a1.id, a2.id, a3.id, b1.id, b2.id]);
+
+    expect(seatNotice(rows, new Set(), 1, filteredOut)).toBeNull();
+  });
+
+  it("keeps the all-taken notice when every seat is unavailable and filtered (SFILT-11)", () => {
+    const ids = new Set(rows.map(({ id }) => id));
+
+    expect(seatNotice(rows, ids, 2, ids)).toBe(
+      "All seats in this section are taken.",
+    );
+  });
 });
 
 describe("resolveSeatQuantity", () => {

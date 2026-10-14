@@ -45,6 +45,7 @@ export function seatNotice(
   seats: Seat[],
   unavailable: Set<string>,
   quantity: number,
+  filteredOut: Set<string> = new Set(),
 ): string | null {
   const freePerRow = new Map<string, number>();
 
@@ -56,6 +57,12 @@ export function seatNotice(
 
   if (freePerRow.size === 0) {
     return "All seats in this section are taken.";
+  }
+
+  if (
+    seats.every((seat) => unavailable.has(seat.id) || filteredOut.has(seat.id))
+  ) {
+    return "No seats match these filters.";
   }
 
   if (Math.max(...freePerRow.values()) < quantity) {
