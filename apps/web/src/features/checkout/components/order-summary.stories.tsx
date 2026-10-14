@@ -11,6 +11,7 @@ const meta: Meta<typeof OrderSummary> = {
       quantity: 2,
       currency: "USD",
       unitPriceCents: 45000,
+      subtotalCents: 90000,
       unitServiceFeeCents: 6750,
       unitTaxCents: 3600,
       totalCents: 110700,
@@ -52,6 +53,7 @@ export const OneTicket: Story = {
       quantity: 1,
       currency: "USD",
       unitPriceCents: 5500,
+      subtotalCents: 5500,
       unitServiceFeeCents: 825,
       unitTaxCents: 440,
       totalCents: 6765,
@@ -62,5 +64,26 @@ export const OneTicket: Story = {
     await expect(valueFor(canvasElement, "Service fee")).toBe("1 * $8.25");
     await expect(valueFor(canvasElement, "Tax")).toBe("1 * $4.40");
     await expect(valueFor(canvasElement, "Total price")).toBe("$67.65");
+  },
+};
+
+// PRICE-13: seats from rows with different prices; unitPriceCents is the
+// first seat's, so the line shows the ticket subtotal.
+export const MixedSeatPrices: Story = {
+  args: {
+    order: {
+      quantity: 2,
+      currency: "USD",
+      unitPriceCents: 60000,
+      subtotalCents: 105000,
+      unitServiceFeeCents: 6750,
+      unitTaxCents: 3600,
+      totalCents: 125700,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(valueFor(canvasElement, "Ticket price")).toBe("$1,050");
+    await expect(valueFor(canvasElement, "Service fee")).toBe("2 * $67.50");
+    await expect(valueFor(canvasElement, "Total price")).toBe("$1,257");
   },
 };

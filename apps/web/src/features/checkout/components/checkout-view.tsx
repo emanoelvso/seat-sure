@@ -52,6 +52,7 @@ interface CheckoutViewProps {
     currency: string;
     totalCents: number;
     unitPriceCents: number;
+    subtotalCents?: number;
     unitServiceFeeCents: number;
     unitTaxCents: number;
     event: {

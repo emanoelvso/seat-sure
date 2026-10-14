@@ -22,6 +22,7 @@ const order = {
   currency: "USD",
   totalCents: 110700,
   unitPriceCents: 45000,
+  subtotalCents: 90000,
   unitServiceFeeCents: 6750,
   unitTaxCents: 3600,
   event: {
