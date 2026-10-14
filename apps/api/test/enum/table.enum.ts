@@ -6,6 +6,7 @@ export enum Tables {
   SeatMap = 'CatalogSeatMap',
   TicketType = 'CatalogTicketType',
   Seat = 'CatalogSeat',
+  TicketTypeRowPrice = 'CatalogTicketTypeRowPrice',
   SeatHold = 'TicketingSeatHold',
   Ticket = 'TicketingTicket',
   Order = 'TicketingOrder',

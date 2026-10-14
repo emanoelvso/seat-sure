@@ -11,6 +11,7 @@ import { EventArtistRepository } from './repository/event-artist.repository';
 import { SeatRepository } from './repository/seat.repository';
 import { SeatMapRepository } from './repository/seat-map.repository';
 import { TicketTypeRepository } from './repository/ticket-type.repository';
+import { TicketTypeRowPriceRepository } from './repository/ticket-type-row-price.repository';
 import { VenueRepository } from './repository/venue.repository';
 
 @Module({
@@ -44,6 +45,7 @@ import { VenueRepository } from './repository/venue.repository';
     EventArtistRepository,
     SeatRepository,
     SeatMapRepository,
+    TicketTypeRowPriceRepository,
   ],
   exports: [
     EventRepository,
@@ -53,6 +55,7 @@ import { VenueRepository } from './repository/venue.repository';
     EventArtistRepository,
     SeatRepository,
     SeatMapRepository,
+    TicketTypeRowPriceRepository,
   ],
 })
 export class CatalogPersistenceModule {}
