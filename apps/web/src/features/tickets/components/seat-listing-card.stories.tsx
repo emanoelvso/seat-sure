@@ -9,6 +9,7 @@ const vip: TicketType = {
   sectionKey: "vip",
   name: "VIP",
   priceCents: 45000,
+  maxPriceCents: 45000,
   currency: "USD",
   seatsAvailable: 40,
   maxPerOrder: 8,

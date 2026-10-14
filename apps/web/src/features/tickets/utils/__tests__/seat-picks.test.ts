@@ -17,7 +17,16 @@ const seat = (
   number: string,
   x: number,
   y: number,
-): Seat => ({ __typename: "Seat", id, row, number, x, y });
+): Seat => ({
+  __typename: "Seat",
+  id,
+  row,
+  number,
+  x,
+  y,
+  priceCents: 45000,
+  perks: [],
+});
 
 // Row labels differ from seat numbers and x from y (L-006).
 const s409 = seat("s-4-09", "4", "09", 175, 40);

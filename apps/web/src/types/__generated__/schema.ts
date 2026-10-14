@@ -627,6 +627,8 @@ export type Seat = {
   __typename: 'Seat';
   id: Scalars['String']['output'];
   number: Scalars['String']['output'];
+  perks: Array<SeatPerk>;
+  priceCents: Scalars['Int']['output'];
   row: Scalars['String']['output'];
   x: Scalars['Float']['output'];
   y: Scalars['Float']['output'];
@@ -674,6 +676,17 @@ export type SeatMapStageShape = {
   path: Scalars['String']['output'];
 };
 
+export type SeatPerk =
+  | 'ACCESSIBLE'
+  | 'AISLE'
+  | 'EXTRA_LEGROOM';
+
+export type SectionView = {
+  __typename: 'SectionView';
+  label: Scalars['String']['output'];
+  score: Scalars['Float']['output'];
+};
+
 export type SessionTokens = {
   __typename: 'SessionTokens';
   accessToken: Scalars['String']['output'];
@@ -707,6 +720,7 @@ export type TicketType = {
   currency: Scalars['String']['output'];
   id: Scalars['String']['output'];
   maxPerOrder: Scalars['Int']['output'];
+  maxPriceCents: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   priceCents: Scalars['Int']['output'];
   seatsAvailable: Scalars['Int']['output'];
@@ -721,6 +735,7 @@ export type TicketTypeSeats = {
   event: Maybe<Event>;
   seatMap: Maybe<SeatMap>;
   seats: Array<Seat>;
+  sectionView: Maybe<SectionView>;
   ticketType: Maybe<TicketType>;
 };
 

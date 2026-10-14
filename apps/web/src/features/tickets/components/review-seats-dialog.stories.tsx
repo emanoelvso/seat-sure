@@ -28,6 +28,7 @@ const vip: TicketType = {
   sectionKey: "vip",
   name: "VIP",
   priceCents: 45000,
+  maxPriceCents: 45000,
   currency: "USD",
   seatsAvailable: 150,
   maxPerOrder: 8,
@@ -42,6 +43,8 @@ const seat = (number: string, x: number): Seat => ({
   number,
   x,
   y: 190,
+  priceCents: 45000,
+  perks: [],
 });
 
 type Canvas = ReturnType<typeof within>;
@@ -140,8 +143,26 @@ export const ThreeTickets: Story = {
 };
 
 const pickedSeatsInOrder = [
-  { __typename: "Seat" as const, id: "s07", row: "4", number: "07", x: 445, y: 190 },
-  { __typename: "Seat" as const, id: "s10", row: "4", number: "10", x: 553, y: 190 },
+  {
+    __typename: "Seat" as const,
+    id: "s07",
+    row: "4",
+    number: "07",
+    x: 445,
+    y: 190,
+    priceCents: 45000,
+    perks: [],
+  },
+  {
+    __typename: "Seat" as const,
+    id: "s10",
+    row: "4",
+    number: "10",
+    x: 553,
+    y: 190,
+    priceCents: 45000,
+    perks: [],
+  },
 ];
 
 // PAY-01: "Continue" is a link to checkout with the seats in pick order (07

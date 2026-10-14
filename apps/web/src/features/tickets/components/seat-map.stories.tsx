@@ -14,6 +14,7 @@ const offer = (
   sectionKey,
   name,
   priceCents,
+  maxPriceCents: priceCents,
   currency: "USD",
   seatsAvailable: 100,
   maxPerOrder: 8,

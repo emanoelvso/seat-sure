@@ -1,8 +1,10 @@
+import { print } from "graphql";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { graphqlServerFetch } from "@/lib/graphql-server";
 import { getEventSeats } from "@/features/tickets/api/get-event-seats";
 import { FIND_TICKET_TYPE_SEATS } from "@/features/tickets/api/find-ticket-type-seats";
 import { FIND_UNAVAILABLE_SEATS } from "@/features/tickets/api/find-unavailable-seats";
+import { FIND_EVENT_TICKETS } from "@/features/tickets/api/find-event-tickets";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/graphql-server");
@@ -32,12 +34,40 @@ function optionsOf(document: unknown) {
 
 const firstSeats = {
   event: { id: "event-1", name: "Concert One" },
-  seats: [{ id: "seat-a1", row: "4", number: "09", x: 175, y: 40 }],
+  ticketType: { id: "ticket-type-1", priceCents: 45000, maxPriceCents: 60000 },
+  seats: [
+    {
+      id: "seat-a1",
+      row: "4",
+      number: "09",
+      x: 175,
+      y: 40,
+      priceCents: 60000,
+      perks: ["AISLE", "ACCESSIBLE"],
+    },
+  ],
+  sectionView: { score: 4.7, label: "Clear View" },
 };
 const secondSeats = {
   event: { id: "event-2", name: "Concert Two" },
-  seats: [{ id: "seat-b1", row: "7", number: "05", x: 283, y: 369 }],
+  ticketType: { id: "ticket-type-2", priceCents: 30000, maxPriceCents: 30000 },
+  seats: [
+    {
+      id: "seat-b1",
+      row: "7",
+      number: "05",
+      x: 283,
+      y: 369,
+      priceCents: 30000,
+      perks: [],
+    },
+  ],
+  sectionView: null,
 };
+
+// The query text with its whitespace collapsed, to assert the selected fields.
+const queryText = (document: Parameters<typeof print>[0]) =>
+  print(document).replace(/\s+/g, " ");
 
 describe("getEventSeats", () => {
   beforeEach(() => {
@@ -118,9 +148,7 @@ describe("getEventSeats", () => {
       seatIds: Promise.resolve(["seat-a2"]),
     });
 
-    await expect(getEventSeats("event-1", "ticket-type-1")).rejects.toBe(
-      error,
-    );
+    await expect(getEventSeats("event-1", "ticket-type-1")).rejects.toBe(error);
   });
 
   it("rejects with the error of a failed findUnavailableSeats (SEAT-33)", async () => {
@@ -130,8 +158,34 @@ describe("getEventSeats", () => {
       seatIds: Promise.reject(error),
     });
 
-    await expect(getEventSeats("event-1", "ticket-type-1")).rejects.toBe(
-      error,
+    await expect(getEventSeats("event-1", "ticket-type-1")).rejects.toBe(error);
+  });
+
+  it("passes each seat's price and perks and the section view rating through (PRICE-01, PERK-01, VIEW-01)", async () => {
+    answer({
+      ticketTypeSeats: Promise.resolve(firstSeats),
+      seatIds: Promise.resolve([]),
+    });
+
+    const { ticketTypeSeats } = await getEventSeats("event-1", "ticket-type-1");
+
+    expect(ticketTypeSeats.seats).toEqual(firstSeats.seats);
+    expect(ticketTypeSeats.sectionView).toEqual({
+      score: 4.7,
+      label: "Clear View",
+    });
+  });
+
+  it("selects the seat price and perks, the section view and the ticket type's highest price (PRICE-01, PERK-01, VIEW-01, PRICE-10)", () => {
+    const seatsQuery = queryText(FIND_TICKET_TYPE_SEATS);
+
+    expect(seatsQuery).toContain(
+      "seats { id row number x y priceCents perks }",
+    );
+    expect(seatsQuery).toContain("sectionView { score label }");
+    expect(seatsQuery).toMatch(/ticketType \{[^}]*\bmaxPriceCents\b/);
+    expect(queryText(FIND_EVENT_TICKETS)).toMatch(
+      /ticketTypes \{[^}]*\bmaxPriceCents\b/,
     );
   });
 });

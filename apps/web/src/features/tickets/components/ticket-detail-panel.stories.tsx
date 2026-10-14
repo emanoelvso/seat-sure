@@ -32,6 +32,7 @@ const ticketType: TicketType = {
   sectionKey: "b",
   name: "B",
   priceCents: 30000,
+  maxPriceCents: 30000,
   currency: "USD",
   seatsAvailable: 100,
   maxPerOrder: 4,
