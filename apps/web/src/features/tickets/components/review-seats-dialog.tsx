@@ -36,7 +36,7 @@ interface ReviewSeatsDialogProps {
     TicketsEvent,
     "startAt" | "endsAt" | "venue" | "city" | "country"
   >;
-  ticketType: Pick<TicketType, "priceCents" | "currency" | "tags">;
+  ticketType: Pick<TicketType, "currency" | "tags">;
   /** The picked seats, all in one row, in pick order. */
   pickedSeats: Seat[];
 }
@@ -70,7 +70,7 @@ export function ReviewSeatsDialog({
 }: ReviewSeatsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingId = useId();
-  const { priceCents, currency } = ticketType;
+  const { currency } = ticketType;
   const sorted = [...pickedSeats].sort(byNumber);
   const quantity = pickedSeats.length;
   // PAY-01: "Continue" hands off to checkout with the seats in pick order.
@@ -152,17 +152,20 @@ export function ReviewSeatsDialog({
             <Line
               key={seat.id}
               term={`Seat ${seat.number}`}
-              value={formatPrice(priceCents, currency)}
+              value={formatPrice(seat.priceCents, currency)}
             />
           ))}
-          <Line term="Total" value={formatPrice(priceCents * quantity, currency)} />
+          <Line
+            term="Total"
+            value={formatPrice(
+              pickedSeats.reduce((sum, seat) => sum + seat.priceCents, 0),
+              currency,
+            )}
+          />
         </dl>
 
         <div className="grid grid-cols-2 gap-4">
-          <Button
-            variant="outline"
-            onClick={() => dialogRef.current?.close()}
-          >
+          <Button variant="outline" onClick={() => dialogRef.current?.close()}>
             Change Seat
           </Button>
           <Link href={checkoutHref} className={buttonVariants()}>
