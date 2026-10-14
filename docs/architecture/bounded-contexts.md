@@ -103,9 +103,9 @@ One glossary per context, key terms only. The same term can mean something diffe
 - **event**: a show at one venue at one time: a concert, sports match, or festival. Owned here as `events`. Not an async message; see Notifications below.
 - **artist**: a performer, with a bio and genres, who can appear in many events.
 - **venue**: a real place with an address and coordinates. One venue can host several seat map configurations.
-- **seat map**: a venue's layout for one configuration, drawn as sections with a stage and a view box.
-- **seat**: a fixed position on a seat map: section, row, number, category, and coordinates. It carries no availability state; that's Ticketing's language.
-- **ticket type**: a price tier for one event's section (name, price, currency), not the ticket itself.
+- **seat map**: a venue's layout for one configuration, drawn as sections with a stage and a view box. Each section can carry a view rating (score and short label).
+- **seat**: a fixed position on a seat map: section, row, number, category, coordinates, and perks (aisle, extra legroom, accessible). It carries no availability state; that's Ticketing's language.
+- **ticket type**: a price tier for one event's section (name, base price, currency), not the ticket itself. A row can cost more than the base price through a row premium ([ADR-023](../adrs/023-seat-prices-as-base-plus-row-premium.md)).
 
 ### 4. Ticketing
 
@@ -232,7 +232,9 @@ venues
   seat_map_id (nullable)
 
 seat_maps                          seats
-  id, venue_id, name, layout(jsonb)  id, seat_map_id, section, row, number, category
+  id, venue_id, name, layout(jsonb)  id, seat_map_id, section, row, number, category, perks (text[])
+seat_map_section_views             -- view rating per section of a seat map
+  id, seat_map_id, section_key, score (0.0-5.0), label
 
 events
   id (uuid, pk)
@@ -253,6 +255,9 @@ event_artists                      -- many-to-many
 
 ticket_types                       -- price tiers per event
   id, event_id, name (VIP|Pista|...), price_cents, currency, seat_category, quantity_total
+
+ticket_type_row_prices             -- row premium over the base price
+  id, ticket_type_id, row, premium_cents (>= 0), UNIQUE(ticket_type_id, row)
 ```
 
 ### 4. Ticketing
@@ -382,6 +387,7 @@ erDiagram
 
     VENUE ||--o{ SEAT_MAP : "has configurations"
     SEAT_MAP ||--o{ SEAT : contains
+    SEAT_MAP ||--o{ SEAT_MAP_SECTION_VIEW : "rates the view of"
     SEAT_MAP ||--o{ EVENT : "used by"
 
     EVENT }o--|| VENUE : "held at"
@@ -389,6 +395,7 @@ erDiagram
     ARTIST ||--o{ EVENT_ARTIST : "performs in"
 
     EVENT ||--o{ TICKET_TYPE : "sells as"
+    TICKET_TYPE ||--o{ TICKET_TYPE_ROW_PRICE : "row premium"
     TICKET_TYPE }o--o{ SEAT : "priced for (by category)"
 
     EVENT ||..o{ ORDER : "purchased for (ref, no FK)"
@@ -429,6 +436,14 @@ erDiagram
         string category "VIP · Ouro · Prata · Bronze"
         float x
         float y
+        text[] perks "AISLE · EXTRA_LEGROOM · ACCESSIBLE"
+    }
+    SEAT_MAP_SECTION_VIEW {
+        uuid id PK
+        uuid seatMapId FK
+        string sectionKey
+        numeric score "0.0 to 5.0"
+        string label
     }
     ARTIST {
         uuid id PK
@@ -461,6 +476,12 @@ erDiagram
         string currency
         int quantityTotal
         int maxPerOrder
+    }
+    TICKET_TYPE_ROW_PRICE {
+        uuid id PK
+        uuid ticketTypeId FK
+        string row
+        int premiumCents "at least 0, added to the base price"
     }
     ORDER {
         uuid id PK
@@ -525,6 +546,8 @@ erDiagram
 - **SeatMap → Seat (1:N):** the map's physical seats — reused across events.
 - **Event → SeatMap (N:1):** the event locks in *which* configuration it's selling.
 - **Event → TicketType (1:N):** commercial tiers for this specific event; carry prices and sales rules.
+- **TicketType → TicketTypeRowPrice (1:N):** a seat's price is the ticket type's base price plus its row's premium; rows without an entry cost the base price.
+- **SeatMap → SeatMapSectionView (1:N):** one view rating per section; perks live on the seat.
 - **TicketType ↔ Seat:** logical link via `seatCategory` matching `Seat.category` — no hard FK, because a `TicketType` can be GA (no seats).
 - **SeatHold:** the concurrency guard. `UNIQUE(eventId, seatId)` prevents two carts holding the same seat.
 - **OrderItem → Ticket (1:0..1):** the ticket only materializes after payment succeeds.
