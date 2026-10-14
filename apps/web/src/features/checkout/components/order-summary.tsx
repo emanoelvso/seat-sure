@@ -5,8 +5,7 @@ interface OrderSummaryProps {
     quantity: number;
     currency: string;
     unitPriceCents: number;
-    /** Defaults to quantity * unitPriceCents. */
-    subtotalCents?: number;
+    subtotalCents: number;
     unitServiceFeeCents: number;
     unitTaxCents: number;
     totalCents: number;
@@ -30,7 +29,7 @@ export function OrderSummary({ order }: OrderSummaryProps) {
   const perTicket = (cents: number) =>
     `${quantity} * ${formatPrice(cents, currency)}`;
 
-  const subtotalCents = order.subtotalCents ?? quantity * order.unitPriceCents;
+  const { subtotalCents } = order;
   const ticketPrice =
     subtotalCents === quantity * order.unitPriceCents
       ? perTicket(order.unitPriceCents)
