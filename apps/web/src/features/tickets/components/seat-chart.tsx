@@ -18,6 +18,7 @@ import {
   SEAT_SIZE,
   STAGE_HEIGHT,
 } from "@/features/tickets/utils/seat-chart";
+import { perkLabel } from "@/features/tickets/utils/seat-filters";
 import { formatPrice } from "@/utils/price";
 
 interface SeatChartProps {
@@ -25,6 +26,8 @@ interface SeatChartProps {
   unavailableIds: Set<string>;
   /** Picked seat ids, earliest first. */
   pickedIds: string[];
+  /** Available seats the filters exclude: dimmed and not pickable. */
+  filteredOutIds?: Set<string>;
   /** The section's ticket type, shown in the seat tooltip. */
   ticketType: TicketType;
   onPick: (seat: Seat) => void;
@@ -49,7 +52,11 @@ function StageArc({ frame, seats }: { frame: ChartFrame; seats: Seat[] }) {
           <stop offset="1" stopColor="var(--color-primary)" stopOpacity={0.1} />
         </linearGradient>
         <radialGradient id={`${id}-glow`}>
-          <stop offset="0" stopColor="var(--color-primary)" stopOpacity={0.18} />
+          <stop
+            offset="0"
+            stopColor="var(--color-primary)"
+            stopOpacity={0.18}
+          />
           <stop offset="1" stopColor="var(--color-primary)" stopOpacity={0} />
         </radialGradient>
       </defs>
@@ -85,10 +92,10 @@ function SeatButton({
   onHoverChange: (hovered: boolean) => void;
   onFocusChange: (focused: boolean) => void;
 }) {
-  const unavailable = state === "unavailable";
+  const disabled = state === "unavailable" || state === "filtered";
 
   function pick() {
-    if (!unavailable) onPick(seat);
+    if (!disabled) onPick(seat);
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -102,9 +109,9 @@ function SeatButton({
     <g
       role="button"
       tabIndex={0}
-      aria-label={`Row ${seat.row}, Seat ${seat.number}`}
+      aria-label={`Row ${seat.row}, Seat ${seat.number}${state === "filtered" ? ", filtered out" : ""}`}
       aria-pressed={state === "picked"}
-      aria-disabled={unavailable}
+      aria-disabled={disabled}
       aria-describedby={describedBy}
       data-state={state}
       transform={`translate(${seat.x - SEAT_GLYPH_WIDTH / 2} ${seat.y - SEAT_GLYPH_HEIGHT / 2})`}
@@ -114,7 +121,7 @@ function SeatButton({
       onPointerLeave={() => onHoverChange(false)}
       onFocus={() => onFocusChange(true)}
       onBlur={() => onFocusChange(false)}
-      className={`group outline-none ${unavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
+      className={`group outline-none ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
     >
       {/* The whole seat box takes the pointer and shows keyboard focus. */}
       <rect
@@ -162,7 +169,7 @@ function SeatTooltip({
       </span>
       <span className="flex flex-col items-center gap-2 px-2 pb-3 pt-4">
         <span className="text-2xl font-bold text-tint-500">
-          {formatPrice(ticketType.priceCents, ticketType.currency)}
+          {formatPrice(seat.priceCents, ticketType.currency)}
         </span>
         <span className="flex w-full items-center justify-between">
           <span className="flex items-baseline gap-2">
@@ -175,6 +182,13 @@ function SeatTooltip({
             <span className="text-xl font-bold">{seat.number}</span>
           </span>
         </span>
+        {seat.perks.length > 0 && (
+          <span className="flex flex-wrap justify-center gap-x-2 text-sm text-neutral-100">
+            {seat.perks.map((perk) => (
+              <span key={perk}>{perkLabel(perk)}</span>
+            ))}
+          </span>
+        )}
       </span>
     </div>
   );
@@ -184,6 +198,7 @@ export function SeatChart({
   seats,
   unavailableIds,
   pickedIds,
+  filteredOutIds = new Set(),
   ticketType,
   onPick,
 }: SeatChartProps) {
@@ -201,7 +216,8 @@ export function SeatChart({
 
   function stateOf(seat: Seat): SeatState {
     if (unavailableIds.has(seat.id)) return "unavailable";
-    return pickedIds.includes(seat.id) ? "picked" : "available";
+    if (pickedIds.includes(seat.id)) return "picked";
+    return filteredOutIds.has(seat.id) ? "filtered" : "available";
   }
 
   return (
