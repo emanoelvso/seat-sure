@@ -4,9 +4,11 @@ import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { seatFactory } from '@catalogModule/__test__/factory/seat.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
+import { ticketTypeRowPriceFactory } from '@catalogModule/__test__/factory/ticket-type-row-price.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { EventStatus } from '@catalogModule/core/enum/event-status.enum';
+import { SeatPerk } from '@catalogModule/core/enum/seat-perk.enum';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
 import { faker } from '@faker-js/faker';
 import { INestApplication } from '@nestjs/common';
@@ -114,7 +116,11 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
   const findTicketTypeSeats = async (
     eventId: string,
     ticketTypeId: string,
-    { eventFields = 'id name', seatMapFields = 'id name' } = {},
+    {
+      eventFields = 'id name',
+      seatMapFields = 'id name',
+      seatFields = 'id row number x y',
+    } = {},
   ) => {
     const response = await request(app.getHttpServer())
       .post('/graphql')
@@ -141,11 +147,7 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
                 ${seatMapFields}
               }
               seats {
-                id
-                row
-                number
-                x
-                y
+                ${seatFields}
               }
             }
           }
@@ -616,5 +618,144 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
     expect(body.data.findTicketTypeSeats.ticketType.id).toBe(ticketType.id);
     expect(body.data.findTicketTypeSeats.seatMap).toBeNull();
     expect(body.data.findTicketTypeSeats.seats).toEqual([]);
+  });
+
+  describe('seat price and perks', () => {
+    const findSeats = async (eventId: string, ticketTypeId: string) => {
+      const body = await findTicketTypeSeats(eventId, ticketTypeId, {
+        seatFields: 'row number priceCents perks',
+      });
+      expect(body.errors).toBeUndefined();
+      return body.data.findTicketTypeSeats.seats as {
+        row: string;
+        number: string;
+        priceCents: number;
+        perks: string[];
+      }[];
+    };
+
+    const setup = async () => {
+      const seatMap = await insertSeatMap('Concentric Arena');
+      const event = await insertEvent({ seatMapId: seatMap.id });
+      const vip = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'vip',
+        priceCents: 45000,
+      });
+      const sectionA = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'a',
+        priceCents: 45000,
+      });
+      await testDbClient.batchInsert(Tables.TicketType, [vip, sectionA]);
+      return { seatMap, event, vip, sectionA };
+    };
+
+    it("prices a seat at the ticket type's base plus its row's premium (PRICE-01)", async () => {
+      const { seatMap, event, vip } = await setup();
+      await testDbClient.batchInsert(Tables.Seat, [
+        seatFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          row: '1',
+          number: '01',
+        }),
+        seatFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          row: '7',
+          number: '01',
+        }),
+      ]);
+      await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: vip.id,
+          row: '1',
+          premiumCents: 15000,
+        }),
+      ]);
+
+      const seats = await findSeats(event.id!, vip.id);
+
+      expect(
+        seats
+          .map(({ row, priceCents }) => ({ row, priceCents }))
+          .sort((a, b) => a.row.localeCompare(b.row)),
+      ).toEqual([
+        { row: '1', priceCents: 60000 },
+        { row: '7', priceCents: 45000 },
+      ]);
+    });
+
+    it('prices a seat at the base price when its ticket type has no row prices (PRICE-01)', async () => {
+      const { seatMap, event, vip } = await setup();
+      await testDbClient.batchInsert(Tables.Seat, [
+        seatFactory.build({ seatMapId: seatMap.id, sectionKey: 'vip' }),
+      ]);
+
+      const seats = await findSeats(event.id!, vip.id);
+
+      expect(seats).toEqual([expect.objectContaining({ priceCents: 45000 })]);
+    });
+
+    it("ignores another ticket type's premium for the same row (PRICE-01)", async () => {
+      const { seatMap, event, vip, sectionA } = await setup();
+      await testDbClient.batchInsert(Tables.Seat, [
+        seatFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          row: '1',
+        }),
+      ]);
+      await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: sectionA.id,
+          row: '1',
+          premiumCents: 15000,
+        }),
+      ]);
+
+      const seats = await findSeats(event.id!, vip.id);
+
+      expect(seats).toEqual([expect.objectContaining({ priceCents: 45000 })]);
+    });
+
+    it('returns each seat with the perks it has, in stored order, and [] for a seat without perks (PERK-01)', async () => {
+      const { seatMap, event, vip } = await setup();
+      await testDbClient.batchInsert(Tables.Seat, [
+        seatFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          row: '1',
+          number: '01',
+          perks: [SeatPerk.AISLE, SeatPerk.ACCESSIBLE],
+        }),
+        seatFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          row: '1',
+          number: '02',
+          perks: [SeatPerk.EXTRA_LEGROOM],
+        }),
+        seatFactory.build({
+          seatMapId: seatMap.id,
+          sectionKey: 'vip',
+          row: '1',
+          number: '03',
+        }),
+      ]);
+
+      const seats = await findSeats(event.id!, vip.id);
+
+      expect(
+        seats
+          .map(({ number, perks }) => ({ number, perks }))
+          .sort((a, b) => a.number.localeCompare(b.number)),
+      ).toEqual([
+        { number: '01', perks: ['AISLE', 'ACCESSIBLE'] },
+        { number: '02', perks: ['EXTRA_LEGROOM'] },
+        { number: '03', perks: [] },
+      ]);
+    });
   });
 });

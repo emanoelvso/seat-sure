@@ -7,7 +7,8 @@ import {
   SeatModel,
   TicketTypeSeatsModel,
 } from '@catalogModule/core/model/seat.model';
-import { Field, Float, ObjectType } from '@nestjs/graphql';
+import { SeatPerk } from '@catalogModule/core/enum/seat-perk.enum';
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class Seat implements SeatModel {
@@ -25,6 +26,12 @@ export class Seat implements SeatModel {
 
   @Field(() => Float)
   y: number;
+
+  @Field(() => Int)
+  priceCents: number;
+
+  @Field(() => [SeatPerk])
+  perks: SeatPerk[];
 }
 
 @ObjectType()

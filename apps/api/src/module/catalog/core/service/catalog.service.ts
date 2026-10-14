@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { ArtistRepository } from '@catalogModule/persistence/repository/artist.repository';
 import { TicketTypeRepository } from '@catalogModule/persistence/repository/ticket-type.repository';
+import { TicketTypeRowPriceRepository } from '@catalogModule/persistence/repository/ticket-type-row-price.repository';
 import { SeatRepository } from '@catalogModule/persistence/repository/seat.repository';
 import { SeatMap as SeatMapEntity } from '@catalogModule/persistence/entity/seat-map.entity';
 import { TicketType as TicketTypeEntity } from '@catalogModule/persistence/entity/ticket-type.entity';
@@ -79,6 +80,7 @@ export class CatalogService {
     private readonly eventArtistRepository: EventArtistRepository,
     private readonly seatRepository: SeatRepository,
     private readonly seatMapRepository: SeatMapRepository,
+    private readonly ticketTypeRowPriceRepository: TicketTypeRowPriceRepository,
   ) {}
 
   @Transactional({ connectionName: 'catalog' })
@@ -367,7 +369,7 @@ export class CatalogService {
       return empty;
     }
 
-    const [[eventModel], seats] = await Promise.all([
+    const [[eventModel], seats, rowPrices] = await Promise.all([
       this.toEventModels([event]),
       event.seatMap
         ? this.seatRepository.findBySection(
@@ -375,13 +377,22 @@ export class CatalogService {
             ticketType.sectionKey,
           )
         : [],
+      this.ticketTypeRowPriceRepository.findByTicketType(ticketType.id),
     ]);
+    const premiumByRow = new Map(
+      rowPrices.map(({ row, premiumCents }) => [row, premiumCents]),
+    );
 
     return {
       event: eventModel,
       ticketType: this.mapTicketType(ticketType),
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
-      seats: seats.map((seat) => this.mapSeat(seat)),
+      seats: seats.map((seat) =>
+        this.mapSeat(
+          seat,
+          ticketType.priceCents + (premiumByRow.get(seat.row) ?? 0),
+        ),
+      ),
     };
   }
 
@@ -500,13 +511,15 @@ export class CatalogService {
     };
   }
 
-  private mapSeat(seat: SeatEntity): SeatModel {
+  private mapSeat(seat: SeatEntity, priceCents: number): SeatModel {
     return {
       id: seat.id,
       row: seat.row,
       number: seat.number,
       x: seat.x,
       y: seat.y,
+      priceCents,
+      perks: seat.perks,
     };
   }
 }

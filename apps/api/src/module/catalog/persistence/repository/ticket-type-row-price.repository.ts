@@ -12,4 +12,11 @@ export class TicketTypeRowPriceRepository extends DefaultTypeOrmRepository<Ticke
   ) {
     super(TicketTypeRowPrice, datasource.manager);
   }
+
+  async findByTicketType(ticketTypeId: string): Promise<TicketTypeRowPrice[]> {
+    return this.entityManager
+      .createQueryBuilder(TicketTypeRowPrice, 'rowPrice')
+      .where('rowPrice.ticketTypeId = :ticketTypeId', { ticketTypeId })
+      .getMany();
+  }
 }
