@@ -830,4 +830,40 @@ describe('CatalogResolver findTicketTypeSeats (e2e)', () => {
       expect(await findSectionView(event.id!, vip.id)).toBeNull();
     });
   });
+
+  it("returns the ticket type's maxPriceCents as its base plus the highest row premium (PRICE-10)", async () => {
+    const seatMap = await insertSeatMap('Concentric Arena');
+    const event = await insertEvent({ seatMapId: seatMap.id });
+    const vip = ticketTypeFactory.build({
+      eventId: event.id!,
+      sectionKey: 'vip',
+      priceCents: 45000,
+    });
+    await testDbClient.batchInsert(Tables.TicketType, [vip]);
+    await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+      ticketTypeRowPriceFactory.build({
+        ticketTypeId: vip.id,
+        row: '1',
+        premiumCents: 15000,
+      }),
+      ticketTypeRowPriceFactory.build({
+        ticketTypeId: vip.id,
+        row: '2',
+        premiumCents: 5000,
+      }),
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: `query { findTicketTypeSeats(FindTicketTypeSeatsInput: { eventId: "${event.id}", ticketTypeId: "${vip.id}" }) { ticketType { priceCents maxPriceCents } } }`,
+      })
+      .expect(200);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.findTicketTypeSeats.ticketType).toEqual({
+      priceCents: 45000,
+      maxPriceCents: 60000,
+    });
+  });
 });

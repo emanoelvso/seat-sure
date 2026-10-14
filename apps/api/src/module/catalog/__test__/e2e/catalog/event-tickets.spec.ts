@@ -3,6 +3,7 @@ import { eventArtistFactory } from '@catalogModule/__test__/factory/event-artist
 import { eventFactory } from '@catalogModule/__test__/factory/event.factory';
 import { seatMapFactory } from '@catalogModule/__test__/factory/seat-map.factory';
 import { ticketTypeFactory } from '@catalogModule/__test__/factory/ticket-type.factory';
+import { ticketTypeRowPriceFactory } from '@catalogModule/__test__/factory/ticket-type-row-price.factory';
 import { venueFactory } from '@catalogModule/__test__/factory/venue.factory';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { SeatMapLayout } from '@catalogModule/persistence/entity/seat-map.entity';
@@ -982,6 +983,133 @@ describe('CatalogResolver findEventTickets (e2e)', () => {
       expect(response.body.data.findEventTickets.ticketTypes[0]).toEqual(
         expect.objectContaining({ serviceFeeCents: 0, taxCents: 0 }),
       );
+    });
+  });
+
+  describe('maxPriceCents', () => {
+    const findMaxPrices = async (eventId: string) => {
+      const response = await request(app.getHttpServer())
+        .post('/graphql')
+        .send({
+          query: `
+            query FindEventTickets($FindEventTicketsInput: FindEventTicketsInput!) {
+              findEventTickets(FindEventTicketsInput: $FindEventTicketsInput) {
+                ticketTypes {
+                  id
+                  priceCents
+                  maxPriceCents
+                }
+              }
+            }
+          `,
+          variables: { FindEventTicketsInput: { eventId } },
+        })
+        .expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      return new Map<string, { priceCents: number; maxPriceCents: number }>(
+        response.body.data.findEventTickets.ticketTypes.map(
+          (t: { id: string; priceCents: number; maxPriceCents: number }) => [
+            t.id,
+            t,
+          ],
+        ),
+      );
+    };
+
+    it('is the base price plus the highest row premium, and the base price without premiums (PRICE-10, PRICE-11)', async () => {
+      const event = buildEvent({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      await testDbClient.batchInsert(Tables.Event, [event]);
+      const withPremiums = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'vip',
+        priceCents: 45000,
+      });
+      const withoutPremiums = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'a',
+        priceCents: 40000,
+      });
+      const onlyZeroPremium = ticketTypeFactory.build({
+        eventId: event.id!,
+        sectionKey: 'b',
+        priceCents: 30000,
+      });
+      await testDbClient.batchInsert(Tables.TicketType, [
+        withPremiums,
+        withoutPremiums,
+        onlyZeroPremium,
+      ]);
+      await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: withPremiums.id,
+          row: '1',
+          premiumCents: 15000,
+        }),
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: withPremiums.id,
+          row: '2',
+          premiumCents: 0,
+        }),
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: onlyZeroPremium.id,
+          row: '1',
+          premiumCents: 0,
+        }),
+      ]);
+
+      const prices = await findMaxPrices(event.id!);
+
+      expect(prices.get(withPremiums.id)).toMatchObject({
+        priceCents: 45000,
+        maxPriceCents: 60000,
+      });
+      expect(prices.get(withoutPremiums.id)).toMatchObject({
+        priceCents: 40000,
+        maxPriceCents: 40000,
+      });
+      expect(prices.get(onlyZeroPremium.id)).toMatchObject({
+        priceCents: 30000,
+        maxPriceCents: 30000,
+      });
+    });
+
+    it("ignores another event's ticket type premiums", async () => {
+      const event = buildEvent({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(24),
+      });
+      const otherEvent = buildEvent({
+        status: EventStatus.PUBLISHED,
+        startAt: hoursFromNow(48),
+      });
+      await testDbClient.batchInsert(Tables.Event, [event, otherEvent]);
+      const ticketType = ticketTypeFactory.build({
+        eventId: event.id!,
+        priceCents: 45000,
+      });
+      const otherTicketType = ticketTypeFactory.build({
+        eventId: otherEvent.id!,
+        priceCents: 45000,
+      });
+      await testDbClient.batchInsert(Tables.TicketType, [
+        ticketType,
+        otherTicketType,
+      ]);
+      await testDbClient.batchInsert(Tables.TicketTypeRowPrice, [
+        ticketTypeRowPriceFactory.build({
+          ticketTypeId: otherTicketType.id,
+          row: '1',
+          premiumCents: 15000,
+        }),
+      ]);
+
+      const prices = await findMaxPrices(event.id!);
+
+      expect(prices.get(ticketType.id)?.maxPriceCents).toBe(45000);
     });
   });
 });

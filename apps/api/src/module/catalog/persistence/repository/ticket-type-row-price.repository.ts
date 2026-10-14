@@ -19,4 +19,29 @@ export class TicketTypeRowPriceRepository extends DefaultTypeOrmRepository<Ticke
       .where('rowPrice.ticketTypeId = :ticketTypeId', { ticketTypeId })
       .getMany();
   }
+
+  // One grouped query for a page of ticket types. Ticket types without a row
+  // price are missing from the map.
+  async findMaxPremiumByTicketTypeIds(
+    ticketTypeIds: string[],
+  ): Promise<Map<string, number>> {
+    if (ticketTypeIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.entityManager
+      .createQueryBuilder(TicketTypeRowPrice, 'rowPrice')
+      .select('rowPrice.ticketTypeId', 'ticketTypeId')
+      .addSelect('MAX(rowPrice.premiumCents)', 'maxPremiumCents')
+      .where('rowPrice.ticketTypeId IN (:...ticketTypeIds)', { ticketTypeIds })
+      .groupBy('rowPrice.ticketTypeId')
+      .getRawMany<{ ticketTypeId: string; maxPremiumCents: string }>();
+
+    return new Map(
+      rows.map(({ ticketTypeId, maxPremiumCents }) => [
+        ticketTypeId,
+        Number(maxPremiumCents),
+      ]),
+    );
+  }
 }

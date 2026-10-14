@@ -105,6 +105,9 @@ export class TicketType implements TicketTypeModel {
   priceCents: number;
 
   @Field(() => Int)
+  maxPriceCents: number;
+
+  @Field(() => Int)
   serviceFeeCents: number;
 
   @Field(() => Int)

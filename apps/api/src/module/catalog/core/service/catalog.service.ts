@@ -331,13 +331,21 @@ export class CatalogService {
     }
 
     const ticketTypes = await this.ticketTypeRepository.findByEvent(event.id);
-    const [eventModel] = await this.toEventModels([event]);
+    const [[eventModel], maxPremiumByTicketTypeId] = await Promise.all([
+      this.toEventModels([event]),
+      this.ticketTypeRowPriceRepository.findMaxPremiumByTicketTypeIds(
+        ticketTypes.map(({ id }) => id),
+      ),
+    ]);
 
     return {
       event: eventModel,
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
       ticketTypes: ticketTypes.map((ticketType) =>
-        this.mapTicketType(ticketType),
+        this.mapTicketType(
+          ticketType,
+          maxPremiumByTicketTypeId.get(ticketType.id),
+        ),
       ),
     };
   }
@@ -394,7 +402,10 @@ export class CatalogService {
 
     return {
       event: eventModel,
-      ticketType: this.mapTicketType(ticketType),
+      ticketType: this.mapTicketType(
+        ticketType,
+        Math.max(0, ...premiumByRow.values()),
+      ),
       seatMap: event.seatMap ? this.mapSeatMap(event.seatMap) : null,
       seats: seats.map((seat) =>
         this.mapSeat(
@@ -508,12 +519,16 @@ export class CatalogService {
     };
   }
 
-  private mapTicketType(ticketType: TicketTypeEntity): TicketTypeModel {
+  private mapTicketType(
+    ticketType: TicketTypeEntity,
+    maxPremiumCents = 0,
+  ): TicketTypeModel {
     return {
       id: ticketType.id,
       sectionKey: ticketType.sectionKey,
       name: ticketType.name,
       priceCents: ticketType.priceCents,
+      maxPriceCents: ticketType.priceCents + maxPremiumCents,
       serviceFeeCents: ticketType.serviceFeeCents,
       taxCents: ticketType.taxCents,
       currency: ticketType.currency,
