@@ -55,6 +55,9 @@ $ pnpm run test:e2e
 
 # test coverage
 $ pnpm run test:cov
+
+# oversell check tests (load/)
+$ pnpm run test:load
 ```
 
 ## Load tests

@@ -39,11 +39,13 @@ apps/api/
 │   └── module/
 │       ├── catalog/              # Domain module (one per bounded context)
 │       └── shared/               # Cross-cutting technical modules
+├── load/                         # k6 load tests and the oversell check (load/README.md)
 └── test/                         # Global test infrastructure
     ├── test-e2e.setup.ts         # createNestApp()
     ├── knex.database.ts          # testDbClient for seeding/cleanup
     ├── enum/table.enum.ts        # Tables enum
     ├── jest.e2e.ts               # Jest config used by `test` / `test:e2e`
+    ├── jest.load.ts              # Jest config used by `test:load` (load/ specs)
     └── jest.shared.ts            # Shared Jest config (moduleNameMapper)
 ```
 
@@ -295,6 +297,7 @@ integration/
 4. **Behavior over implementation**: e2e tests hit `/graphql` (or the REST route) and assert on the response.
 5. **Running tests**: `pnpm --filter api test:db:reset` once, then `pnpm --filter api test:e2e`. Jest only picks up specs under `__test__/e2e/` and `__test__/integration/` (`test/jest.e2e.ts`).
 6. **Unit tests**: no folder for them is defined in `.projectStructurerc.json` or matched by `test/jest.e2e.ts` yet. Add both before writing the first one.
+7. **Load tooling**: the oversell check's specs live under `load/__test__/integration/` as native ESM (`.mjs`) and run with `pnpm --filter api test:load` (`test/jest.load.ts`), not `test:e2e`.
 
 ---
 
