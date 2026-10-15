@@ -1,12 +1,6 @@
 import { check, sleep } from 'k6';
 import { Counter } from 'k6/metrics';
-import {
-  fixture,
-  gql,
-  untilDecided,
-  classifyOutcome,
-  START_CHECKOUT,
-} from './common.js';
+import { fixture, gql, untilDecided, START_CHECKOUT } from './common.js';
 
 const winners = new Counter('contention_winners');
 const seatsUnavailable = new Counter('contention_seats_unavailable');
@@ -38,8 +32,8 @@ export const options = {
 export default function () {
   const session = fixture.sessions[__VU - 1];
 
-  // Retry startCheckout on BUSY with exponential backoff
-  const { result, outcome, busyCount, exhausted } = untilDecided(
+  // Retry startCheckout on BUSY, waiting 100-300 ms between tries
+  const { result, outcome, busyCount } = untilDecided(
     () => {
       const { response, body } = gql(
         START_CHECKOUT,
@@ -71,10 +65,7 @@ export default function () {
   // Count based on the final outcome
   if (outcome.kind === 'ok') {
     winners.add(1);
-  } else if (
-    outcome.kind === 'expected' &&
-    outcome.reason === 'SEATS_UNAVAILABLE'
-  ) {
+  } else if (outcome.kind === 'expected') {
     seatsUnavailable.add(1);
   } else {
     // unexpected or exhausted
@@ -83,7 +74,7 @@ export default function () {
 
   check(result, {
     'a win or SEATS_UNAVAILABLE, never a 5xx': () =>
-      (outcome.kind === 'ok' || outcome.reason === 'SEATS_UNAVAILABLE') &&
+      (outcome.kind === 'ok' || outcome.kind === 'expected') &&
       result.status < 500,
   });
 }

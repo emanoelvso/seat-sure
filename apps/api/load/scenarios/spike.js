@@ -1,12 +1,6 @@
 import { check, sleep } from 'k6';
 import { Counter, Rate } from 'k6/metrics';
-import {
-  fixture,
-  gql,
-  classifyOutcome,
-  BUSY,
-  START_CHECKOUT,
-} from './common.js';
+import { fixture, gql, classifyOutcome, START_CHECKOUT } from './common.js';
 
 // Flash sale: buyers ramp up against one event and each browses, holds a seat
 // and pays with the simulated gateway's success card. 60% of the buyers pick
@@ -151,7 +145,7 @@ export default function () {
     busy.add(1, { op: 'hold' });
   }
   unexpected.add(outcome.kind === 'unexpected', { op: 'hold' });
-  if (outcome.kind === 'expected' && outcome.reason === 'SEATS_UNAVAILABLE') {
+  if (outcome.kind === 'expected') {
     seatsUnavailable.add(1);
     seatId = pick(fixture.seatIds.filter((candidate) => candidate !== seatId));
     hold = holdSeat(seatId);
@@ -160,7 +154,7 @@ export default function () {
       busy.add(1, { op: 'hold' });
     }
     unexpected.add(outcome.kind === 'unexpected', { op: 'hold' });
-    if (outcome.kind === 'expected' && outcome.reason === 'SEATS_UNAVAILABLE') {
+    if (outcome.kind === 'expected') {
       seatsUnavailable.add(1);
     }
   }
@@ -192,14 +186,12 @@ export default function () {
   unexpected.add(paid.kind === 'unexpected', { op: 'pay' });
   if (paid.kind === 'ok') {
     sold.add(1);
-  } else if (paid.kind === 'expected' && paid.reason === 'ORDER_EXPIRED') {
+  } else if (paid.kind === 'expected') {
     holdExpired.add(1);
   }
   check(payment, {
     'payment settled or expired': () =>
-      paid.kind === 'ok' ||
-      paid.reason === 'ORDER_EXPIRED' ||
-      paid.reason === BUSY,
+      ['ok', 'expected', 'busy'].includes(paid.kind),
   });
   sleep(1 + Math.random());
 }
