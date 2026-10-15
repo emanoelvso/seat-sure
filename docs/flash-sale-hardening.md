@@ -197,6 +197,8 @@ Contention, 200 VUs on one seat:
 
 With the default, the scenario's expectation of 199 `SEATS_UNAVAILABLE` and 0 unexpected cannot hold, because 76 callers are shed by design. The scenario was not changed.
 
+Issue #96 resolved this incompatibility: the contention scenario now retries `BUSY` up to 10 times with random 100–300 ms backoff between retries. Running contention with the default limit 100, `contention-2026-10-15T14-58-23-527Z`: 1 winner, 199 `SEATS_UNAVAILABLE`, 0 unexpected, k6 exit 0, oversell ok. The 161 busy responses show that retries exercised the shed correctly.
+
 The hold and pay passes come at a cost: at limit 20, 96.5% of holds were shed and 43 of 500 seats were paid in the run, against 188 at limit 100. Total requests per second rose from 315 (Before) to 702 to 967 because shed buyers browse again.
 
 ## Lever outcomes

@@ -1,13 +1,14 @@
 import { check, sleep } from 'k6';
 import { Counter, Rate } from 'k6/metrics';
-import { fixture, gql, reasonOf, START_CHECKOUT } from './common.js';
+import { fixture, gql, classifyOutcome, START_CHECKOUT } from './common.js';
 
 // Flash sale: buyers ramp up against one event and each browses, holds a seat
 // and pays with the simulated gateway's success card. 60% of the buyers pick
 // from a hot set of 50 seats, 40% from the rest; a rejected hold retries once.
-// Business losses and BUSY (load shed) are expected; 5xx, timeouts and
-// connection errors are not. A buyer whose hold or pay gets BUSY gives up
-// that iteration.
+// Expected outcomes (success, BUSY, SEATS_UNAVAILABLE, ORDER_EXPIRED) are counted
+// per-operation. Unexpected errors (5xx, timeouts, connection errors) fail the
+// run. A buyer whose hold or pay gets BUSY or an unexpected error gives up the
+// iteration.
 
 const VUS = Number(__ENV.VUS || 2000);
 const RAMP_SECONDS = Number(__ENV.RAMP_SECONDS || 10);
@@ -117,18 +118,6 @@ const holdSeat = (seatId) =>
     'hold',
   );
 
-// true for a success or an expected business error, false for anything else.
-const classify = (result, expectedReasons, op) => {
-  const { response, body } = result;
-  const ok = response.status === 200 && !body?.errors && Boolean(body?.data);
-  const reason = reasonOf(body);
-  const shed = !ok && reason === 'BUSY';
-  const expected = !ok && (shed || expectedReasons.includes(reason));
-  if (shed) busy.add(1, { op });
-  unexpected.add(!ok && !expected, { op });
-  return { ok, reason };
-};
-
 export default function () {
   // Browse
   for (const [query, variables] of [
@@ -136,26 +125,40 @@ export default function () {
     [FIND_UNAVAILABLE_SEATS, { input: { eventId: fixture.eventId } }],
   ]) {
     const { response, body } = gql(query, variables, null, { op: 'discovery' });
-    unexpected.add(response.status !== 200 || Boolean(body?.errors), {
-      op: 'discovery',
-    });
+    const outcome = classifyOutcome({ status: response.status, body }, []);
+    if (outcome.kind === 'busy') {
+      busy.add(1, { op: 'discovery' });
+    }
+    unexpected.add(outcome.kind === 'unexpected', { op: 'discovery' });
   }
   sleep(0.2 + Math.random() * 0.5);
 
   // Hold, retrying once with another seat when the first is taken
   let seatId = pickSeat();
   let hold = holdSeat(seatId);
-  let outcome = classify(hold, ['SEATS_UNAVAILABLE'], 'hold');
-  if (!outcome.ok && outcome.reason === 'SEATS_UNAVAILABLE') {
+  const classifyHold = (result) =>
+    classifyOutcome({ status: result.response.status, body: result.body }, [
+      'SEATS_UNAVAILABLE',
+    ]);
+  let outcome = classifyHold(hold);
+  if (outcome.kind === 'busy') {
+    busy.add(1, { op: 'hold' });
+  }
+  unexpected.add(outcome.kind === 'unexpected', { op: 'hold' });
+  if (outcome.kind === 'expected') {
     seatsUnavailable.add(1);
     seatId = pick(fixture.seatIds.filter((candidate) => candidate !== seatId));
     hold = holdSeat(seatId);
-    outcome = classify(hold, ['SEATS_UNAVAILABLE'], 'hold');
-    if (!outcome.ok && outcome.reason === 'SEATS_UNAVAILABLE') {
+    outcome = classifyHold(hold);
+    if (outcome.kind === 'busy') {
+      busy.add(1, { op: 'hold' });
+    }
+    unexpected.add(outcome.kind === 'unexpected', { op: 'hold' });
+    if (outcome.kind === 'expected') {
       seatsUnavailable.add(1);
     }
   }
-  if (!outcome.ok) {
+  if (outcome.kind !== 'ok') {
     sleep(1 + Math.random());
     return;
   }
@@ -173,15 +176,22 @@ export default function () {
     },
     'pay',
   );
-  const paid = classify(payment, ['ORDER_EXPIRED'], 'pay');
-  if (paid.ok) {
+  const paid = classifyOutcome(
+    { status: payment.response.status, body: payment.body },
+    ['ORDER_EXPIRED'],
+  );
+  if (paid.kind === 'busy') {
+    busy.add(1, { op: 'pay' });
+  }
+  unexpected.add(paid.kind === 'unexpected', { op: 'pay' });
+  if (paid.kind === 'ok') {
     sold.add(1);
-  } else if (paid.reason === 'ORDER_EXPIRED') {
+  } else if (paid.kind === 'expected') {
     holdExpired.add(1);
   }
   check(payment, {
     'payment settled or expired': () =>
-      paid.ok || ['ORDER_EXPIRED', 'BUSY'].includes(paid.reason),
+      ['ok', 'expected', 'busy'].includes(paid.kind),
   });
   sleep(1 + Math.random());
 }
