@@ -43,6 +43,8 @@ k6 exited with code 99 (thresholds crossed).
 
 Passed (`oversell.json`): no duplicate tickets, no duplicate holds, 500 sold tickets and 500 paid seats for a 500-seat event.
 
+The runs in this write-up predate the per-payment reconciliation of the check (issue #99), so their `oversell.json` has no `successfulPayments` or `unbalancedOrders`. Every order in them held one seat, so sold tickets equal to paid seats also means one ticket per successful payment. What the check proves now is in [`apps/api/load/README.md`](../apps/api/load/README.md#what-the-oversell-check-proves).
+
 ### What broke first
 
 The single Node API process saturated one CPU core. Every operation queued behind it, so latency ran 10x to 100x over the thresholds while almost no request failed (hold had zero unexpected errors).
