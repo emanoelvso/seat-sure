@@ -170,6 +170,13 @@ describe('classifyOutcome', () => {
     ).toEqual({ kind: 'unexpected', reason: 'SEATS_UNAVAILABLE' });
   });
 
+  it('AC1: status 200 with no data and no errors is not ok', () => {
+    expect(classifyOutcome({ status: 200, body: {} })).toEqual({
+      kind: 'unexpected',
+      reason: null,
+    });
+  });
+
   it('AC1: status 400 with data and no errors is not ok', () => {
     const body = { data: { id: '123' } };
     expect(classifyOutcome({ status: 400, body }).kind).toBe('unexpected');
