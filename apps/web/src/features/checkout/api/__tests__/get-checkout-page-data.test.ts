@@ -214,4 +214,36 @@ describe("getCheckoutPageData", () => {
       getCheckoutPageData("o1", "/checkout/o1"),
     );
   });
+  it.each([
+    ["order", FIND_CHECKOUT_ORDER],
+    ["user", ME],
+    ["cards", CHECKOUT_PAYMENT_CARDS],
+  ])("refreshes when only the %s query rejects the session (CHKINT-05)", async (_, failedDocument) => {
+    mockedReadAccessToken.mockResolvedValue("access-token-1");
+    mockedFetch.mockImplementation(async (document) => {
+      if (document === failedDocument) throw new GraphQLRequestError("Unauthenticated", "UNAUTHENTICATED");
+      if (document === FIND_CHECKOUT_ORDER) return { findCheckoutOrder: order };
+      if (document === ME) return { me: user };
+      return { myPaymentCards: cards };
+    });
+    await expectRedirectTo("/api/auth/refresh?redirectTo=%2Fcheckout%2Fo1", () =>
+      getCheckoutPageData("o1", "/checkout/o1"),
+    );
+  });
+
+  it.each([["order", FIND_CHECKOUT_ORDER], ["user", ME]])(
+    "propagates the same %s query error (CHKINT-07)", async (_, failedDocument) => {
+      mockedReadAccessToken.mockResolvedValue("access-token-1");
+      const error = new GraphQLRequestError("Unavailable", "INTERNAL_SERVER_ERROR");
+      mockedFetch.mockImplementation(async (document) => {
+        if (document === failedDocument) throw error;
+        if (document === FIND_CHECKOUT_ORDER) return { findCheckoutOrder: order };
+        if (document === ME) return { me: user };
+        return { myPaymentCards: cards };
+      });
+      await expect(getCheckoutPageData("o1", "/checkout/o1")).rejects.toBe(error);
+      expect(redirect).not.toHaveBeenCalled();
+    },
+  );
+
 });
