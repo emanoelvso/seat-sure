@@ -65,9 +65,35 @@ Every run writes `results/<scenario>-<timestamp>/` (gitignored):
 | ----------------- | --------------------------------------------------------------------------------------------------------------- |
 | `summary.json`    | k6 summary: p50/p95/p99 per operation (`{op:hold}`, `{op:pay}`, `{op:discovery}`), request rate, error counters |
 | `resources.jsonl` | One line per second: Postgres connections, waiting locks, API CPU percent and RSS in KB                         |
-| `oversell.json`   | Duplicate tickets and holds, sold tickets and paid seats                                                        |
+| `oversell.json`   | Duplicate tickets and holds, and the reconciliation of tickets with payments (see below)                        |
 | `fixture.json`    | The seeded event and buyer sessions (do not share)                                                              |
 
 Expected business errors (`SEATS_UNAVAILABLE`, `ORDER_EXPIRED`) are counted apart. 5xx, timeouts and connection errors count as unexpected, and the spike fails above 1%.
 
 Run the oversell check again by hand with `node load/verify/oversell.mjs <eventId>`.
+
+## What the oversell check proves
+
+Orders, seats, payments and tickets relate like this:
+
+- An order has one item per seat.
+- A successful payment (`BillingPayment` with status `succeeded`) pays one order for all its seats. Failed attempts may come before it, and a refunded payment no longer counts.
+- An order has at most one successful payment.
+- A paid order holds one live ticket (`issued`, `used` or `transferred`) per seat, linked through `orderItemId`. An unpaid order holds none.
+
+The check passes when no seat has two live tickets or two holds, and tickets reconcile with payments:
+
+| Field                | Meaning                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `soldTickets`        | Live tickets of the event                                                                                                                |
+| `successfulPayments` | Successful payments of the event's orders                                                                                                |
+| `paidSeats`          | Seats paid for: each successful payment counts its order's seats, so an order paid twice counts twice                                    |
+| `unbalancedOrders`   | Orders paid more than once, or whose live tickets differ from their paid seats (`orderId`, `successfulPayments`, `seats`, `liveTickets`) |
+
+It fails when `soldTickets` differs from `paidSeats` or `unbalancedOrders` is not empty. The totals catch a live ticket with no order; the per-order list catches errors that cancel out in the totals.
+
+The check has its own tests. They need the local `seat-sure-test` database (`pnpm test:db:reset` sets it up) and build their fixtures in a throwaway schema:
+
+```bash
+pnpm test:load
+```
