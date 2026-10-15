@@ -199,15 +199,16 @@ describe("payOrderAction", () => {
       expect(redirect).not.toHaveBeenCalled();
     });
 
-    it("refreshes the page data on CARD_NOT_FOUND so the picker gets the reloaded list (AC 9)", async () => {
+    it("returns CARD_NOT_FOUND without a server refresh (CHKINT-08)", async () => {
       mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
       mockedFetch.mockRejectedValueOnce(
         new GraphQLRequestError("gone", "BAD_USER_INPUT", "CARD_NOT_FOUND"),
       );
 
-      await payOrderAction(initialState, savedInput);
+      const result = await payOrderAction(initialState, savedInput);
 
-      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(result).toStrictEqual({ reason: "CARD_NOT_FOUND" });
+      expect(refresh).not.toHaveBeenCalled();
     });
 
     it("does not refresh on other failures", async () => {

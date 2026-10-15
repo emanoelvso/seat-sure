@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
@@ -92,6 +93,7 @@ export function CheckoutView({
   cards = [],
   payAction,
 }: CheckoutViewProps) {
+  const router = useRouter();
   const [step, setStep] = useState<CheckoutStep>("tickets");
   const [card, setCard] = useState<CardInput>(emptyCard);
   const [fieldErrors, setFieldErrors] = useState<Partial<CardFieldErrors>>();
@@ -109,12 +111,8 @@ export function CheckoutView({
         setStep("payment");
       }
       if (result.reason === "CARD_NOT_FOUND") {
-        // CARD-08 AC 9: back to the picker. The action has already refreshed
-        // the router, so `cards` arrives reloaded.
-        // SPEC_DEVIATION: design.md calls router.refresh() here.
-        // Reason: useRouter needs a mounted app router, which the existing
-        // CheckoutView stories don't provide; next/cache refresh() in the
-        // Server Action reloads the same page data.
+        // CARD-08 AC 9: recover on Payment and reload the available cards.
+        router.refresh();
         setSavedCardId(null);
         setUsePicker(true);
         setPickerError(CARD_NOT_FOUND_ERROR);
