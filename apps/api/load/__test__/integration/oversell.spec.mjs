@@ -182,6 +182,24 @@ describe('checkOversell', () => {
     expect(await runCli(eventId)).toBe(1);
   });
 
+  it('an order paid twice fails even when its tickets match payments times seats', async () => {
+    const eventId = randomUUID();
+    const order = await insertOrder(eventId, 1);
+    await insertPayment(order.id, 'succeeded');
+    await insertPayment(order.id, 'succeeded');
+    await insertTicket(eventId, order.items[0].seatId, order.items[0].id);
+    await insertTicket(eventId, randomUUID(), order.items[0].id);
+
+    const result = await check(eventId);
+    expect(result.soldTickets).toBe(2);
+    expect(result.paidSeats).toBe(2);
+    expect(result.ok).toBe(false);
+    expect(result.unbalancedOrders).toEqual([
+      { orderId: order.id, successfulPayments: 2, seats: 1, liveTickets: 2 },
+    ]);
+    expect(await runCli(eventId)).toBe(1);
+  });
+
   it('a live ticket on an order without a successful payment fails', async () => {
     const eventId = randomUUID();
     const order = await insertOrder(eventId, 1);
@@ -229,10 +247,13 @@ describe('checkOversell', () => {
     expect(await runCli(eventId)).toBe(1);
   });
 
-  it('a refunded payment of an order with no live ticket counts nothing and passes', async () => {
+  it('a refunded payment of an order with only cancelled tickets counts nothing and passes', async () => {
     const eventId = randomUUID();
     const order = await insertOrder(eventId, 2);
     await insertPayment(order.id, 'refunded');
+    for (const item of order.items) {
+      await insertTicket(eventId, item.seatId, item.id, 'cancelled');
+    }
 
     expect(await check(eventId)).toMatchObject({
       ok: true,
@@ -286,15 +307,20 @@ describe('checkOversell', () => {
   });
 
   it('a successful payment for an order that does not exist is not counted', async () => {
+    const own = await createFixtureSchema();
+    const {
+      insertPayment: insertOwnPayment,
+      insertPaidOrder: insertOwnPaidOrder,
+    } = fixture(own);
     const eventId = randomUUID();
-    await insertPaidOrder(eventId, 1);
-    await insertPayment(randomUUID(), 'succeeded');
+    await insertOwnPaidOrder(eventId, 1);
+    await insertOwnPayment(randomUUID(), 'succeeded');
 
-    expect(await check(eventId)).toMatchObject({
-      ok: true,
-      successfulPayments: 1,
-      paidSeats: 1,
-    });
+    for (const scope of [eventId, null]) {
+      expect(
+        await checkOversell({ databaseUrl, eventId: scope, schema: own }),
+      ).toMatchObject({ ok: true, successfulPayments: 1, paidSeats: 1 });
+    }
   });
 
   it('without an event it reconciles every event', async () => {
