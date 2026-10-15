@@ -1,4 +1,9 @@
-import { classifyOutcome, reasonOf, BUSY } from '../../scenarios/outcome.mjs';
+import {
+  classifyOutcome,
+  reasonOf,
+  BUSY,
+  untilDecided,
+} from '../../scenarios/outcome.mjs';
 
 describe('reasonOf', () => {
   it('extracts reason from errors[0].extensions.originalError.reason', () => {
@@ -180,5 +185,154 @@ describe('BUSY constant', () => {
   it('exports BUSY as a string', () => {
     expect(typeof BUSY).toBe('string');
     expect(BUSY).toBe('BUSY');
+  });
+});
+
+describe('untilDecided', () => {
+  it('AC1: ok on first try returns 1 attempt, 0 waits, busyCount 0', () => {
+    let attemptCount = 0;
+    let waitCount = 0;
+    const attempt = () => {
+      attemptCount++;
+      return { status: 200, body: { data: { id: '123' } } };
+    };
+    const wait = () => {
+      waitCount++;
+    };
+
+    const result = untilDecided(attempt, { tries: 10, wait });
+
+    expect(attemptCount).toBe(1);
+    expect(waitCount).toBe(0);
+    expect(result.busyCount).toBe(0);
+    expect(result.outcome).toEqual({ kind: 'ok', reason: null });
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('AC1,AC2: BUSY, BUSY, SEATS_UNAVAILABLE returns 3 attempts, 2 waits, busyCount 2, outcome expected, exhausted false', () => {
+    const responses = [
+      {
+        status: 200,
+        body: { errors: [{ extensions: { originalError: { reason: BUSY } } }] },
+      },
+      {
+        status: 200,
+        body: { errors: [{ extensions: { originalError: { reason: BUSY } } }] },
+      },
+      {
+        status: 200,
+        body: {
+          errors: [
+            { extensions: { originalError: { reason: 'SEATS_UNAVAILABLE' } } },
+          ],
+        },
+      },
+    ];
+    let attemptCount = 0;
+    let waitCount = 0;
+    const attempt = () => responses[attemptCount++];
+    const wait = () => {
+      waitCount++;
+    };
+
+    const result = untilDecided(attempt, {
+      tries: 10,
+      wait,
+      expectedReasons: ['SEATS_UNAVAILABLE'],
+    });
+
+    expect(attemptCount).toBe(3);
+    expect(waitCount).toBe(2);
+    expect(result.busyCount).toBe(2);
+    expect(result.outcome).toEqual({
+      kind: 'expected',
+      reason: 'SEATS_UNAVAILABLE',
+    });
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('AC3: BUSY every time with tries 10 returns exactly 10 attempts, 9 waits, busyCount 10, exhausted true', () => {
+    let attemptCount = 0;
+    let waitCount = 0;
+    const attempt = () => {
+      attemptCount++;
+      return {
+        status: 200,
+        body: { errors: [{ extensions: { originalError: { reason: BUSY } } }] },
+      };
+    };
+    const wait = () => {
+      waitCount++;
+    };
+
+    const result = untilDecided(attempt, { tries: 10, wait });
+
+    expect(attemptCount).toBe(10);
+    expect(waitCount).toBe(9);
+    expect(result.busyCount).toBe(10);
+    expect(result.outcome).toEqual({ kind: 'busy', reason: BUSY });
+    expect(result.exhausted).toBe(true);
+  });
+
+  it('unexpected result stops at once without retrying', () => {
+    let attemptCount = 0;
+    let waitCount = 0;
+    const attempt = () => {
+      attemptCount++;
+      return {
+        status: 200,
+        body: {
+          errors: [
+            { extensions: { originalError: { reason: 'UNKNOWN_ERROR' } } },
+          ],
+        },
+      };
+    };
+    const wait = () => {
+      waitCount++;
+    };
+
+    const result = untilDecided(attempt, {
+      tries: 10,
+      wait,
+      expectedReasons: ['SEATS_UNAVAILABLE'],
+    });
+
+    expect(attemptCount).toBe(1);
+    expect(waitCount).toBe(0);
+    expect(result.busyCount).toBe(0);
+    expect(result.outcome).toEqual({
+      kind: 'unexpected',
+      reason: 'UNKNOWN_ERROR',
+    });
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('uses default tries of 10 when not specified', () => {
+    let attemptCount = 0;
+    const attempt = () => {
+      attemptCount++;
+      return {
+        status: 200,
+        body: { errors: [{ extensions: { originalError: { reason: BUSY } } }] },
+      };
+    };
+    const wait = () => {};
+
+    untilDecided(attempt, { wait });
+
+    expect(attemptCount).toBe(10);
+  });
+
+  it('uses default no-op wait when not specified', () => {
+    let attemptCount = 0;
+    const attempt = () => {
+      attemptCount++;
+      return { status: 200, body: { data: { id: '123' } } };
+    };
+
+    const result = untilDecided(attempt, { tries: 1 });
+
+    expect(result.outcome).toEqual({ kind: 'ok', reason: null });
   });
 });
