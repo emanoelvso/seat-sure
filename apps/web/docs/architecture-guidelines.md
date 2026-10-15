@@ -394,6 +394,8 @@ export const buttonVariants = cva(
 
 - **Authentication** ([ADR-016](../../../docs/adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)): the API expects `Authorization: Bearer <JWT>` (ADR-001) and never sets cookies. The Next.js server keeps the access and refresh tokens in `httpOnly`, `SameSite=Lax`, `Secure` (production) cookies, written only by Server Actions and Route Handlers (`features/auth/api/session-cookies.ts`). Tokens never reach client code or `localStorage`.
 - **Refreshing**: `/api/auth/session` (`features/auth/api/get-session.ts`) refreshes an expired access token and clears the cookies of a dead session. Server Components can't write cookies, so they never refresh.
+- **Protected page loaders** use `protectedPageFetch(currentPath, callback)` (`features/auth/api/protected-page-fetch.ts`). Missing access tokens redirect through `/api/auth/refresh` when a refresh cookie exists, otherwise to login. `UNAUTHENTICATED` from the callback also redirects through the refresh route; other errors propagate. Checkout loads order, user and cards in parallel with the token and `revalidate: 0`; only non-authentication saved-card failures fall back to `cards: []`.
+- **Checkout saved-card recovery**: `payOrderAction` returns `{ reason: "CARD_NOT_FOUND" }` without refreshing. `CheckoutView` returns to Payment with the picker alert and calls `router.refresh()` once for that result, so new server props update the available cards. Other payment failures do not refresh.
 - **Redirect targets** after signing in go through `safeRedirect` (paths starting with exactly one `/`), never straight from the query string.
 - **Authorization**: checks in the UI are for UX only; the API enforces access.
 - **User content** (testimonials, bios): render as text. Never use `dangerouslySetInnerHTML` with unsanitized content.
@@ -426,6 +428,7 @@ Bulletproof favors integration and end-to-end tests over many unit tests, and te
 - Unit tests live in a `__tests__` folder inside the folder they cover (e.g. `src/utils/__tests__/share.test.ts`), and import the code with `@/`.
 - Fixtures, mocks, and test helpers live in `src/testing/` (e.g. `src/testing/seat-map.fixture.ts`), never next to components or utilities.
 - Every story renders inside nuqs's `NuqsTestingAdapter` (`.storybook/preview.tsx`). `parameters.nuqs.searchParams` seeds the URL and `parameters.nuqs.onUrlUpdate` receives each update, so a story can assert the params a control writes.
+- Stories that use the App Router set `parameters.nextjs.appDirectory: true`. Assert router calls through `getRouter()` from `@storybook/nextjs-vite/navigation.mock`. Checkout stories also supply updated cards props to verify recovery after a missing saved card.
 - The testing roadmap is on the [project board](https://github.com/users/emanoelvso/projects/3) (issues #38 and #39).
 
 ---
