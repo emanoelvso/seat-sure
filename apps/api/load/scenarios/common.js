@@ -1,4 +1,5 @@
 import http from 'k6/http';
+import { reasonOf, BUSY, classifyOutcome, untilDecided } from './outcome.mjs';
 
 // Loaded by every scenario. The fixture is written by load/run.mjs: the API
 // URL as the container sees it, the seeded event and one session per buyer.
@@ -29,6 +30,5 @@ export const gql = (query, variables, token, tags) => {
   return { response, body };
 };
 
-// The business reason of a failed call (ADR-018: extensions.originalError).
-export const reasonOf = (body) =>
-  body?.errors?.[0]?.extensions?.originalError?.reason ?? null;
+// Re-export the outcome classifier and helpers from outcome.mjs
+export { reasonOf, BUSY, classifyOutcome, untilDecided };
