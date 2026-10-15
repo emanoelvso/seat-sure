@@ -1,4 +1,6 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useState, type ComponentProps } from "react";
+import { getRouter } from "@storybook/nextjs-vite/navigation.mock";
 import { expect, fn, within } from "storybook/test";
 import { vi } from "vitest";
 import type { CheckoutPaymentCard } from "@/features/checkout/api/find-checkout-payment-cards";
@@ -45,6 +47,8 @@ const meta: Meta<typeof CheckoutView> = {
   title: "Features/Checkout/CheckoutView",
   tags: ["autodocs"],
   component: CheckoutView,
+  parameters: { nextjs: { appDirectory: true } },
+  beforeEach: () => { getRouter().refresh.mockReset(); },
   args: {
     order,
     user: {
@@ -206,6 +210,7 @@ export const AttemptsLimitedResult: Story = {
     await expect(canvas.getByRole("button", { name: "Pay" })).toBeEnabled();
     await expect(canvas.getByRole("timer")).toBeVisible();
     await expect(canvas.queryByRole("dialog")).toBeNull();
+    await expect(getRouter().refresh).not.toHaveBeenCalled();
   },
 };
 
@@ -229,6 +234,7 @@ export const InvalidCardResult: Story = {
       "aria-invalid",
       "true",
     );
+    await expect(getRouter().refresh).not.toHaveBeenCalled();
   },
 };
 
@@ -248,6 +254,7 @@ export const SeatsUnavailableResult: Story = {
     await expect(
       canvas.getByRole("link", { name: "Choose seats" }),
     ).toHaveAttribute("href", "/events/event-12/tickets/type-34?quantity=2");
+    await expect(getRouter().refresh).not.toHaveBeenCalled();
   },
 };
 
@@ -266,6 +273,7 @@ export const OrderExpiredResult: Story = {
     await expect(
       canvas.getByRole("link", { name: "Choose seats" }),
     ).toHaveAttribute("href", "/events/event-12/tickets/type-34?quantity=2");
+    await expect(getRouter().refresh).not.toHaveBeenCalled();
   },
 };
 
@@ -585,6 +593,14 @@ export const SavedCardNotFound: Story = {
     await expect(
       canvas.getByRole("heading", { name: "Select payment method" }),
     ).toBeVisible();
+    await expect(getRouter().refresh).toHaveBeenCalledTimes(1);
+    // The next missing-card result refreshes once again, without effect-driven repeats.
+    await userEvent.click(canvas.getByRole("button", { name: "Confirm" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "This card is no longer available. Choose another payment method.",
+    );
+    await expect(getRouter().refresh).toHaveBeenCalledTimes(2);
   },
 };
 
@@ -605,5 +621,86 @@ export const SavedCardDeclined: Story = {
       "Your card was declined. Check the details or use another card.",
     );
     await expect(currentStep(canvas)).toBe("Review");
+    await expect(getRouter().refresh).not.toHaveBeenCalled();
+  },
+};
+
+export const GenericFailureDoesNotRefresh: Story = {
+  args: { payAction: fn<PayAction>(async () => ({ reason: "GENERIC" })) },
+  play: async ({ canvas, userEvent }) => {
+    await goToReview(canvas, userEvent);
+    await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+    await expect(await canvas.findByRole("alert")).toBeVisible();
+    await expect(currentStep(canvas)).toBe("Review");
+    await expect(getRouter().refresh).not.toHaveBeenCalled();
+  },
+};
+
+// Models new Server Component props arriving after router.refresh(), preserving
+// the mounted client view and its recovery state.
+function RefreshedCardsHarness({ empty = false, ...args }: ComponentProps<typeof CheckoutView> & { empty?: boolean }) {
+  const [cards, setCards] = useState(args.cards);
+  return <>
+    <CheckoutView {...args} cards={cards} />
+    <button type="button" onClick={() => setCards(empty ? [] : [SAVED_CARDS[1]])}>
+      Apply refreshed cards
+    </button>
+  </>;
+}
+
+export const RecoverWithRefreshedCards: Story = {
+  args: {
+    cards: SAVED_CARDS,
+    payAction: fn<PayAction>(async () => ({ reason: "CARD_NOT_FOUND" })),
+  },
+  render: (args) => <RefreshedCardsHarness {...args} />,
+  parameters: strictA11y,
+  play: async ({ args, canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+    await userEvent.click(canvas.getByRole("button", { name: "Confirm" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "This card is no longer available. Choose another payment method.",
+    );
+    await expect(getRouter().refresh).toHaveBeenCalledTimes(1);
+    await expect(vi.mocked(args.payAction).mock.calls[0][1]).toStrictEqual({
+      orderId: "order-81", savedCardId: "card-4242",
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Apply refreshed cards" }));
+    await expect(canvas.queryByRole("radio", { name: "Visa •••• 4242" })).toBeNull();
+    await expect(canvas.getAllByRole("radio")).toHaveLength(2);
+    await expect(canvas.getByRole("button", { name: "Confirm" })).toBeDisabled();
+    await userEvent.click(canvas.getByRole("radio", { name: "Mastercard •••• 4444" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Confirm" }));
+    await expect(canvas.queryByRole("alert")).toBeNull();
+    vi.mocked(args.payAction).mockResolvedValueOnce({ reason: "CARD_DECLINED" });
+    await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Your card was declined. Check the details or use another card.",
+    );
+    await expect(args.payAction).toHaveBeenCalledTimes(2);
+    await expect(vi.mocked(args.payAction).mock.calls[1][1]).toStrictEqual({
+      orderId: "order-81", savedCardId: "card-4444",
+    });
+    await expect(getRouter().refresh).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const RecoverWithNoRemainingCards: Story = {
+  args: RecoverWithRefreshedCards.args,
+  render: (args) => <RefreshedCardsHarness {...args} empty />,
+  parameters: strictA11y,
+  play: async ({ canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+    await userEvent.click(canvas.getByRole("button", { name: "Confirm" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "This card is no longer available. Choose another payment method.",
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Apply refreshed cards" }));
+    await expect(currentStep(canvas)).toBe("Payment");
+    await expect(canvas.getByRole("heading", { name: "Payment details" })).toBeVisible();
+    await expect(canvas.queryByRole("radio")).toBeNull();
+    await expect(getRouter().refresh).toHaveBeenCalledTimes(1);
   },
 };
