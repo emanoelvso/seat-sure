@@ -57,7 +57,7 @@ export default function () {
 
   busy.add(busyCount);
 
-  // Count server errors from any attempt (not just the final outcome)
+  // A 5xx is never retried, so the final response carries it
   if (result.status >= 500) {
     serverErrors.add(1);
   }
