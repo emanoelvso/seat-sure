@@ -149,6 +149,32 @@ describe('classifyOutcome', () => {
     expect(result).toEqual({ kind: 'unexpected', reason: null });
   });
 
+  it('AC4: status 500 with a BUSY reason returns unexpected', () => {
+    const body = {
+      errors: [{ extensions: { originalError: { reason: BUSY } } }],
+    };
+    expect(classifyOutcome({ status: 500, body })).toEqual({
+      kind: 'unexpected',
+      reason: BUSY,
+    });
+  });
+
+  it('AC4: status 500 with an expected reason returns unexpected', () => {
+    const body = {
+      errors: [
+        { extensions: { originalError: { reason: 'SEATS_UNAVAILABLE' } } },
+      ],
+    };
+    expect(
+      classifyOutcome({ status: 500, body }, ['SEATS_UNAVAILABLE']),
+    ).toEqual({ kind: 'unexpected', reason: 'SEATS_UNAVAILABLE' });
+  });
+
+  it('AC1: status 400 with data and no errors is not ok', () => {
+    const body = { data: { id: '123' } };
+    expect(classifyOutcome({ status: 400, body }).kind).toBe('unexpected');
+  });
+
   it('returns unexpected by default when no expectedReasons passed', () => {
     const body = {
       errors: [
@@ -207,6 +233,10 @@ describe('untilDecided', () => {
     expect(result.busyCount).toBe(0);
     expect(result.outcome).toEqual({ kind: 'ok', reason: null });
     expect(result.exhausted).toBe(false);
+    expect(result.result).toEqual({
+      status: 200,
+      body: { data: { id: '123' } },
+    });
   });
 
   it('AC1,AC2: BUSY, BUSY, SEATS_UNAVAILABLE returns 3 attempts, 2 waits, busyCount 2, outcome expected, exhausted false', () => {
@@ -249,6 +279,7 @@ describe('untilDecided', () => {
       reason: 'SEATS_UNAVAILABLE',
     });
     expect(result.exhausted).toBe(false);
+    expect(result.result).toBe(responses[2]);
   });
 
   it('AC3: BUSY every time with tries 10 returns exactly 10 attempts, 9 waits, busyCount 10, exhausted true', () => {
@@ -272,6 +303,8 @@ describe('untilDecided', () => {
     expect(result.busyCount).toBe(10);
     expect(result.outcome).toEqual({ kind: 'busy', reason: BUSY });
     expect(result.exhausted).toBe(true);
+    expect(result.result.status).toBe(200);
+    expect(reasonOf(result.result.body)).toBe(BUSY);
   });
 
   it('unexpected result stops at once without retrying', () => {
