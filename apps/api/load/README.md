@@ -68,7 +68,13 @@ Every run writes `results/<scenario>-<timestamp>/` (gitignored):
 | `oversell.json`   | Duplicate tickets and holds, and the reconciliation of tickets with payments (see below)                        |
 | `fixture.json`    | The seeded event and buyer sessions (do not share)                                                              |
 
-Expected business errors (`SEATS_UNAVAILABLE`, `ORDER_EXPIRED`) are counted apart. 5xx, timeouts and connection errors count as unexpected, and the spike fails above 1%.
+Expected business errors are counted apart:
+
+- `SEATS_UNAVAILABLE`: a seat claimed by another buyer. Counted once per hold attempt.
+- `ORDER_EXPIRED`: a hold became unavailable before payment. Counted once per payment attempt.
+- `BUSY`: admission limiter rate-shed (expected, retryable). The spike counts and discards it (`busy_responses{op}`). The contention scenario retries up to 10 times with random 100-300ms backoff (`contention_busy` counter).
+
+5xx, timeouts and connection errors count as unexpected, and the spike fails above 1%.
 
 Run the oversell check again by hand with `node load/verify/oversell.mjs <eventId>`.
 
