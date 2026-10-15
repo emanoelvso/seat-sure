@@ -170,6 +170,34 @@ describe('classifyOutcome', () => {
     ).toEqual({ kind: 'unexpected', reason: 'SEATS_UNAVAILABLE' });
   });
 
+  it('AC2: status 422 with BUSY returns busy', () => {
+    const body = {
+      errors: [{ extensions: { originalError: { reason: BUSY } } }],
+    };
+    expect(classifyOutcome({ status: 422, body })).toEqual({
+      kind: 'busy',
+      reason: BUSY,
+    });
+  });
+
+  it('AC3: status 422 with an expected reason returns expected', () => {
+    const body = {
+      errors: [
+        { extensions: { originalError: { reason: 'SEATS_UNAVAILABLE' } } },
+      ],
+    };
+    expect(
+      classifyOutcome({ status: 422, body }, ['SEATS_UNAVAILABLE']),
+    ).toEqual({ kind: 'expected', reason: 'SEATS_UNAVAILABLE' });
+  });
+
+  it('AC1: status 200 with null data is not ok', () => {
+    expect(classifyOutcome({ status: 200, body: { data: null } })).toEqual({
+      kind: 'unexpected',
+      reason: null,
+    });
+  });
+
   it('AC1: status 200 with no data and no errors is not ok', () => {
     expect(classifyOutcome({ status: 200, body: {} })).toEqual({
       kind: 'unexpected',
