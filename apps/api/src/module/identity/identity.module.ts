@@ -1,3 +1,5 @@
+import { DemoAuthenticationService } from '@identityModule/core/service/demo-authentication.service';
+import { DemoEmailGuard } from '@identityModule/http/guard/demo-email.guard';
 import { ConfigService } from '@sharedModules/config/service/config.service';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DisabledCodeSender } from '@identityModule/integration/provider/disabled-code-sender.provider';
@@ -40,6 +42,8 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     },
     { provide: SecurityAlertSender, useClass: LogSecurityAlertSender },
     { provide: IdentityApi, useClass: IdentityPublicApiProvider },
+    DemoAuthenticationService,
+    DemoEmailGuard,
     VerificationCodeService,
     RegistrationService,
     SessionService,
