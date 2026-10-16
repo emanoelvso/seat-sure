@@ -21,7 +21,7 @@ export function forbiddenPaths(diff) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [base, head = 'HEAD'] = process.argv.slice(2);
   if (!base) { process.stderr.write('Usage: node scripts/release/check-paths.mjs <base> [head]\n'); process.exit(2); }
-  const diff = execFileSync('git', ['diff', '--name-status', '-z', '--find-renames', base, head], { encoding: 'utf8' });
+  const diff = execFileSync('git', ['diff', '--name-status', '-z', '--find-renames', `${base}...${head}`], { encoding: 'utf8' });
   const rejected = forbiddenPaths(diff);
   for (const path of rejected) process.stderr.write(`${JSON.stringify(path)}\n`);
   process.exitCode = rejected.length ? 1 : 0;
