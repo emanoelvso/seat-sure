@@ -6,7 +6,7 @@ Seat Sure is an event ticketing app where buyers pick exact seats on a venue map
 
 ![Seat picker: choose two adjacent VIP seats and review the price](docs/images/seat-picker.png)
 
-> **Live demo: pending.** No public deployment has been verified yet, so there is no demo link here. The demo is planned as a free-tier hosted instance with disposable per-visitor accounts and simulator-only payments; see [Demo mode](#demo-mode).
+> **Live demo: [seat-sure-gamma.vercel.app](https://seat-sure-gamma.vercel.app).** A free-tier hosted instance with disposable per-visitor accounts and simulator-only payments; see [Demo mode](#demo-mode). The API sleeps when idle, so the first request after a pause can take up to a minute.
 
 ## Highlights
 
@@ -128,7 +128,7 @@ Flash-sale behavior was measured with k6 on one machine (Apple M1 Pro, Docker Po
 
 ## Demo mode
 
-Setting `DEMO_MODE=true` (API) turns the app into a safe public sandbox: each visitor gets an independent synthetic account and a 24-hour session, normal email sign-up and password reset are rejected, only simulator cards are accepted, and mutation rates are bounded per client. The web app mirrors the flag with its own `DEMO_MODE=true` and shows a "Sign in as demo" entry plus payment instructions. Data is disposable: a guarded reset command clears visitor data and refreshes event dates. The sample events use real artist and team names purely as placeholder data; they are not affiliated with Seat Sure and no tickets are real. Details, limits and the simulator card numbers are in [`apps/api/docs/demo-runtime.md`](apps/api/docs/demo-runtime.md). The free-tier deployment is prepared but not launched; the runbook and launch checklist are in [`docs/deployment.md`](docs/deployment.md).
+Setting `DEMO_MODE=true` (API) turns the app into a safe public sandbox: each visitor gets an independent synthetic account and a 24-hour session, normal email sign-up and password reset are rejected, only simulator cards are accepted, and mutation rates are bounded per client. The web app mirrors the flag with its own `DEMO_MODE=true` and shows a "Sign in as demo" entry plus payment instructions. Data is disposable: a guarded reset command clears visitor data and refreshes event dates. The sample events use real artist and team names purely as placeholder data; they are not affiliated with Seat Sure and no tickets are real. Details, limits and the simulator card numbers are in [`apps/api/docs/demo-runtime.md`](apps/api/docs/demo-runtime.md). The free-tier deployment runs on Vercel, Render and Neon; the runbook is in [`docs/deployment.md`](docs/deployment.md).
 
 ## Repository map
 

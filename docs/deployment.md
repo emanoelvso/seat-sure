@@ -1,6 +1,6 @@
 # Deploying the free portfolio demo
 
-Status: **prepared, not deployed.** Nothing here has been provisioned or verified on a hosted service, no URL exists, and the daily reset is switched off. Complete the [launch checklist](#launch-checklist) before making the repository or the demo public.
+Status: **deployed** at <https://seat-sure-gamma.vercel.app> (web) with the API on Render and the database on Neon. Complete the [launch checklist](#launch-checklist) before making the repository public.
 
 The demo runs on free tiers:
 
@@ -19,7 +19,7 @@ Names only. Never commit values.
 
 | Variable | Set on | Value |
 | --- | --- | --- |
-| `DATABASE_URL` | Render | Neon connection string for the `seat-sure-demo` database with `?sslmode=verify-full` |
+| `DATABASE_URL` | Render | Neon connection string for the `seat-sure-demo` database with `?sslmode=require` (or `verify-full`) |
 | `DEMO_DATABASE_NAME` | Render (preset in `render.yaml`) | `seat-sure-demo`, exactly the database in `DATABASE_URL` |
 | `CORS_ORIGIN` | Render | The exact Vercel origin, `https://...`, no trailing slash |
 | `CLIENT_ADDRESS_SECRET` | Render and Vercel | The same random value (32+ characters, for example `openssl rand -hex 32`) on both. Without it the demo rate limit is shared by all visitors |
