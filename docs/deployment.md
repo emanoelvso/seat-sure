@@ -77,7 +77,7 @@ Database traffic uses verified TLS (`sslmode=verify-full`). Do not set `NODE_TLS
 
 The release stays **blocked** until every box is checked. Items are verified by the maintainer, not assumed.
 
-- [ ] **Asset permission.** Written permission to redistribute the Evenjo design and bundled photos, or they are replaced with permitted material. See [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). Includes the README screenshot.
+- [x] **Asset licenses.** The Evenjo design is CC BY 4.0 and the photos come from Freepik with attribution; credits are in the README and [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). Before launch, confirm each Freepik image's author credit is complete.
 - [ ] **Sample data.** Decide what the hosted catalog shows. The catalog migrations load events with real artist names and the demo seed adds one original event; the daily reset removes the migration events and keeps only the original one. Make the first-day and post-reset catalogs match, and make sure none of it needs the unresolved assets.
 - [ ] **Secret-scan findings.** Every finding from the full-history scan is classified. The historical test JWT secret in a committed test configuration file is still unresolved. No broad allowlist is added just to turn the scan green.
 - [ ] **History and identity.** Decide whether to keep the existing commit history and author email, or use a GitHub noreply address for future commits.
