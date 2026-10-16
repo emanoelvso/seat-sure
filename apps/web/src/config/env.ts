@@ -2,6 +2,10 @@
 // as a literal so Next.js can inline it in client bundles. Getters defer the
 // read, so importing this module never throws when a variable is unset.
 export const env = {
+  // Read only by server actions/pages; pass the boolean explicitly to client UI.
+  get demoMode(): boolean {
+    return process.env.DEMO_MODE === "true";
+  },
   get apiUrl(): string {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) throw new Error("Missing NEXT_PUBLIC_API_URL");
