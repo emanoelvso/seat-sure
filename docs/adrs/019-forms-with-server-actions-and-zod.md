@@ -9,7 +9,6 @@
   - [ADR-008: Bulletproof React Feature-Based Frontend Architecture](./008-bulletproof-react-feature-based-frontend-architecture.md)
   - [ADR-016: Sessions as JWT Access Tokens and Rotating Refresh Tokens in httpOnly Cookies](./016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)
   - [ADR-018: Business Errors as Unprocessable Entity with a Reason Code](./018-business-errors-as-unprocessable-entity-with-a-reason-code.md)
-  - Decision AD-019 in `.specs/STATE.md`; feature `.specs/features/auth-login-signup/`
 
 ## Context
 

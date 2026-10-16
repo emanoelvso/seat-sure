@@ -7,7 +7,6 @@
 - **Links**:
   - [ADR-014: Not-Found as Null Results in GraphQL Lookup Queries](./014-not-found-as-null-results-in-graphql-queries.md)
   - [ADR-005: NestJS as Backend Framework](./005-nestjs-as-backend-framework.md)
-  - Decision AD-018 in `.specs/STATE.md`; feature `.specs/features/auth-login-signup/`
 
 ## Context
 

@@ -61,7 +61,6 @@ Most contexts exist only on paper, so analyze the plan as well as the code:
 | `docs/architecture/bounded-contexts.md`    | Planned contexts, their tables, and the feature → context mapping  |
 | `docs/architecture/entities.mmd`           | Planned entity relationships                                       |
 | `docs/adrs/`                               | Decisions that moved concepts between contexts (e.g. ADR-011)      |
-| `.specs/features/*/spec.md`                | Business vocabulary as used in feature specs                       |
 | `git log`                                  | Change cohesion (which files change together)                      |
 
 ---

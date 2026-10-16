@@ -8,7 +8,6 @@
   - [ADR-002: PostgreSQL and Redis as Database Stack](./002-postgresql-and-redis-as-database-stack.md) (superseded in part: its `SELECT ... FOR UPDATE` seat reservation)
   - [ADR-006: Modular Monolith with State Isolation per Bounded Context](./006-modular-monolith-with-state-isolation-per-bounded-context.md)
   - [ADR-011: Catalog Owns Ticket Types and Seat Maps](./011-catalog-owns-ticket-types-and-seat-maps.md)
-  - Decision AD-011 in `.specs/STATE.md`
 
 ## Context
 
