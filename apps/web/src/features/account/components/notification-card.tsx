@@ -58,7 +58,7 @@ export function NotificationCard({
         <span className="text-lg leading-[1.2] font-bold text-white">
           {title}
           {titleHighlight && (
-            <span className="text-primary">{titleHighlight}</span>
+            <span className="text-tint-500">{titleHighlight}</span>
           )}
         </span>
         <span
