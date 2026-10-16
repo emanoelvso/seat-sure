@@ -63,7 +63,7 @@ Then, in a private browser window: open the web origin, choose **Sign in as demo
 
 ### HTTPS, CORS and proxy
 
-Render and Vercel terminate HTTPS. `CORS_ORIGIN` must be the exact web origin; a mismatch shows up as failed GraphQL requests in the browser. Leave `TRUST_PROXY` empty unless you have confirmed Render's proxy addresses from its documentation: with it empty, the API ignores forwarding headers and rate limits every visitor as the proxy's address, so the per-client demo budget is shared. With the wrong addresses, clients can spoof their identity. Decide this before launch.
+Render and Vercel terminate HTTPS. `CORS_ORIGIN` must be the exact web origin; a mismatch shows up as failed GraphQL requests in the browser. Leave `TRUST_PROXY` empty unless you have confirmed Render's proxy addresses from its documentation: with it empty, the API ignores forwarding headers and rate limits every visitor as the proxy's address, so the per-client demo budget is shared. Even with it set, demo sign-in and checkout mutations are sent by the Next.js server actions, and the web server does not forward the visitor's address, so on Vercel and Render all visitors share one budget per web-server egress address. Treat the demo rate limit as a global brake, not a per-visitor limit, until the web app forwards a trusted client address. With the wrong addresses, clients can spoof their identity. Decide this before launch.
 
 Database traffic uses verified TLS (`sslmode=verify-full`). Do not set `NODE_TLS_REJECT_UNAUTHORIZED=0` anywhere.
 
