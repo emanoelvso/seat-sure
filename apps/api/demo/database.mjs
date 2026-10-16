@@ -21,6 +21,6 @@ export async function transaction(env, work) {
 }
 export function runCli(meta, work) {
   if (process.argv[1] && meta === pathToFileURL(process.argv[1]).href) {
-    work().catch(() => { console.error('Demo operation failed. Check mode, target confirmation and database availability.'); process.exitCode = 1; });
+    work().catch(() => { console.error('Demo operation failed. Check mode, target confirmation and database availability.'); process.exitCode ||= 1; });
   }
 }

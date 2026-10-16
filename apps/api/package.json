@@ -43,16 +43,19 @@
     "notifications:db:generate": "tsx ./node_modules/typeorm/cli.js migration:generate src/module/notifications/persistence/migration/migration -d src/module/notifications/persistence/typeorm-datasource.ts",
     "notifications:db:migrate": "tsx ./node_modules/typeorm/cli.js migration:run -d src/module/notifications/persistence/typeorm-datasource.ts",
     "notifications:db:drop": "tsx ./node_modules/typeorm/cli.js schema:drop -d src/module/notifications/persistence/typeorm-datasource.ts",
-    "db:generate:all": "yarn catalog:db:generate; yarn ticketing:db:generate; yarn user-profile:db:generate; yarn identity:db:generate; yarn billing:db:generate; yarn notifications:db:generate",
-    "db:migrate:all": "yarn catalog:db:migrate && yarn ticketing:db:migrate && yarn user-profile:db:migrate && yarn identity:db:migrate && yarn billing:db:migrate && yarn notifications:db:migrate",
-    "db:drop:all": "yarn catalog:db:drop && yarn ticketing:db:drop && yarn user-profile:db:drop && yarn identity:db:drop && yarn billing:db:drop && yarn notifications:db:drop",
+    "db:generate:all": "pnpm catalog:db:generate && pnpm ticketing:db:generate && pnpm user-profile:db:generate && pnpm identity:db:generate && pnpm billing:db:generate && pnpm notifications:db:generate",
+    "db:migrate:all": "pnpm catalog:db:migrate && pnpm ticketing:db:migrate && pnpm user-profile:db:migrate && pnpm identity:db:migrate && pnpm billing:db:migrate && pnpm notifications:db:migrate",
+    "db:drop:all": "pnpm catalog:db:drop && pnpm ticketing:db:drop && pnpm user-profile:db:drop && pnpm identity:db:drop && pnpm billing:db:drop && pnpm notifications:db:drop",
     "docker:build": "docker-compose --profile all build",
     "docker:start": "docker-compose --profile all up -d",
     "docker:start:deps": "docker-compose --profile deps up -d",
     "docker:down:deps": "docker-compose --profile deps down",
     "docker:down": "docker-compose --profile all down",
     "demo:seed": "node demo/seed.mjs",
-    "demo:reset": "node demo/reset.mjs"
+    "demo:reset": "node demo/reset.mjs",
+    "demo:migrate": "node demo/migrate.mjs",
+    "demo:start": "node demo/start.mjs",
+    "test:demo": "node --test --test-concurrency=1 demo/*.test.mjs"
   },
   "dependencies": {
     "@apollo/server": "^5.5.1",
