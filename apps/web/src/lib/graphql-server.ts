@@ -1,5 +1,6 @@
 import "server-only";
 import type { TypedDocumentNode } from "@apollo/client";
+import { headers } from "next/headers";
 import { print } from "graphql";
 import { env } from "@/config/env";
 
@@ -48,6 +49,30 @@ export class GraphQLRequestError extends Error {
   }
 }
 
+// The API rate limits demo mutations per visitor. Every server-side call arrives
+// from this server, so the visitor's address travels in a header the API trusts
+// only together with the shared secret. Cached calls never carry it, so the page
+// cache is not split per visitor.
+async function clientAddressHeaders(): Promise<Record<string, string>> {
+  const secret = env.clientAddressSecret;
+  if (!secret) return {};
+  try {
+    const incoming = await headers();
+    const address =
+      incoming.get("x-real-ip") ??
+      incoming.get("x-forwarded-for")?.split(",")[0]?.trim();
+    return address
+      ? {
+          "X-Seat-Sure-Client-Ip": address,
+          "X-Seat-Sure-Client-Secret": secret,
+        }
+      : {};
+  } catch {
+    // No request scope, for example while prerendering.
+    return {};
+  }
+}
+
 export async function graphqlServerFetch<TData, TVariables>(
   document: TypedDocumentNode<TData, TVariables>,
   variables: TVariables,
@@ -58,6 +83,7 @@ export async function graphqlServerFetch<TData, TVariables>(
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(revalidate === 0 ? await clientAddressHeaders() : {}),
     },
     body: JSON.stringify({ query: print(document), variables }),
     next: { revalidate, tags },

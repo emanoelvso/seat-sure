@@ -6,6 +6,10 @@ export const env = {
   get demoMode(): boolean {
     return process.env.DEMO_MODE === "true";
   },
+  // Server only. Authenticates the visitor address forwarded to the API for rate limiting.
+  get clientAddressSecret(): string | undefined {
+    return process.env.CLIENT_ADDRESS_SECRET || undefined;
+  },
   get apiUrl(): string {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) throw new Error("Missing NEXT_PUBLIC_API_URL");
