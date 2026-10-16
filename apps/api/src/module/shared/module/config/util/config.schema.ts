@@ -82,13 +82,19 @@ export const timeZoneSchema = z
 
 export const appSchema = z.object({
   timeZone: timeZoneSchema,
+  trustProxy: z.array(z.string().min(1)).default([]),
 });
 
 export const admissionSchema = z.object({
   maxConcurrent: z.coerce.number().int().positive().default(100),
 });
 
-export const demoSchema = z.object({ enabled: z.boolean().default(false) });
+export const demoSchema = z.object({
+  enabled: z.boolean().default(false),
+  maxRequests: z.coerce.number().int().positive().max(10000).default(60),
+  windowMs: z.coerce.number().int().positive().max(86400000).default(60000),
+  maxBuckets: z.coerce.number().int().positive().max(100000).default(10000),
+});
 
 const isProductionSecret = (value: string) =>
   value.length >= 32 &&

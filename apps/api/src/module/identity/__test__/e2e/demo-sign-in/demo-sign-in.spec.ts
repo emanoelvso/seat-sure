@@ -89,7 +89,7 @@ describe('Isolated visitor demo (REL-14/15/16/18/19/23)', () => {
     initializeTransactionalContext();
     config = new ConfigService({
       ...factory(),
-      demo: { enabled: true },
+      demo: { ...factory().demo, enabled: true },
       auth: { ...factory().auth, codeSender: 'disabled' },
     });
     module = await Test.createTestingModule({ imports: [AppModule] })
@@ -102,7 +102,7 @@ describe('Isolated visitor demo (REL-14/15/16/18/19/23)', () => {
   });
   beforeEach(async () => {
     jest.restoreAllMocks();
-    config.set('demo', { enabled: true });
+    config.set('demo', { ...config.get('demo'), enabled: true });
     await clean();
   });
   afterAll(async () => {
@@ -175,7 +175,7 @@ describe('Isolated visitor demo (REL-14/15/16/18/19/23)', () => {
   });
 
   it('returns DEMO_DISABLED without writes when demo is off', async () => {
-    config.set('demo', { enabled: false });
+    config.set('demo', { ...config.get('demo'), enabled: false });
     const response = await gql(DEMO);
     expect(reason(response.body)).toBe('DEMO_DISABLED');
     for (const table of [
