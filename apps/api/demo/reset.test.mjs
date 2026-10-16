@@ -29,6 +29,14 @@ test('test and non-demo targets are refused by CLI without exposing URL', () => 
     assert.equal(result.status, 1); assert.match(result.stderr, /Demo operation failed/); assert.doesNotMatch(result.stderr, /sensitive|private/);
   }
 });
+test('prohibited and unconfirmed names are refused by the guard before any connection', async () => {
+  for (const name of ['seat-demo-test', 'demo-prod', 'seat-demo-production']) {
+    await assert.rejects(
+      reset({ ...db.env, DEMO_DATABASE_NAME: name, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:5432/${name}` }),
+      /dedicated demo database confirmation/,
+    );
+  }
+});
 test('successful reset clears visitor state and restores catalog inventory', async () => {
   await db.client.query('UPDATE "CatalogTicketType" SET "seatsAvailable"=0');
   const visitor = 'd4000000-0000-4000-8000-000000000001';

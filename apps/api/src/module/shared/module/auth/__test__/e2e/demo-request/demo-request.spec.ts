@@ -132,6 +132,7 @@ describe('Demo mutation request budget (REL-20)', () => {
   });
 
   it('ignores spoofed forwarding headers without explicit proxy trust', async () => {
+    config.set('demo', { ...config.get('demo'), maxBuckets: 10 });
     await gql(DEMO, '192.0.2.1');
     await gql(DEMO, '192.0.2.2');
     expect(status((await gql(DEMO, '192.0.2.3')).body)).toBe(429);

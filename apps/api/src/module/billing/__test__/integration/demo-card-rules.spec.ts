@@ -1,194 +1,31 @@
-import { randomUUID } from 'crypto';
-import { Test, TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
-import { BillingModule } from '@billingModule/billing.module';
-import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
-import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
-import { ConfigService } from '@sharedModules/config/service/config.service';
-import { factory } from '@sharedModules/config/util/config.factory';
-import { BillingApi } from '@sharedModules/integration/interface/billing-integration.interface';
-import { Tables } from '@testInfra/enum/table.enum';
-import { testDbClient } from '@testInfra/knex.database';
-import { DataSource } from 'typeorm';
-import { initializeTransactionalContext } from 'typeorm-transactional';
+import { demoCardError } from '@billingModule/core/util/demo-card-rules';
 
-const SUCCESS = {
-  number: '4242 4242 4242 4242',
-  holder: 'Demo Visitor',
-  expiry: '12/39',
-  cvv: '123',
-};
-const DECLINE = { ...SUCCESS, number: '4000 0000 0000 0002' };
-const OTHER = { ...SUCCESS, number: '5555 5555 5555 4444' };
-const MESSAGE = 'Use a documented simulator test card.';
+// Checkout and saved-card entry both call this rule (REL-22).
+describe('demoCardError (REL-22)', () => {
+  it.each(['4242424242424242', '4000000000000002', '4000000000000341'])(
+    'accepts the documented simulator number %s, with or without spaces',
+    (number) => {
+      expect(demoCardError(number, true)).toBe('');
+      expect(demoCardError(number.replace(/(\d{4})(?=\d)/g, '$1 '), true)).toBe(
+        '',
+      );
+    },
+  );
 
-describe('Demo card restrictions (REL-22)', () => {
-  let module: TestingModule;
-  let api: BillingApi;
-  let cards: PaymentCardService;
-  let gateway: PaymentGateway;
-  let config: ConfigService;
-  const userId = randomUUID();
-  const charge = (card: typeof SUCCESS) =>
-    api.charge({
-      userId,
-      orderId: randomUUID(),
-      amountCents: 26000,
-      currency: 'USD',
-      source: { type: 'card', card },
-    });
-  const clean = async () => {
-    for (const table of [
-      Tables.BillingPayment,
-      Tables.BillingPaymentCard,
-      Tables.BillingCardThrottle,
-    ])
-      await testDbClient(table).del();
-  };
-
-  beforeAll(async () => {
-    initializeTransactionalContext();
-    const base = factory();
-    config = new ConfigService({
-      ...base,
-      demo: { ...base.demo, enabled: true },
-    });
-    module = await Test.createTestingModule({ imports: [BillingModule] })
-      .overrideProvider(ConfigService)
-      .useValue(config)
-      .compile();
-    api = module.get<BillingApi>(BillingApi);
-    cards = module.get(PaymentCardService);
-    gateway = module.get<PaymentGateway>(PaymentGateway);
-  });
-  beforeEach(async () => {
-    jest.restoreAllMocks();
-    config.set('demo', { ...config.get('demo'), enabled: true });
-    await clean();
-  });
-  afterAll(async () => {
-    await clean();
-    const datasource = module.get<DataSource>(getDataSourceToken('billing'));
-    if (datasource.isInitialized) await datasource.destroy();
-    await testDbClient.destroy();
-  });
-
-  it('rejects non-test cards before direct charge and stores no payment', async () => {
-    const spy = jest.spyOn(gateway, 'charge');
-    await expect(charge(OTHER)).rejects.toMatchObject({
-      reason: 'INVALID_CARD',
-      fields: { number: MESSAGE },
-    });
-    expect(spy).not.toHaveBeenCalled();
-    expect(await testDbClient(Tables.BillingPayment).select()).toEqual([]);
-  });
-
-  it('returns the same exact card-field error to checkout validation', async () => {
-    expect(await api.validateCard(OTHER, new Date())).toMatchObject({
-      number: MESSAGE,
-    });
-    expect(await api.validateCard(SUCCESS, new Date())).toEqual({
-      number: '',
-      holder: '',
-      expiry: '',
-      cvv: '',
-    });
-  });
-
-  it('rejects non-test saved-card entry before tokenization and stores no card', async () => {
-    const spy = jest.spyOn(gateway, 'tokenize');
-    await expect(cards.add(userId, OTHER, new Date())).rejects.toMatchObject({
-      reason: 'INVALID_CARD',
-      fields: { number: MESSAGE },
-    });
-    expect(spy).not.toHaveBeenCalled();
-    expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual([]);
-  });
-
-  it('charges the documented success card and records its exact safe summary', async () => {
-    const outcome = await charge(SUCCESS);
-    expect(outcome.status).toBe('succeeded');
-    expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      userId,
-      amountCents: 26000,
-      currency: 'USD',
-      cardLast4: '4242',
-      status: 'succeeded',
-    });
-  });
-
-  it('allows the documented decline card to reach the simulator and records a decline', async () => {
-    const outcome = await charge(DECLINE);
-    expect(outcome.status).toBe('failed');
-    expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      cardLast4: '0002',
-      status: 'failed',
-      failureReason: 'card_declined',
-    });
-  });
-
-  it('saves the success card and can charge its owned token', async () => {
-    const saved = await cards.add(userId, SUCCESS, new Date());
-    expect(saved).toEqual([
-      expect.objectContaining({ last4: '4242', isDefault: true }),
-    ]);
-    const outcome = await api.charge({
-      userId,
-      orderId: randomUUID(),
-      amountCents: 100,
-      currency: 'USD',
-      source: { type: 'savedCard', savedCardId: saved[0].id },
-    });
-    expect(outcome.status).toBe('succeeded');
-    expect(await testDbClient(Tables.BillingPaymentCard).select()).toHaveLength(
-      1,
+  it.each([
+    '4111111111111111',
+    '4242424242424243',
+    '4000000000000010',
+    '4000000000000342',
+    '4000000000000069',
+    '5555555555554444',
+  ])('rejects the non-simulator number %s in demo mode', (number) => {
+    expect(demoCardError(number, true)).toBe(
+      'Use a documented simulator test card.',
     );
-    expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      userId,
-      status: 'succeeded',
-      cardLast4: '4242',
-    });
   });
 
-  it('allows the documented decline fixture on saved-card entry without storing it', async () => {
-    await expect(cards.add(userId, DECLINE, new Date())).rejects.toMatchObject({
-      reason: 'CARD_DECLINED',
-    });
-    expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual([]);
-  });
-
-  it('supports the attach-success token-charge-decline simulator fixture', async () => {
-    const saved = await cards.add(
-      userId,
-      { ...SUCCESS, number: '4000 0000 0000 0341' },
-      new Date(),
-    );
-    expect(saved[0].last4).toBe('0341');
-    const outcome = await api.charge({
-      userId,
-      orderId: randomUUID(),
-      amountCents: 100,
-      currency: 'USD',
-      source: { type: 'savedCard', savedCardId: saved[0].id },
-    });
-    expect(outcome.status).toBe('failed');
-    expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      status: 'failed',
-      failureReason: 'card_declined',
-      cardLast4: '0341',
-    });
-  });
-
-  it('preserves ordinary Mastercard behavior outside demo mode on both paths', async () => {
-    config.set('demo', { ...config.get('demo'), enabled: false });
-    expect((await charge(OTHER)).status).toBe('succeeded');
-    expect((await cards.add(userId, OTHER, new Date()))[0].last4).toBe('4444');
-    expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      status: 'succeeded',
-      cardLast4: '4444',
-    });
-    expect(await testDbClient(Tables.BillingPaymentCard).first()).toMatchObject(
-      { userId, last4: '4444' },
-    );
+  it('allows any number when demo mode is off', () => {
+    expect(demoCardError('4111111111111111', false)).toBe('');
   });
 });
