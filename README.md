@@ -98,7 +98,7 @@ Open <http://localhost:3000>. The migrations load sample events, so the home pag
 
 | Layer | Command | What it covers |
 | --- | --- | --- |
-| API e2e / integration | `pnpm --filter api test:db:reset && pnpm --filter api test:e2e` | GraphQL requests against the `seat-sure-test` PostgreSQL database. The reset command reads connection settings from `apps/api/.env` and forces the database name; the suite loads the committed `apps/api/.env.test` |
+| API e2e / integration | `pnpm --filter api test:db:reset && pnpm --filter api test:e2e` | GraphQL requests against the `seat-sure-test` PostgreSQL database. The reset command always targets `postgres:postgres@localhost:5432/seat-sure-test` (the local Docker database), whatever `.env` contains; the suite loads the committed `apps/api/.env.test` |
 | API load harness | `pnpm --filter api test:load` | The k6 scenario outcome rules |
 | Demo tooling | `pnpm --filter api test:demo` | Seed, reset, migrate and start scripts |
 | Web unit | `pnpm --filter web test --project unit` | Server actions, validation, utilities |

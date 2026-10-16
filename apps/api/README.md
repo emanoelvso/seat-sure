@@ -15,7 +15,7 @@ pnpm --filter @seat-sure/shared build
 
 ## Configuration
 
-Configuration is read from environment variables and validated at startup with a Zod schema (`src/module/shared/module/config/util/config.schema.ts`); the process exits with a value-free error if anything is missing. `.env.default` is a template with empty values. Copy it to `.env` and fill it in. The tests load the committed `.env.test` themselves; the migration and database-reset commands read `.env`.
+Configuration is read from environment variables and validated at startup with a Zod schema (`src/module/shared/module/config/util/config.schema.ts`); the process exits with a value-free error if anything is missing. `.env.default` is a template with empty values. Copy it to `.env` and fill it in. The tests load the committed `.env.test` themselves; the migration commands read `.env`, and `test:db:reset` ignores it for the connection.
 
 | Variable | Purpose |
 | --- | --- |
@@ -64,7 +64,7 @@ The catalog migrations load sample events, so a freshly migrated database alread
 ## Tests
 
 ```bash
-pnpm test:db:reset   # drop and migrate the seat-sure-test database (connection settings from .env)
+pnpm test:db:reset   # drop and migrate postgres:postgres@localhost:5432/seat-sure-test, whatever .env says
 pnpm test:e2e        # GraphQL requests against real PostgreSQL, one process
 pnpm test:load       # unit tests of the k6 scenario outcome rules
 pnpm test:demo       # seed, reset, migrate and start scripts, on throwaway databases
