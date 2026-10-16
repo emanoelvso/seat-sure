@@ -15,7 +15,7 @@ pnpm --filter @seat-sure/shared build
 
 ## Configuration
 
-Configuration is read from environment variables and validated at startup with a Zod schema (`src/module/shared/module/config/util/config.schema.ts`); the process exits with a value-free error if anything is missing. `.env.default` is a template with empty values. Copy it to `.env` and fill it in. `.env.test` holds the disposable values used by the test suite.
+Configuration is read from environment variables and validated at startup with a Zod schema (`src/module/shared/module/config/util/config.schema.ts`); the process exits with a value-free error if anything is missing. `.env.default` is a template with empty values. Copy it to `.env` and fill it in. The tests load the committed `.env.test` themselves; the migration and database-reset commands read `.env`.
 
 | Variable | Purpose |
 | --- | --- |
@@ -40,7 +40,6 @@ In production the two secrets must be at least 32 characters and must not be a s
 ```bash
 pnpm docker:start:deps                      # PostgreSQL 15 on localhost:5432
 docker exec seat-sure-db psql -U postgres -c 'CREATE DATABASE "seat-sure"'
-set -a; . ./.env; set +a                    # export the variables to this shell
 pnpm db:migrate:all                         # all six contexts
 pnpm dev                                    # watch mode
 ```
@@ -65,7 +64,7 @@ The catalog migrations load sample events, so a freshly migrated database alread
 ## Tests
 
 ```bash
-pnpm test:db:reset   # drop and migrate the seat-sure-test database (uses .env.test)
+pnpm test:db:reset   # drop and migrate the seat-sure-test database (connection settings from .env)
 pnpm test:e2e        # GraphQL requests against real PostgreSQL, one process
 pnpm test:load       # unit tests of the k6 scenario outcome rules
 pnpm test:demo       # seed, reset, migrate and start scripts, on throwaway databases

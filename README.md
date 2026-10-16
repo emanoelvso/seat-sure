@@ -63,7 +63,7 @@ pnpm --filter @seat-sure/shared build
 pnpm --filter api docker:start:deps
 ```
 
-Configure the API. `apps/api/.env.default` is a template with empty values; copy it to `apps/api/.env` and fill it in. These variables are required, and `JWT_SECRET` and `BILLING_FINGERPRINT_SECRET` need at least 32 characters (for example `openssl rand -hex 32`):
+Configure the API. `apps/api/.env.default` is a template with empty values; copy it to `apps/api/.env` and fill it in (the API and its database commands load that file themselves). These variables are required, and `JWT_SECRET` and `BILLING_FINGERPRINT_SECRET` need at least 32 characters (for example `openssl rand -hex 32`):
 
 ```text
 NODE_ENV=development
@@ -81,7 +81,6 @@ Create the database, migrate it and start the API:
 ```bash
 docker exec seat-sure-db psql -U postgres -c 'CREATE DATABASE "seat-sure"'
 cd apps/api
-set -a; . ./.env; set +a
 pnpm db:migrate:all
 pnpm dev
 ```
@@ -99,7 +98,7 @@ Open <http://localhost:3000>. The migrations load sample events, so the home pag
 
 | Layer | Command | What it covers |
 | --- | --- | --- |
-| API e2e / integration | `pnpm --filter api test:db:reset && pnpm --filter api test:e2e` | GraphQL requests against the `seat-sure-test` PostgreSQL database; needs `NODE_ENV=test` configuration from `apps/api/.env.test` |
+| API e2e / integration | `pnpm --filter api test:db:reset && pnpm --filter api test:e2e` | GraphQL requests against the `seat-sure-test` PostgreSQL database. The reset command reads connection settings from `apps/api/.env` and forces the database name; the suite loads the committed `apps/api/.env.test` |
 | API load harness | `pnpm --filter api test:load` | The k6 scenario outcome rules |
 | Demo tooling | `pnpm --filter api test:demo` | Seed, reset, migrate and start scripts |
 | Web unit | `pnpm --filter web test --project unit` | Server actions, validation, utilities |
