@@ -59,7 +59,7 @@ Then, in a private browser window: open the web origin, choose **Sign in as demo
 - **No disk.** Render Free has no persistent disk. Every state lives in Neon.
 - **Quotas.** Free tiers cap build minutes, bandwidth, database storage and compute hours. A traffic spike or a long-lived deployment can exhaust them; the demo then stops until the quota resets.
 - **Single process.** Demo rate limits and the admission limit are per process. Capacity beyond one instance is out of scope here; see [#122](https://github.com/emanoelvso/seat-sure/issues/122).
-- **Resets remove data.** The daily reset deletes visitor accounts, sessions, orders, cards and notifications, and reseeds the sample catalog with future dates. A visitor in the middle of a purchase loses it. The UI says demo data is reset periodically.
+- **Resets remove data.** The daily reset deletes visitor accounts, sessions, orders, cards and notifications, keeps the sample catalog, rebuilds the original sample event and moves past event dates forward by whole years. A visitor in the middle of a purchase loses it. The UI says demo data is reset periodically.
 
 ### HTTPS, CORS and proxy
 
@@ -78,7 +78,7 @@ Database traffic uses verified TLS (`sslmode=verify-full`). Do not set `NODE_TLS
 The release stays **blocked** until every box is checked. Items are verified by the maintainer, not assumed.
 
 - [x] **Asset licenses.** The Evenjo design is CC BY 4.0 and the photos come from Freepik with attribution; credits are in the README and [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). Before launch, confirm each Freepik image's author credit is complete.
-- [ ] **Sample data.** Decide what the hosted catalog shows. The catalog migrations load events with real artist names and the demo seed adds one original event; the daily reset removes the migration events and keeps only the original one. Make the first-day and post-reset catalogs match, and make sure none of it needs the unresolved assets.
+- [x] **Sample data.** The hosted catalog is the events the migrations load plus the original sample event. Both `demo:start` (through the seed) and the daily reset move events that are past, or less than a week away, forward by whole years, so the catalog looks the same on day one and after every reset. The migration events use real artist names as sample data; the README says so.
 - [ ] **Secret-scan findings.** Every finding from the full-history scan is classified. The historical test JWT secret in a committed test configuration file is still unresolved. No broad allowlist is added just to turn the scan green.
 - [ ] **History and identity.** Decide whether to keep the existing commit history and author email, or use a GitHub noreply address for future commits.
 - [ ] **Repository and GitHub settings.** Issue, pull-request, comment and project-board cleanup reviewed and applied (see the previews from the release script, once generated); description, topics and website set; visibility changed only after this checklist.

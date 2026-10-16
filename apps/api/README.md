@@ -84,8 +84,8 @@ The demo scripts work on a dedicated database whose name contains the word `demo
 export DEMO_MODE=true DEMO_DATABASE_NAME=seat-sure-demo
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/seat-sure-demo
 pnpm demo:migrate   # compiled migrations for all contexts (needs pnpm build first)
-pnpm demo:seed      # an original, repeatable sample event
-pnpm demo:reset     # delete visitor and purchase data and reseed
+pnpm demo:seed      # an original, repeatable sample event; also moves stale event dates forward
+pnpm demo:reset     # delete visitor and purchase data, rebuild the sample event, refresh event dates
 pnpm demo:start     # migrate, seed, then start the compiled server; stops at the first failure
 ```
 
