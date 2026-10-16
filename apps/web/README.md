@@ -20,6 +20,7 @@ pnpm --filter @seat-sure/shared build
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Server and browser | Origin of the API, without a trailing slash, for example `http://localhost:3001`. Required; the app throws when it is unset. GraphQL requests go to `<origin>/graphql` |
 | `NEXT_PUBLIC_TIME_ZONE` | Server and browser | IANA time zone used to format event dates; default `UTC` |
+| `CLIENT_ADDRESS_SECRET` | Server only | Optional, 32+ characters, same value as the API's. When set, uncached server-side API calls forward the visitor address for per-visitor demo rate limits |
 | `DEMO_MODE` | Server only | `true` replaces the email and password login with a "Sign in as demo" button and shows the simulated-payment instructions. Set it only when the API also runs with `DEMO_MODE=true` |
 
 `NEXT_PUBLIC_*` values are inlined into the browser bundle at build time, so changing them for a production build means rebuilding. Everything is read in one place, `src/config/env.ts`. The API must list the web origin in its `CORS_ORIGIN`.

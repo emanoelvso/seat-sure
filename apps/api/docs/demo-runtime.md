@@ -6,6 +6,8 @@ Demo mutations share one request budget per client, counting each aliased top-le
 
 `TRUST_PROXY` defaults to an empty list: forwarding headers do not identify the client. Configure only the deployment's known proxy IP addresses or CIDR ranges as a comma-separated Express proxy allowlist. Express resolves the nearest untrusted hop; the guard uses that resolved client IP. Do not trust arbitrary client headers or enable every proxy. Verify the actual provider routing before launch.
 
+`CLIENT_ADDRESS_SECRET` (at least 32 characters) lets a trusted web server forward the visitor's address in the `X-Seat-Sure-Client-Ip` header together with `X-Seat-Sure-Client-Secret`. The guard uses that address only when the secret matches in constant time and the value is a valid IP address; otherwise it uses the connection address as before. Set the same secret on the web app, which sends the headers on uncached server-side calls only.
+
 These limits are per process for the single-instance free demo. Distributed capacity belongs to issue #122.
 
 ## Simulator cards

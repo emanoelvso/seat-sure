@@ -22,6 +22,7 @@ Names only. Never commit values.
 | `DATABASE_URL` | Render | Neon connection string for the `seat-sure-demo` database with `?sslmode=verify-full` |
 | `DEMO_DATABASE_NAME` | Render (preset in `render.yaml`) | `seat-sure-demo`, exactly the database in `DATABASE_URL` |
 | `CORS_ORIGIN` | Render | The exact Vercel origin, `https://...`, no trailing slash |
+| `CLIENT_ADDRESS_SECRET` | Render and Vercel | The same random value (32+ characters, for example `openssl rand -hex 32`) on both. Without it the demo rate limit is shared by all visitors |
 | `TRUST_PROXY` | Render | Render's proxy addresses, or empty. See [HTTPS and proxy](#https-cors-and-proxy) |
 | `JWT_SECRET`, `BILLING_FINGERPRINT_SECRET` | Render (generated) | Render generates them on first sync; keep them out of the repository |
 | `NODE_ENV`, `DEMO_MODE`, `AUTH_CODE_SENDER`, `REDIS_HOST`, `REDIS_PORT` | Render (preset) | `production`, `true`, `disabled`, and two unused placeholders |
@@ -63,7 +64,7 @@ Then, in a private browser window: open the web origin, choose **Sign in as demo
 
 ### HTTPS, CORS and proxy
 
-Render and Vercel terminate HTTPS. `CORS_ORIGIN` must be the exact web origin; a mismatch shows up as failed GraphQL requests in the browser. Leave `TRUST_PROXY` empty unless you have confirmed Render's proxy addresses from its documentation: with it empty, the API ignores forwarding headers and rate limits every visitor as the proxy's address, so the per-client demo budget is shared. Even with it set, demo sign-in and checkout mutations are sent by the Next.js server actions, and the web server does not forward the visitor's address, so on Vercel and Render all visitors share one budget per web-server egress address. Treat the demo rate limit as a global brake, not a per-visitor limit, until the web app forwards a trusted client address. With the wrong addresses, clients can spoof their identity. Decide this before launch.
+Render and Vercel terminate HTTPS. `CORS_ORIGIN` must be the exact web origin; a mismatch shows up as failed GraphQL requests in the browser. Leave `TRUST_PROXY` empty unless you have confirmed Render's proxy addresses from its documentation: with it empty, the API ignores forwarding headers and rate limits every visitor as the proxy's address, so the per-client demo budget is shared. Demo sign-in and checkout mutations are sent by the Next.js server actions, so the API's socket address is the web server's. The web server therefore forwards the visitor's address (from `x-real-ip` / `x-forwarded-for`, which Vercel sets) in a header, together with `CLIENT_ADDRESS_SECRET`; the API uses that address only when the secret matches, so per-visitor budgets work without trusting any proxy address on that hop. If `CLIENT_ADDRESS_SECRET` is missing on either side, all visitors share one budget. With the wrong addresses, clients can spoof their identity. Decide this before launch.
 
 Database traffic uses verified TLS (`sslmode=verify-full`). Do not set `NODE_TLS_REJECT_UNAUTHORIZED=0` anywhere.
 

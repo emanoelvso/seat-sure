@@ -30,6 +30,7 @@ Configuration is read from environment variables and validated at startup with a
 | `CORS_ORIGIN` | Allowed web origin; defaults to `http://localhost:3000` |
 | `APP_TIME_ZONE` | IANA time zone, default `UTC` |
 | `ADMISSION_MAX_CONCURRENT` | Concurrent `startCheckout` and `payOrder` calls before the excess gets a retryable `BUSY` error; default 100 (see [ADR-022](../../docs/adrs/022-flash-sale-concurrency-hardening.md)) |
+| `CLIENT_ADDRESS_SECRET` | Optional, at least 32 characters. Shared with the web app so the demo rate limit can use the visitor address it forwards |
 | `TRUST_PROXY` | Comma-separated proxy IPs or CIDR ranges allowed to set forwarding headers; empty by default |
 | `DEMO_MODE`, `DEMO_MAX_REQUESTS`, `DEMO_WINDOW_MS`, `DEMO_MAX_BUCKETS` | Demo mode and its rate limit, see [Demo mode](#demo-mode) |
 

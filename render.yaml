@@ -40,3 +40,7 @@ services:
       # Render's proxy addresses; confirm them at launch. Empty ignores forwarding headers.
       - key: TRUST_PROXY
         sync: false
+      # At least 32 characters, identical to the web app's value (openssl rand -hex 32).
+      # Lets the API rate limit by the visitor address the web server forwards.
+      - key: CLIENT_ADDRESS_SECRET
+        sync: false
