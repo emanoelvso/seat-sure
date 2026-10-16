@@ -1,3 +1,4 @@
+import { env } from "@/config/env";
 import { redirect } from "next/navigation";
 import { paths } from "@/config/paths";
 import { hasSession } from "@/features/auth/api/session-cookies";
@@ -10,6 +11,8 @@ export default async function ForgotPasswordPage() {
   if (await hasSession()) {
     redirect(paths.home.getHref());
   }
+
+  if (env.demoMode) redirect(paths.login.getHref());
 
   return (
     <AuthShell
