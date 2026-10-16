@@ -1,3 +1,4 @@
+import { HealthModule } from '@sharedModules/health/health.module';
 import { BillingModule } from '@billingModule/billing.module';
 import { CatalogModule } from '@catalogModule/catalog.module';
 import { IdentityModule } from '@identityModule/identity.module';
@@ -9,6 +10,7 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
 
 @Module({
   imports: [
+    HealthModule,
     GraphqlModule,
     CatalogModule,
     TicketingModule,
