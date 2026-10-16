@@ -12,7 +12,8 @@ export const factory = (): Config => {
       database: process.env.DATABASE_NAME,
       password: process.env.DATABASE_PASSWORD,
       port: process.env.DATABASE_PORT,
-      url: process.env.DATABASE_URL,
+      url: process.env.DATABASE_URL || undefined,
+      ssl: process.env.DATABASE_SSL === 'true',
       username: process.env.DATABASE_USERNAME,
     },
     redis: {

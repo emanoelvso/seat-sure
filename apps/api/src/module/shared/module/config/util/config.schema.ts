@@ -2,14 +2,52 @@ import { z } from 'zod';
 
 export const environmentSchema = z.enum(['test', 'development', 'production']);
 
-export const databaseSchema = z.object({
-  host: z.string(),
-  database: z.string(),
-  password: z.string(),
-  port: z.coerce.number(),
-  url: z.string().startsWith('postgresql://'),
-  username: z.string(),
-});
+export const databaseSchema = z
+  .object({
+    host: z.string().optional(),
+    database: z.string().optional(),
+    password: z.string().optional(),
+    port: z.coerce.number().int().min(1).max(65535).default(5432),
+    url: z
+      .string()
+      .url()
+      .refine((value) => /^postgres(ql)?:\/\//.test(value), {
+        message: 'A PostgreSQL URL is required',
+      })
+      .optional(),
+    username: z.string().optional(),
+    ssl: z.boolean().default(false),
+  })
+  .superRefine((database, context) => {
+    if (!database.url) {
+      for (const key of ['host', 'database', 'username', 'password'] as const) {
+        if (database[key] === undefined)
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'Required without a database URL',
+          });
+      }
+    } else {
+      let mode: string | null;
+      try {
+        mode = new URL(database.url).searchParams.get('sslmode');
+      } catch {
+        return; // The URL validator already reports a value-free error.
+      }
+      if (
+        mode &&
+        !['disable', 'prefer', 'require', 'verify-ca', 'verify-full'].includes(
+          mode,
+        )
+      )
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['url'],
+          message: 'Unsupported PostgreSQL TLS mode',
+        });
+    }
+  });
 
 export const redisSchema = z.object({
   host: z.string(),
