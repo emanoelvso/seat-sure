@@ -7,8 +7,8 @@ The demo runs on free tiers:
 | Part | Service | Config |
 | --- | --- | --- |
 | Web | Vercel Hobby | project settings below |
-| API | Render Free web service (Docker) | [`render.yaml`](../render.yaml) |
-| Database | Neon Free PostgreSQL | one dedicated database named `seat-sure-demo` |
+| API | Render Free web service (Docker), Virginia | [`render.yaml`](../render.yaml); the region is set there and cannot be changed after the service is created |
+| Database | Neon Free PostgreSQL, Washington, D.C. (same US East location as the API) | one dedicated database named `seat-sure-demo` |
 | Daily reset | GitHub Actions | [`demo-reset.yml`](../.github/workflows/demo-reset.yml) |
 
 Free-tier limits change. Re-read each provider's current plan page before launch: [Render free services](https://render.com/docs/free), [Vercel Hobby](https://vercel.com/docs/plans/hobby), [Neon plans](https://neon.com/docs/introduction/plans).
