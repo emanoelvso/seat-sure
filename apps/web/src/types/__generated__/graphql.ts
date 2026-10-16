@@ -306,6 +306,11 @@ export type ConfirmPasswordResetCodeMutationVariables = Exact<{
 
 export type ConfirmPasswordResetCodeMutation = { confirmPasswordResetCode: { __typename: 'PasswordResetGrant', resetToken: string, expiresAt: string } };
 
+export type DemoSignInMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type DemoSignInMutation = { demoSignIn: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } };
+
 export type LogInMutationVariables = Exact<{
   input: LogInInput;
 }>;

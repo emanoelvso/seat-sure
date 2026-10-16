@@ -358,6 +358,7 @@ export type Mutation = {
   addPaymentCard: Array<PaymentCard>;
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
+  demoSignIn: SessionTokens;
   logIn: LogInResult;
   markAllNotificationsRead: NotificationCounts;
   markNotificationRead: Notification;

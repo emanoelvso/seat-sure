@@ -335,6 +335,7 @@ type Mutation {
   addPaymentCard(input: AddPaymentCardInput!): [PaymentCard!]!
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
+  demoSignIn: SessionTokens!
   logIn(input: LogInInput!): LogInResult!
   markAllNotificationsRead: NotificationCounts!
   markNotificationRead(input: NotificationIdInput!): Notification!
