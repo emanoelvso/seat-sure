@@ -7,3 +7,15 @@ Demo mutations share one request budget per client, counting each aliased top-le
 `TRUST_PROXY` defaults to an empty list: forwarding headers do not identify the client. Configure only the deployment's known proxy IP addresses or CIDR ranges as a comma-separated Express proxy allowlist. Express resolves the nearest untrusted hop; the guard uses that resolved client IP. Do not trust arbitrary client headers or enable every proxy. Verify the actual provider routing before launch.
 
 These limits are per process for the single-instance free demo. Distributed capacity belongs to issue #122.
+
+## Simulator cards
+
+Demo mode accepts only the following simulator numbers, with spaces optional. Use a future expiry such as `12/39`, any three-digit CVV such as `123`, and a synthetic cardholder name. Never enter real card details.
+
+| Number | Result |
+| --- | --- |
+| `4242424242424242` | Successful charge and saved-card entry |
+| `4000000000000002` | Declined charge and saved-card entry |
+| `4000000000000341` | Saves successfully; charging its saved token declines |
+
+The API rejects other numbers with `INVALID_CARD` before tokenization or charging. Outside demo mode the existing simulator behavior is preserved. Card numbers and CVVs are never persisted.
