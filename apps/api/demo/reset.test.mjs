@@ -87,6 +87,16 @@ test('reset leaves events that are already in the future untouched', async () =>
   const { rows: [row] } = await db.client.query('SELECT date FROM "CatalogEvent" WHERE id = $1', [OTHER]);
   assert.equal(row.date.toISOString(), '2099-01-01T10:00:00.000Z');
 });
+test('a failing date refresh rolls back the whole reset', async () => {
+  await insertMigrationStyleEvent(db.client, OTHER, '2026-03-06T20:00:00Z');
+  await db.client.query(`CREATE FUNCTION reject_refresh() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$; CREATE TRIGGER reject_refresh BEFORE UPDATE ON "CatalogEvent" FOR EACH ROW EXECUTE FUNCTION reject_refresh()`);
+  try {
+    await assert.rejects(reset(db.env));
+    assert.deepEqual(await users(), [{ email: 'visitor@demo.invalid' }]);
+    const { rows: [row] } = await db.client.query('SELECT date FROM "CatalogEvent" WHERE id = $1', [OTHER]);
+    assert.equal(row.date.toISOString(), '2026-03-06T20:00:00.000Z');
+  } finally { await db.client.query('DROP TRIGGER reject_refresh ON "CatalogEvent"; DROP FUNCTION reject_refresh()'); }
+});
 test('seed failure rolls back all reset deletions and dates', async () => {
   const prior = (await db.client.query('SELECT id,"startAt" FROM "CatalogEvent"')).rows;
   await db.client.query(`CREATE FUNCTION reject_reset() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$; CREATE TRIGGER reject_reset BEFORE INSERT ON "CatalogEvent" FOR EACH ROW EXECUTE FUNCTION reject_reset()`);

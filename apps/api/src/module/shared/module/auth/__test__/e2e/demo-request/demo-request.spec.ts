@@ -195,6 +195,23 @@ describe('Demo mutation request budget (REL-20)', () => {
       },
     );
 
+    it('prefers the authenticated client address over a differing X-Forwarded-For', async () => {
+      for (const spoofed of ['203.0.113.1', '203.0.113.2']) {
+        const call = request(app.getHttpServer())
+          .post('/graphql')
+          .set('X-Seat-Sure-Client-Ip', '198.51.100.9')
+          .set('X-Seat-Sure-Client-Secret', SECRET)
+          .set('X-Forwarded-For', spoofed);
+        expect((await call.send({ query: DEMO })).body.errors).toBeUndefined();
+      }
+      const third = request(app.getHttpServer())
+        .post('/graphql')
+        .set('X-Seat-Sure-Client-Ip', '198.51.100.9')
+        .set('X-Seat-Sure-Client-Secret', SECRET)
+        .set('X-Forwarded-For', '203.0.113.3');
+      expect(status((await third.send({ query: DEMO })).body)).toBe(429);
+    });
+
     it('ignores the forwarded address when no secret is configured', async () => {
       config.set('app', {
         ...config.get('app'),

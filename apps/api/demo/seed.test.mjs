@@ -1,7 +1,7 @@
 import { after, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixture.mjs';
-import { seed, ids } from './seed.mjs';
+import { seed, ids, refreshEventDates } from './seed.mjs';
 let db;
 before(async () => { db = await fixture(); });
 after(async () => { await db?.close(); });
@@ -40,6 +40,27 @@ test('seed also moves stale events from the migrations forward', async () => {
   await seed(db.env);
   const again = await db.client.query('SELECT date FROM "CatalogEvent" WHERE id = $1', ['d5000000-0000-4000-8000-000000000002']);
   assert.equal(+again.rows[0].date, +row.date);
+});
+test('refresh moves each event by the fewest whole years that leave it at least a week ahead', async () => {
+  await seed(db.env);
+  const now = new Date('2026-10-16T12:00:00Z');
+  const at = (ms) => new Date(+now + ms).toISOString();
+  const cases = [
+    ['d5000000-0000-4000-8000-000000000101', '2026-03-06T20:00:00Z', '2027-03-06T20:00:00.000Z'],
+    ['d5000000-0000-4000-8000-000000000102', '2023-11-01T10:00:00Z', '2026-11-01T10:00:00.000Z'],
+    ['d5000000-0000-4000-8000-000000000103', at(3 * 86400000), new Date(Date.UTC(2027, 9, 19, 12)).toISOString()],
+    ['d5000000-0000-4000-8000-000000000104', at(30 * 86400000), at(30 * 86400000)],
+    ['d5000000-0000-4000-8000-000000000105', at(7 * 86400000), at(7 * 86400000)],
+  ];
+  for (const [id, date] of cases) await insertMigrationStyleEvent(db.client, id, date);
+  await refreshEventDates(db.client, now);
+  for (const [id, , expected] of cases) {
+    const { rows: [row] } = await db.client.query('SELECT date, "startAt", "endsAt", "doorsOpen" FROM "CatalogEvent" WHERE id = $1', [id]);
+    assert.equal(row.date.toISOString(), expected, id);
+    assert.equal(row.startAt.toISOString(), expected, id);
+    assert.equal(+row.endsAt - +row.startAt, 150 * 60000, id);
+    assert.equal(+row.startAt - +row.doorsOpen, 60 * 60000, id);
+  }
 });
 test('database failure rolls back every catalog write', async () => {
   await db.client.query(`CREATE FUNCTION reject_demo_seat() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$; CREATE TRIGGER reject_demo_seat BEFORE INSERT ON "CatalogSeat" FOR EACH ROW EXECUTE FUNCTION reject_demo_seat()`);

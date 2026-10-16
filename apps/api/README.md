@@ -65,7 +65,7 @@ The catalog migrations load sample events, so a freshly migrated database alread
 ## Tests
 
 ```bash
-pnpm test:db:reset   # drop and migrate postgres:postgres@localhost:5432/seat-sure-test, whatever .env says
+pnpm test:db:reset   # drop and migrate postgres:postgres@localhost:5432/seat-sure-test, whatever database .env names
 pnpm test:e2e        # GraphQL requests against real PostgreSQL, one process
 pnpm test:load       # unit tests of the k6 scenario outcome rules
 pnpm test:demo       # seed, reset, migrate and start scripts, on throwaway databases
