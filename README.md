@@ -129,7 +129,7 @@ Flash-sale behavior was measured with k6 on one machine (Apple M1 Pro, Docker Po
 
 ## Demo mode
 
-Setting `DEMO_MODE=true` (API) turns the app into a safe public sandbox: each visitor gets an independent synthetic account and a 24-hour session, normal email sign-up and password reset are rejected, only simulator cards are accepted, and mutation rates are bounded per client. The web app mirrors the flag with its own `DEMO_MODE=true` and shows a "Sign in as demo" entry plus payment instructions. Data is disposable: a guarded reset command refreshes it. Details, limits and the simulator card numbers are in [`apps/api/docs/demo-runtime.md`](apps/api/docs/demo-runtime.md).
+Setting `DEMO_MODE=true` (API) turns the app into a safe public sandbox: each visitor gets an independent synthetic account and a 24-hour session, normal email sign-up and password reset are rejected, only simulator cards are accepted, and mutation rates are bounded per client. The web app mirrors the flag with its own `DEMO_MODE=true` and shows a "Sign in as demo" entry plus payment instructions. Data is disposable: a guarded reset command refreshes it. Details, limits and the simulator card numbers are in [`apps/api/docs/demo-runtime.md`](apps/api/docs/demo-runtime.md). The free-tier deployment is prepared but not launched; the runbook and launch checklist are in [`docs/deployment.md`](docs/deployment.md).
 
 ## Repository map
 
@@ -140,6 +140,8 @@ packages/shared/     Types shared by API and web
 docs/adrs/           Architecture decision records
 docs/architecture/   C4 diagrams, bounded contexts, data model
 docs/flash-sale-hardening.md   Load-test evidence
+docs/deployment.md   Free-tier deployment runbook and launch checklist
+render.yaml          Render Blueprint for the demo API (variable names only)
 scripts/release/     Repository checks used by CI
 ```
 

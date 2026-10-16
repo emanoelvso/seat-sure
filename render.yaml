@@ -1,0 +1,42 @@
+# Render Blueprint for the free portfolio demo API. It holds variable names only;
+# values are entered in the Render dashboard. See docs/deployment.md.
+services:
+  - type: web
+    name: seat-sure-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    # Migrate every context, seed the demo catalog, then serve. demo/start.mjs
+    # exits before serving if the database is not the confirmed demo database.
+    dockerCommand: node demo/start.mjs
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "true"
+      - key: AUTH_CODE_SENDER
+        value: disabled
+      # Config-schema placeholders; nothing connects to Redis.
+      - key: REDIS_HOST
+        value: unused
+      - key: REDIS_PORT
+        value: "6379"
+      # Must equal the Neon database name, which must contain the word "demo".
+      - key: DEMO_DATABASE_NAME
+        value: seat-sure-demo
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BILLING_FINGERPRINT_SECRET
+        generateValue: true
+      # Neon connection string, ending in ?sslmode=verify-full.
+      - key: DATABASE_URL
+        sync: false
+      # Origin of the Vercel deployment, for example https://<project>.vercel.app.
+      - key: CORS_ORIGIN
+        sync: false
+      # Render's proxy addresses; confirm them at launch. Empty ignores forwarding headers.
+      - key: TRUST_PROXY
+        sync: false
