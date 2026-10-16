@@ -62,6 +62,16 @@ test('refresh moves each event by the fewest whole years that leave it at least 
     assert.equal(+row.startAt - +row.doorsOpen, 60 * 60000, id);
   }
 });
+test('refresh decides from the event date, not from its start time', async () => {
+  await seed(db.env);
+  const id = 'd5000000-0000-4000-8000-000000000106';
+  await insertMigrationStyleEvent(db.client, id, '2026-10-23T00:00:00Z');
+  await db.client.query(`UPDATE "CatalogEvent" SET "startAt" = '2026-10-23T20:00:00Z' WHERE id = $1`, [id]);
+  await refreshEventDates(db.client, new Date('2026-10-16T12:00:00Z'));
+  const { rows: [row] } = await db.client.query('SELECT date, "startAt" FROM "CatalogEvent" WHERE id = $1', [id]);
+  assert.equal(row.date.toISOString(), '2027-10-23T00:00:00.000Z');
+  assert.equal(row.startAt.toISOString(), '2027-10-23T20:00:00.000Z');
+});
 test('database failure rolls back every catalog write', async () => {
   await db.client.query(`CREATE FUNCTION reject_demo_seat() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$; CREATE TRIGGER reject_demo_seat BEFORE INSERT ON "CatalogSeat" FOR EACH ROW EXECUTE FUNCTION reject_demo_seat()`);
   try { await assert.rejects(seed(db.env)); assert.deepEqual(await snapshot(), []); }
