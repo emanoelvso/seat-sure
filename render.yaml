@@ -5,6 +5,8 @@ services:
     name: seat-sure-api
     runtime: docker
     plan: free
+    # Same US East location as the Neon database (Washington, D.C.) to keep API-to-database latency low.
+    region: virginia
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     # Migrate every context, seed the demo catalog, then serve. demo/start.mjs
