@@ -148,6 +148,65 @@ describe('Demo mutation request budget (REL-20)', () => {
     expect(await testDbClient(Tables.IdentityUser).select()).toHaveLength(3);
   });
 
+  describe('client address forwarded by the web server', () => {
+    const SECRET = 'f'.repeat(16) + '0'.repeat(16);
+    const forwardedAs = (
+      address: string | undefined,
+      secret: string | undefined = SECRET,
+    ) => {
+      const call = request(app.getHttpServer()).post('/graphql');
+      if (address) call.set('X-Seat-Sure-Client-Ip', address);
+      if (secret) call.set('X-Seat-Sure-Client-Secret', secret);
+      return call.send({ query: DEMO });
+    };
+    beforeEach(() => {
+      config.set('app', { ...config.get('app'), clientAddressSecret: SECRET });
+      config.set('demo', { ...config.get('demo'), maxBuckets: 10 });
+    });
+    afterEach(() => {
+      config.set('app', {
+        ...config.get('app'),
+        clientAddressSecret: undefined,
+      });
+    });
+
+    it('gives each forwarded visitor address its own budget', async () => {
+      for (const address of ['198.51.100.1', '198.51.100.1'])
+        expect((await forwardedAs(address)).body.errors).toBeUndefined();
+      expect(status((await forwardedAs('198.51.100.1')).body)).toBe(429);
+      expect((await forwardedAs('198.51.100.2')).body.errors).toBeUndefined();
+      expect((await forwardedAs('2001:db8::1')).body.errors).toBeUndefined();
+      expect(await testDbClient(Tables.IdentityUser).select()).toHaveLength(4);
+    });
+
+    it.each([
+      ['a wrong secret', (i: number) => `198.51.100.${i}`, 'e'.repeat(32)],
+      ['no secret header', (i: number) => `198.51.100.${i}`, ''],
+      ['an invalid address', (i: number) => `not-an-ip-${i}`, SECRET],
+    ])(
+      'ignores the forwarded address with %s and rate limits the connection instead',
+      async (_name, address, secret) => {
+        await forwardedAs(address(1), secret);
+        await forwardedAs(address(2), secret);
+        expect(status((await forwardedAs(address(3), secret)).body)).toBe(429);
+        expect(await testDbClient(Tables.IdentityUser).select()).toHaveLength(
+          2,
+        );
+      },
+    );
+
+    it('ignores the forwarded address when no secret is configured', async () => {
+      config.set('app', {
+        ...config.get('app'),
+        clientAddressSecret: undefined,
+      });
+      await forwardedAs('198.51.100.1');
+      await forwardedAs('198.51.100.2');
+      expect(status((await forwardedAs('198.51.100.3')).body)).toBe(429);
+      expect(await testDbClient(Tables.IdentityUser).select()).toHaveLength(2);
+    });
+  });
+
   it('bounds buckets, refuses new clients at capacity, then reclaims expired buckets', async () => {
     app.getHttpAdapter().getInstance().set('trust proxy', ['loopback']);
     await gql(DEMO, '192.0.2.1');

@@ -7,7 +7,30 @@ import {
 } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { ConfigService } from '@sharedModules/config/service/config.service';
+import { createHash, timingSafeEqual } from 'crypto';
 import { Request } from 'express';
+import { isIP } from 'net';
+
+const sha256 = (value: string) => createHash('sha256').update(value).digest();
+
+// The web app's server actions make every demo mutation, so the socket address is
+// the web server's. It forwards the visitor's address with a shared secret; the
+// address is used only when the secret matches, and only if it is a valid IP.
+const forwardedClientAddress = (
+  req: Request,
+  secret: string | undefined,
+): string | undefined => {
+  const sent = req.headers['x-seat-sure-client-secret'];
+  const address = req.headers['x-seat-sure-client-ip'];
+  if (
+    !secret ||
+    typeof sent !== 'string' ||
+    typeof address !== 'string' ||
+    isIP(address) === 0
+  )
+    return undefined;
+  return timingSafeEqual(sha256(sent), sha256(secret)) ? address : undefined;
+};
 
 interface Bucket {
   count: number;
@@ -34,7 +57,11 @@ export class DemoRequestGuard implements CanActivate {
       return true;
     const { req } = graphql.getContext<{ req: Request }>();
     // Express derives ip from the socket unless main configures an explicit proxy allowlist.
-    const identity = req.ip || req.socket.remoteAddress || 'unknown';
+    const identity =
+      forwardedClientAddress(req, this.config.get('app.clientAddressSecret')) ||
+      req.ip ||
+      req.socket.remoteAddress ||
+      'unknown';
     const now = Date.now();
     for (const [key, bucket] of this.buckets)
       if (bucket.expiresAt <= now) this.buckets.delete(key);

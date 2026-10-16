@@ -83,6 +83,7 @@ export const timeZoneSchema = z
 export const appSchema = z.object({
   timeZone: timeZoneSchema,
   trustProxy: z.array(z.string().min(1)).default([]),
+  clientAddressSecret: z.string().min(32).optional(),
 });
 
 export const admissionSchema = z.object({

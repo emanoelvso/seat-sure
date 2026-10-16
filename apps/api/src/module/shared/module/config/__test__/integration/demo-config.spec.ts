@@ -1,3 +1,4 @@
+import { factory } from '@sharedModules/config/util/config.factory';
 import {
   appSchema,
   demoSchema,
@@ -41,5 +42,30 @@ describe('Demo request configuration (REL-20)', () => {
     expect(
       appSchema.parse({ trustProxy: ['127.0.0.1', '192.0.2.0/24'] }).trustProxy,
     ).toEqual(['127.0.0.1', '192.0.2.0/24']);
+  });
+
+  it('has no client address secret by default and requires at least 32 characters when set', () => {
+    expect(appSchema.parse({}).clientAddressSecret).toBeUndefined();
+    expect(
+      appSchema.safeParse({ clientAddressSecret: 'a'.repeat(31) }).success,
+    ).toBe(false);
+    expect(
+      appSchema.parse({ clientAddressSecret: 'a'.repeat(32) })
+        .clientAddressSecret,
+    ).toBe('a'.repeat(32));
+  });
+
+  it('reads CLIENT_ADDRESS_SECRET from the environment and treats an empty value as unset', () => {
+    const secret = 'b'.repeat(32);
+    const previous = process.env.CLIENT_ADDRESS_SECRET;
+    try {
+      process.env.CLIENT_ADDRESS_SECRET = secret;
+      expect(factory().app.clientAddressSecret).toBe(secret);
+      process.env.CLIENT_ADDRESS_SECRET = '';
+      expect(factory().app.clientAddressSecret).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.CLIENT_ADDRESS_SECRET;
+      else process.env.CLIENT_ADDRESS_SECRET = previous;
+    }
   });
 });

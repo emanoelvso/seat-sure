@@ -38,6 +38,7 @@ export const factory = (): Config => {
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean),
+      clientAddressSecret: process.env.CLIENT_ADDRESS_SECRET || undefined,
     },
     admission: {
       maxConcurrent: process.env.ADMISSION_MAX_CONCURRENT || undefined,
