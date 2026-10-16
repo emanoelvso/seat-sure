@@ -5,6 +5,7 @@ import { Config } from './config.type';
 export const factory = (): Config => {
   const result = configSchema.safeParse({
     env: process.env.NODE_ENV,
+    demo: { enabled: process.env.DEMO_MODE === 'true' },
     port: process.env.PORT,
     database: {
       host: process.env.DATABASE_HOST,
