@@ -23,6 +23,24 @@ test('published event has future dates and purchasable seats', async () => {
   assert.ok(row.startAt > new Date()); assert.ok(row.doorsOpen < row.startAt); assert.ok(row.endsAt > row.startAt);
   assert.deepEqual([row.priceCents, row.maxPerOrder, row.seatsAvailable, row.seats], [4500, 4, 24, 24]);
 });
+const OWN_VENUE = 'd5000000-0000-4000-8000-000000000010';
+const OWN_MAP = 'd5000000-0000-4000-8000-000000000011';
+const insertMigrationStyleEvent = async (client, id, date) => {
+  await client.query(`INSERT INTO "CatalogVenue" (id,name,address,city,state,country,latitude,longitude,capacity) VALUES ($1,'Other Hall','1 Other St','City','ST','Country',0,0,10) ON CONFLICT (id) DO NOTHING`, [OWN_VENUE]);
+  await client.query(`INSERT INTO "CatalogSeatMap" (id,name,layout,"venueId") VALUES ($1,'Other map','{}',$2) ON CONFLICT (id) DO NOTHING`, [OWN_MAP, OWN_VENUE]);
+  return insertEvent(client, id, date);
+};
+const insertEvent = (client, id, date) => client.query(`INSERT INTO "CatalogEvent" (id,type,name,description,"coverImage",date,"startAt","endsAt","doorsOpen",status,category,price,"venueId","seatMapId",tags) VALUES ($1,'concert','Migration Show','x','/x.svg',$2::timestamptz,$2::timestamptz,$2::timestamptz + interval '150 minutes',$2::timestamptz - interval '60 minutes','published','music',10,$3,$4,'')`, [id, date, OWN_VENUE, OWN_MAP]);
+test('seed also moves stale events from the migrations forward', async () => {
+  await seed(db.env);
+  await insertMigrationStyleEvent(db.client, 'd5000000-0000-4000-8000-000000000002', '2026-03-06T20:00:00Z');
+  await seed(db.env);
+  const { rows: [row] } = await db.client.query('SELECT date FROM "CatalogEvent" WHERE id = $1', ['d5000000-0000-4000-8000-000000000002']);
+  assert.ok(row.date > new Date(Date.now() + 6 * 86400000));
+  await seed(db.env);
+  const again = await db.client.query('SELECT date FROM "CatalogEvent" WHERE id = $1', ['d5000000-0000-4000-8000-000000000002']);
+  assert.equal(+again.rows[0].date, +row.date);
+});
 test('database failure rolls back every catalog write', async () => {
   await db.client.query(`CREATE FUNCTION reject_demo_seat() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$; CREATE TRIGGER reject_demo_seat BEFORE INSERT ON "CatalogSeat" FOR EACH ROW EXECUTE FUNCTION reject_demo_seat()`);
   try { await assert.rejects(seed(db.env)); assert.deepEqual(await snapshot(), []); }

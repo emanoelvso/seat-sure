@@ -9,6 +9,7 @@ before(async () => { db = await fixture(); });
 after(async () => { await db?.close(); });
 beforeEach(async () => {
   await db.client.query('TRUNCATE "IdentityUser" CASCADE');
+  await db.client.query('DELETE FROM "CatalogEvent" WHERE id = $1', [OTHER]);
   await seed(db.env);
   await db.client.query(`INSERT INTO "IdentityUser" (id,email,"passwordHash") VALUES ('d4000000-0000-4000-8000-000000000001','visitor@demo.invalid','unusable')`);
 });
@@ -60,6 +61,31 @@ test('reset refreshes stale sample dates into future', async () => {
   await reset(db.env);
   const row = (await db.client.query('SELECT date,"startAt","endsAt","doorsOpen" FROM "CatalogEvent"')).rows[0];
   assert.ok(row.date > new Date()); assert.equal(+row.date, +row.startAt); assert.ok(row.endsAt > row.startAt); assert.ok(row.doorsOpen < row.startAt);
+});
+const OWN_VENUE = 'd5000000-0000-4000-8000-000000000010';
+const OWN_MAP = 'd5000000-0000-4000-8000-000000000011';
+const insertMigrationStyleEvent = async (client, id, date) => {
+  await client.query(`INSERT INTO "CatalogVenue" (id,name,address,city,state,country,latitude,longitude,capacity) VALUES ($1,'Other Hall','1 Other St','City','ST','Country',0,0,10) ON CONFLICT (id) DO NOTHING`, [OWN_VENUE]);
+  await client.query(`INSERT INTO "CatalogSeatMap" (id,name,layout,"venueId") VALUES ($1,'Other map','{}',$2) ON CONFLICT (id) DO NOTHING`, [OWN_MAP, OWN_VENUE]);
+  return insertEvent(client, id, date);
+};
+const insertEvent = (client, id, date) => client.query(`INSERT INTO "CatalogEvent" (id,type,name,description,"coverImage",date,"startAt","endsAt","doorsOpen",status,category,price,"venueId","seatMapId",tags) VALUES ($1,'concert','Migration Show','x','/x.svg',$2::timestamptz,$2::timestamptz,$2::timestamptz + interval '150 minutes',$2::timestamptz - interval '60 minutes','published','music',10,$3,$4,'')`, [id, date, OWN_VENUE, OWN_MAP]);
+const OTHER = 'd5000000-0000-4000-8000-000000000001';
+test('reset keeps catalog rows outside the sample namespace and moves past dates forward by whole years', async () => {
+  await insertMigrationStyleEvent(db.client, OTHER, '2026-03-06T20:00:00Z');
+  await reset(db.env);
+  const { rows: [row] } = await db.client.query('SELECT date, "startAt", "endsAt", "doorsOpen", name FROM "CatalogEvent" WHERE id = $1', [OTHER]);
+  assert.equal(row.name, 'Migration Show');
+  assert.ok(row.date > new Date(Date.now() + 6 * 86400000));
+  assert.equal(row.date.getUTCMonth(), 2); assert.equal(row.date.getUTCDate(), 6); assert.equal(row.date.getUTCHours(), 20);
+  assert.equal(+row.endsAt - +row.startAt, 150 * 60000); assert.equal(+row.startAt - +row.doorsOpen, 60 * 60000);
+  assert.equal((await db.client.query('SELECT count(*)::int n FROM "CatalogEvent"')).rows[0].n, 2);
+});
+test('reset leaves events that are already in the future untouched', async () => {
+  await insertMigrationStyleEvent(db.client, OTHER, '2099-01-01T10:00:00Z');
+  await reset(db.env);
+  const { rows: [row] } = await db.client.query('SELECT date FROM "CatalogEvent" WHERE id = $1', [OTHER]);
+  assert.equal(row.date.toISOString(), '2099-01-01T10:00:00.000Z');
 });
 test('seed failure rolls back all reset deletions and dates', async () => {
   const prior = (await db.client.query('SELECT id,"startAt" FROM "CatalogEvent"')).rows;

@@ -20,5 +20,15 @@ export async function seedCatalog(client, now = Date.now()) {
     await client.query(`INSERT INTO "CatalogSeat" (id,"seatMapId","sectionKey",row,number,x,y) VALUES ($1,$2,'floor',$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING`, [id(100 + n), ids.map, String.fromCharCode(65 + Math.floor(n / 8)), String(n % 8 + 1).padStart(2, '0'), 180 + (n % 8) * 48, 250 + Math.floor(n / 8) * 100]);
   }
 }
-export const seed = (env = process.env) => transaction(env, seedCatalog);
+// Moves every event that is already past, or within a week, forward by whole years so
+// the dated sample catalog from the migrations stays browsable. Idempotent.
+export async function refreshEventDates(client, now = new Date()) {
+  await client.query(`WITH shift AS (
+      SELECT id, CEIL(EXTRACT(EPOCH FROM ($1::timestamptz + interval '7 days' - date)) / 31536000)::int AS years FROM "CatalogEvent"
+    )
+    UPDATE "CatalogEvent" e SET date = e.date + make_interval(years => s.years), "startAt" = e."startAt" + make_interval(years => s.years),
+      "endsAt" = e."endsAt" + make_interval(years => s.years), "doorsOpen" = e."doorsOpen" + make_interval(years => s.years)
+    FROM shift s WHERE s.id = e.id AND s.years > 0`, [now]);
+}
+export const seed = (env = process.env) => transaction(env, async (client) => { await seedCatalog(client); await refreshEventDates(client); });
 runCli(import.meta.url, () => seed());
