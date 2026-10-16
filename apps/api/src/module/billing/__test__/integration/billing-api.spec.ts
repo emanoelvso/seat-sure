@@ -207,6 +207,8 @@ describe('BillingPublicApiProvider (integration)', () => {
       Tables.BillingCardThrottle,
     ];
     const TEXT_TYPES = ['character varying', 'character', 'text'];
+    const UUID_PATTERN =
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
     // Every stored text value of the user's rows, with where it lives
     const textValues = async () => {
@@ -338,7 +340,10 @@ describe('BillingPublicApiProvider (integration)', () => {
       const results = await payTypedThenSaved();
 
       for (const [name, result] of Object.entries(results)) {
-        const json = JSON.stringify(result);
+        // Random ids in the result are uuids; their hex digits can contain the fixture
+        // CVV by chance, so they are removed before scanning. Card text cannot hide in
+        // a uuid-shaped value.
+        const json = JSON.stringify(result).replace(UUID_PATTERN, '');
         for (const [needleName, needle] of Object.entries(NEEDLES)) {
           expect({ name, needleName, found: json.includes(needle) }).toEqual({
             name,
