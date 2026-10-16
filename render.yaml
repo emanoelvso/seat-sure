@@ -37,9 +37,8 @@ services:
       # Origin of the Vercel deployment, for example https://<project>.vercel.app.
       - key: CORS_ORIGIN
         sync: false
-      # Render's proxy addresses; confirm them at launch. Empty ignores forwarding headers.
-      - key: TRUST_PROXY
-        sync: false
+      # TRUST_PROXY is deliberately not set: forwarding headers are ignored, and the
+      # visitor address arrives through CLIENT_ADDRESS_SECRET below.
       # At least 32 characters, identical to the web app's value (openssl rand -hex 32).
       # Lets the API rate limit by the visitor address the web server forwards.
       - key: CLIENT_ADDRESS_SECRET

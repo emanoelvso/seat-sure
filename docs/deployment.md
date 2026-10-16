@@ -23,7 +23,7 @@ Names only. Never commit values.
 | `DEMO_DATABASE_NAME` | Render (preset in `render.yaml`) | `seat-sure-demo`, exactly the database in `DATABASE_URL` |
 | `CORS_ORIGIN` | Render | The exact Vercel origin, `https://...`, no trailing slash |
 | `CLIENT_ADDRESS_SECRET` | Render and Vercel | The same random value (32+ characters, for example `openssl rand -hex 32`) on both. Without it the demo rate limit is shared by all visitors |
-| `TRUST_PROXY` | Render | Render's proxy addresses, or empty. See [HTTPS and proxy](#https-cors-and-proxy) |
+| `TRUST_PROXY` | Render | Leave unset (decided): forwarding headers are ignored. See [HTTPS, CORS and proxy](#https-cors-and-proxy) |
 | `JWT_SECRET`, `BILLING_FINGERPRINT_SECRET` | Render (generated) | Render generates them on first sync; keep them out of the repository |
 | `NODE_ENV`, `DEMO_MODE`, `AUTH_CODE_SENDER`, `REDIS_HOST`, `REDIS_PORT` | Render (preset) | `production`, `true`, `disabled`, and two unused placeholders |
 | `NEXT_PUBLIC_API_URL` | Vercel | The Render service origin, `https://...`, no trailing slash |
@@ -38,7 +38,7 @@ The API refuses to start in production with a weak or placeholder secret, with t
 ## Deploy order
 
 1. **Neon.** Create a project and a database named `seat-sure-demo` (the demo scripts require the word `demo` in the name and refuse `test`, `prod` or `production`). Copy the connection string with TLS verification (`sslmode=verify-full`).
-2. **Render.** Create a Blueprint from this repository and `render.yaml`. Enter `DATABASE_URL`, `CORS_ORIGIN` and `TRUST_PROXY` when prompted. Auto deploy is off; trigger deploys by hand. The start command (`node demo/start.mjs`) applies the migrations of all six contexts, seeds the sample event and only then starts the server, and it stops at the first failure. Because `CORS_ORIGIN` needs the Vercel origin, do step 3 first or edit the variable afterwards.
+2. **Render.** Create a Blueprint from this repository and `render.yaml`. Enter `DATABASE_URL`, `CORS_ORIGIN` and `CLIENT_ADDRESS_SECRET` when prompted. Auto deploy is off; trigger deploys by hand. The start command (`node demo/start.mjs`) applies the migrations of all six contexts, seeds the sample event and only then starts the server, and it stops at the first failure. Because `CORS_ORIGIN` needs the Vercel origin, do step 3 first or edit the variable afterwards.
 3. **Vercel.** Import the repository with `apps/web` as the root directory, Node 22, and these commands (the web app imports the shared package, so build it first):
    - Install: `pnpm install --frozen-lockfile`
    - Build: `pnpm --filter @seat-sure/shared build && pnpm --filter web build`
