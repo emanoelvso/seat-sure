@@ -33,6 +33,20 @@ describe("env.apiUrl", () => {
   });
 });
 
+describe("env.clientAddressSecret", () => {
+  it("is undefined when CLIENT_ADDRESS_SECRET is unset or empty", () => {
+    vi.stubEnv("CLIENT_ADDRESS_SECRET", undefined);
+    expect(env.clientAddressSecret).toBeUndefined();
+    vi.stubEnv("CLIENT_ADDRESS_SECRET", "");
+    expect(env.clientAddressSecret).toBeUndefined();
+  });
+
+  it("returns CLIENT_ADDRESS_SECRET when it is set", () => {
+    vi.stubEnv("CLIENT_ADDRESS_SECRET", "s".repeat(32));
+    expect(env.clientAddressSecret).toBe("s".repeat(32));
+  });
+});
+
 describe("config/env module", () => {
   it("imports without throwing when no variable is set", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_URL", undefined);

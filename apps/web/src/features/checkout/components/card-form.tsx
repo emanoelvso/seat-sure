@@ -4,6 +4,7 @@ import { CheckCircleIcon, EyeClosedIcon, EyeIcon } from "@solar-icons/react/outl
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DemoPaymentNotice } from "@/components/demo-payment-notice";
 import { CardPreview } from "@/components/card-preview";
 import {
   formatCardNumber,
@@ -69,6 +70,7 @@ export function CardForm({ value, onChange, errors, onSubmit, footer }: CardForm
 
   return (
     <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <DemoPaymentNotice />
       <CardPreview number={value.number} holder={value.holder} expiry={value.expiry} />
       <h2 className="text-xl font-bold text-white">Payment details</h2>
       <div className="flex flex-col gap-2">

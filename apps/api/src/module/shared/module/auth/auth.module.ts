@@ -1,3 +1,5 @@
+import { APP_GUARD } from '@nestjs/core';
+import { DemoRequestGuard } from './guard/demo-request.guard';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ClsModule } from 'nestjs-cls';
@@ -22,7 +24,7 @@ import { AuthGuard } from './guard/auth.guard';
       }),
     }),
   ],
-  providers: [AuthGuard],
+  providers: [AuthGuard, { provide: APP_GUARD, useClass: DemoRequestGuard }],
   exports: [AuthGuard, ConfigModule],
 })
 export class AuthModule {}

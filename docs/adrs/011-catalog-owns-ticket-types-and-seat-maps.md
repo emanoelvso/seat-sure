@@ -7,7 +7,6 @@
 - **Links**:
   - [ADR-006: Modular Monolith with State Isolation per Bounded Context](./006-modular-monolith-with-state-isolation-per-bounded-context.md)
   - [`docs/architecture/bounded-contexts.md`](../architecture/bounded-contexts.md)
-  - Feature spec: `.specs/features/buy-ticket-choose-section/` (decision AD-001 in `.specs/STATE.md`)
 
 ## Context
 

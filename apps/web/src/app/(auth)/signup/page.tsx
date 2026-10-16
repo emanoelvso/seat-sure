@@ -1,3 +1,5 @@
+import { env } from "@/config/env";
+import { safeRedirect } from "@/features/auth/utils/safe-redirect";
 import { redirect } from "next/navigation";
 import { paths } from "@/config/paths";
 import { hasSession } from "@/features/auth/api/session-cookies";
@@ -15,6 +17,10 @@ export default async function SignUpPage({
   }
 
   const { redirectTo } = await searchParams;
+
+  if (env.demoMode) {
+    redirect(paths.login.getHref(redirectTo ? safeRedirect(redirectTo) : undefined));
+  }
 
   return (
     <AuthShell title="Please enter your details to sign up">

@@ -7,7 +7,6 @@
 - **Links**:
   - [ADR-003: Single Events Table with JSONB Metadata](./003-single-events-table-with-jsonb-metadata.md) (sketches `price_from NUMERIC(10,2)`)
   - [ADR-011: Catalog Owns Ticket Types and Seat Maps](./011-catalog-owns-ticket-types-and-seat-maps.md)
-  - Decision AD-002 in `.specs/STATE.md`
 
 ## Context
 

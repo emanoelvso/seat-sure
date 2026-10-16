@@ -1,3 +1,6 @@
+import { env } from "@/config/env";
+import { DemoSignInForm } from "@/features/auth/components/demo-sign-in-form";
+import { safeRedirect } from "@/features/auth/utils/safe-redirect";
 import { redirect } from "next/navigation";
 import { paths } from "@/config/paths";
 import { hasSession } from "@/features/auth/api/session-cookies";
@@ -15,6 +18,14 @@ export default async function LogInPage({
   }
 
   const { redirectTo } = await searchParams;
+
+  if (env.demoMode) {
+    return (
+      <AuthShell title="Explore Seat Sure as a demo visitor">
+        <DemoSignInForm redirectTo={safeRedirect(redirectTo)} />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell title="Please enter your email to log in">

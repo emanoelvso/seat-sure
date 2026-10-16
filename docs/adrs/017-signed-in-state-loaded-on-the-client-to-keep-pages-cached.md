@@ -7,7 +7,6 @@
 - **Links**:
   - [ADR-001: GraphQL as Primary API](./001-graphql-primary-api-with-rest-for-specialized-endpoints.md) (public pages use ISR)
   - [ADR-016: Sessions as JWT Access Tokens and Rotating Refresh Tokens in httpOnly Cookies](./016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)
-  - Decision AD-017 in `.specs/STATE.md`; feature `.specs/features/auth-login-signup/`
 
 ## Context
 

@@ -9,7 +9,6 @@
   - [ADR-002: PostgreSQL and Redis as Database Stack](./002-postgresql-and-redis-as-database-stack.md) (superseded in part: sessions and login rate limits live in PostgreSQL, not Redis)
   - [ADR-006: Modular Monolith with State Isolation per Bounded Context](./006-modular-monolith-with-state-isolation-per-bounded-context.md)
   - [ADR-017: Signed-in State Loaded on the Client to Keep Pages Cached](./017-signed-in-state-loaded-on-the-client-to-keep-pages-cached.md)
-  - Decision AD-016 in `.specs/STATE.md`; feature `.specs/features/auth-login-signup/`
 
 ## Context
 

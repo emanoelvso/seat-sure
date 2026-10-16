@@ -1,3 +1,4 @@
+import { connectionOptions } from '@sharedModules/persistence/typeorm/connection-options.util';
 import { ConfigService } from '@sharedModules/config/service/config.service';
 import { join } from 'path';
 import { PostgresDataSourceOptions } from 'typeorm/driver/postgres/PostgresDataSourceOptions.js';
@@ -5,12 +6,7 @@ import { PostgresDataSourceOptions } from 'typeorm/driver/postgres/PostgresDataS
 export const dataSourceOptionsFactory = (
   configService: ConfigService,
 ): PostgresDataSourceOptions => ({
-  type: 'postgres',
-  host: configService.get('database.host'),
-  port: 5432,
-  username: configService.get('database.username'),
-  password: configService.get('database.password'),
-  database: configService.get('database.database'),
+  ...connectionOptions(configService),
   synchronize: false,
   logging: false,
   migrationsRun: false,

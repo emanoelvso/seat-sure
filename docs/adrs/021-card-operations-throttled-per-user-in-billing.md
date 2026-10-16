@@ -8,7 +8,6 @@
   - [ADR-020: Saved Cards as Gateway Tokens](./020-saved-cards-as-gateway-tokens.md)
   - [ADR-016: Sessions as JWT Access Tokens and Rotating Refresh Tokens in httpOnly Cookies](./016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)
   - [ADR-018: Business Errors as Unprocessable Entity with a Reason Code](./018-business-errors-as-unprocessable-entity-with-a-reason-code.md)
-  - Decision AD-028 in `.specs/STATE.md`; feature `.specs/features/card-abuse-protection/`
 
 ## Context
 

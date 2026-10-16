@@ -1,50 +1,28 @@
-# ==== STAGE 1: BUILD ====
+FROM scratch AS context-check
+COPY . /context
+
 FROM node:22-alpine AS builder
+WORKDIR /workspace
+RUN corepack enable && corepack prepare pnpm@10.18.3 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+RUN pnpm --filter @seat-sure/shared build && pnpm --filter api build
+RUN pnpm --filter api deploy --prod --legacy /runtime && \
+    cp -R packages/shared/dist /runtime/node_modules/@seat-sure/shared/dist
 
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package.json yarn.lock ./
-
-# Install dependencies
-RUN yarn install --frozen-lockfile
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN yarn build
-
-# ==== STAGE 2: PRODUCTION ====
 FROM node:22-alpine AS production
-
-# Set working directory
 WORKDIR /app
-
-# Set node environment
-ENV NODE_ENV production
-
-# Add a non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nestjs
-
-# Copy only necessary files from builder
-COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/package.json ./
-# Create uploads directory and set permissions
-RUN mkdir -p uploads && \
-    chown -R nestjs:nodejs uploads && \
-    chmod 755 uploads
-
-# Expose ports
-EXPOSE 3000
+ENV NODE_ENV=production
+RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app && chown 1001:1001 /app
+COPY --from=builder --chown=1001:1001 /runtime/node_modules ./node_modules
+COPY --from=builder --chown=1001:1001 /workspace/apps/api/dist ./dist
+COPY --from=builder --chown=1001:1001 /workspace/apps/api/package.json ./package.json
+COPY --from=builder --chown=1001:1001 /workspace/apps/api/demo/database.mjs /workspace/apps/api/demo/migrate.mjs /workspace/apps/api/demo/seed.mjs /workspace/apps/api/demo/reset.mjs /workspace/apps/api/demo/start.mjs ./demo/
+USER 1001:1001
 EXPOSE 3001
-EXPOSE 3002
-
-# Switch to non-root user
-USER nestjs
-
-# Command to run the app
 CMD ["node", "dist/main.js"]

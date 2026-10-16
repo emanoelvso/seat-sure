@@ -1,3 +1,5 @@
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { demoCardError } from '@billingModule/core/util/demo-card-rules';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   ChargeResult,
@@ -59,6 +61,7 @@ export interface PaymentCard {
 @Injectable()
 export class BillingService {
   constructor(
+    private readonly config: ConfigService,
     @Inject(PaymentGateway) private readonly gateway: PaymentGateway,
     private readonly paymentRepository: BillingPaymentRepository,
     private readonly paymentCardService: PaymentCardService,
@@ -66,7 +69,13 @@ export class BillingService {
   ) {}
 
   validateCard(card: CardInput, now: Date): CardFieldErrors {
-    return validateCard(card, now);
+    const errors = validateCard(card, now);
+    const demoError = demoCardError(
+      card.number,
+      this.config.get('demo.enabled'),
+    );
+    if (demoError) errors.number = demoError;
+    return errors;
   }
 
   // Charges a typed card or a saved card, then records the payment (PAY-37,
@@ -124,7 +133,7 @@ export class BillingService {
     payment: PaymentDetails,
     card: CardInput,
   ): Promise<ChargeOutcome> {
-    const errors = validateCard(card, new Date());
+    const errors = this.validateCard(card, new Date());
     const invalidField = Object.entries(errors).find(
       ([, message]) => message !== '',
     );

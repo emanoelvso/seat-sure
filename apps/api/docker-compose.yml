@@ -3,8 +3,8 @@ name: 'seat-sure'
 services:
   monolith:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/api/Dockerfile
     container_name: seat-sure-monolith
     profiles: ['all']
     ports:

@@ -7,7 +7,6 @@
 - **Links**:
   - [ADR-011: Catalog Owns Ticket Types and Seat Maps](./011-catalog-owns-ticket-types-and-seat-maps.md)
   - Figma "buy ticket choose section-concert1" (file `Lzr6zdinjT686jQhOwpVmq`, node `5692:59632`)
-  - Decision AD-003 in `.specs/STATE.md`
 
 ## Context
 

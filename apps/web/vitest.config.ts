@@ -10,8 +10,7 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.join(dirname, "src") },
   },
-  // apps/web has its own pnpm-workspace.yaml, so Vite would otherwise stop at
-  // apps/web and refuse to serve hoisted deps from the monorepo node_modules.
+  // Allow Storybook to serve shared workspace dependencies from the root.
   server: {
     fs: { allow: [path.join(dirname, "../..")] },
   },

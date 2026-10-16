@@ -1,3 +1,8 @@
+import { DemoAuthenticationService } from '@identityModule/core/service/demo-authentication.service';
+import { DemoEmailGuard } from '@identityModule/http/guard/demo-email.guard';
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
+import { DisabledCodeSender } from '@identityModule/integration/provider/disabled-code-sender.provider';
 import { Module } from '@nestjs/common';
 import { CodeSender } from '@identityModule/core/adapter/code-sender.adapter.interface';
 import { SecurityAlertSender } from '@identityModule/core/adapter/security-alert-sender.adapter.interface';
@@ -27,9 +32,18 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     AuthModule,
   ],
   providers: [
-    { provide: CodeSender, useClass: LogCodeSender },
+    {
+      provide: CodeSender,
+      inject: [ConfigService, AppLogger],
+      useFactory: (config: ConfigService, logger: AppLogger): CodeSender =>
+        config.get('auth.codeSender') === 'disabled'
+          ? new DisabledCodeSender()
+          : new LogCodeSender(logger),
+    },
     { provide: SecurityAlertSender, useClass: LogSecurityAlertSender },
     { provide: IdentityApi, useClass: IdentityPublicApiProvider },
+    DemoAuthenticationService,
+    DemoEmailGuard,
     VerificationCodeService,
     RegistrationService,
     SessionService,
