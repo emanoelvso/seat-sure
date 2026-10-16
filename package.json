@@ -2,7 +2,7 @@
   "name": "seat-sure",
   "private": true,
   "version": "1.0.0",
-  "description": "",
+  "description": "Seat Sure: event ticketing with seat selection and simulated checkout",
   "main": "index.js",
   "scripts": {
     "dev": "turbo run dev",
@@ -13,8 +13,8 @@
     "prepare": "husky"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "emanoelvso",
+  "license": "MIT",
   "packageManager": "pnpm@10.18.3",
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

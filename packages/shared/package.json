@@ -14,5 +14,7 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "license": "MIT",
+  "description": "Shared Seat Sure API and web contracts"
 }
