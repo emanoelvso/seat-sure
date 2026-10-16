@@ -15,6 +15,7 @@ import {
   type FormEvent,
   type Ref,
 } from "react";
+import { DemoPaymentNotice } from "@/components/demo-payment-notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PaymentCard } from "@/features/account/api/find-my-payment-cards";
@@ -161,6 +162,7 @@ export function AddCardForm({
 
   return (
     <div className="flex flex-col gap-12">
+      <DemoPaymentNotice />
       {isFirstCard && (
         <p className="text-base text-neutral-100">
           This credit card will be used by default for billing.

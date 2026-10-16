@@ -704,3 +704,14 @@ export const RecoverWithNoRemainingCards: Story = {
     await expect(getRouter().refresh).toHaveBeenCalledTimes(1);
   },
 };
+
+export const SimulatorPaymentInstructions: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+    await expect(canvas.getByLabelText("Card number")).toBeVisible();
+    const notice = canvas.getByRole("note", { name: "Demo payment instructions" });
+    await expect(notice).toBeVisible();
+    await expect(notice).toHaveTextContent("Demo only. Do not enter real card details.");
+    await expect(notice).toHaveTextContent("4242 4242 4242 4242");
+  },
+};
