@@ -1,13 +1,13 @@
 # Third-party materials
 
-The [MIT license](LICENSE) covers original Seat Sure code and documentation. It does not grant rights to third-party designs, photographs, illustrations, trademarks or dependencies.
+The [MIT license](LICENSE) covers original Seat Sure code and documentation. It does not cover the third-party materials below, which keep their own licenses.
 
-| Material | Source | Rights status |
+| Material | Source | License and credit |
 | --- | --- | --- |
-| Interface design and reference artwork | [Evenjo on Figma](https://www.figma.com/design/Lzr6zdinjT686jQhOwpVmq/Evenjo) | Attribution records provenance only. Public redistribution permission has not been established. Confirm permission or replace affected material before public launch. |
-| Existing artist/event photos and illustrations under `apps/web/public/` | Imported with the interface implementation; individual creators and terms still require an asset inventory | Unresolved. Do not assume public Figma access supplies a redistribution license. |
-| README seat-picker screenshot | Captured from the running Seat Sure Storybook; includes the existing interface design and artwork | The same third-party restrictions apply to depicted materials. |
+| Interface design and reference artwork | [Evenjo on Figma](https://www.figma.com/design/Lzr6zdinjT686jQhOwpVmq/Evenjo) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Credit: "Evenjo" design, adapted for Seat Sure. Changes were made: the design was implemented as a web application and adjusted. |
+| Artist and event photos and illustrations under `apps/web/public/` | [Freepik](https://www.freepik.com) | Used under Freepik's license with attribution. Credit: images by Freepik and their respective authors, via freepik.com. |
+| README seat-picker screenshot | Captured from the running Seat Sure Storybook | Shows the Evenjo design and the Freepik photos above; their credits apply. |
 | Demo sample event artwork under `apps/web/public/demo/` | Original geometric SVG artwork created for Seat Sure | Covered by the project MIT license. |
-| Software dependencies | Respective upstream packages | Retain each dependency's own license and required notices. |
+| Software dependencies | Respective upstream packages | Each dependency keeps its own license and notices. |
 
-Public launch remains blocked until permissions are documented or the affected design/assets are replaced with permitted alternatives. This notice does not claim authorization from the Evenjo designer or asset owners.
+Freepik's terms require crediting the author of each image. If you reuse or redistribute these photos, check each image's page on Freepik for its author and current terms.

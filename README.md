@@ -148,6 +148,6 @@ Architecture guidance for each app lives in [`apps/api/docs/`](apps/api/docs/arc
 
 ## Credits and license
 
-The interface design follows the Evenjo design on [Figma](https://www.figma.com/design/Lzr6zdinjT686jQhOwpVmq/Evenjo), and the existing artist and event photos were imported with it. Redistribution permission for that design and those images has not been established, and they are **not** covered by this repository's license; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). The screenshot above shows that design.
+The interface design is based on the Evenjo design on [Figma](https://www.figma.com/design/Lzr6zdinjT686jQhOwpVmq/Evenjo), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The artist and event photos come from [Freepik](https://www.freepik.com) and are used under its attribution license. These materials keep their own licenses and are **not** covered by this repository's MIT license; details are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). The screenshot above shows that design and those photos.
 
 Original Seat Sure code and documentation are released under the [MIT License](LICENSE).
