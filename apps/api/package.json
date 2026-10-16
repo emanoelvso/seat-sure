@@ -50,7 +50,8 @@
     "docker:start": "docker-compose --profile all up -d",
     "docker:start:deps": "docker-compose --profile deps up -d",
     "docker:down:deps": "docker-compose --profile deps down",
-    "docker:down": "docker-compose --profile all down"
+    "docker:down": "docker-compose --profile all down",
+    "demo:seed": "node demo/seed.mjs"
   },
   "dependencies": {
     "@apollo/server": "^5.5.1",
