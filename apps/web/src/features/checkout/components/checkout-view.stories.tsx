@@ -325,9 +325,11 @@ export const TimerExpiry: Story = {
       await vi.advanceTimersByTimeAsync(2000);
       await flushReact();
 
-      await expect(
-        canvas.getByRole("dialog", { name: "Your time ran out" }),
-      ).toBeVisible();
+      await vi.waitFor(() =>
+        expect(
+          canvas.getByRole("dialog", { name: "Your time ran out" }),
+        ).toBeVisible(),
+      );
     } finally {
       vi.useRealTimers();
     }

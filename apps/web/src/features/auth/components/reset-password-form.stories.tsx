@@ -103,7 +103,7 @@ export const RestartFailureNavigates: Story = {
       canvas.getByRole("button", { name: "Reset password" }),
     );
 
-    const dialog = canvas.getByRole("dialog", {
+    const dialog = await canvas.findByRole("dialog", {
       name: "Password Change Failed",
     });
     await expect(dialog).toBeVisible();

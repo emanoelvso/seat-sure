@@ -78,11 +78,13 @@ async function checkMinimized(canvas: Canvas) {
   ).toBe(
     sidebar.getBoundingClientRect().left + sidebar.getBoundingClientRect().width / 2,
   );
+  // The wordmark nearly fills the sidebar and Linux Chromium sets Lobster up to
+  // half a pixel wider than macOS, so the bounds allow that much sub-pixel slack.
   await expect(logo.getBoundingClientRect().left).toBeGreaterThanOrEqual(
-    sidebar.getBoundingClientRect().left,
+    sidebar.getBoundingClientRect().left - 0.5,
   );
   await expect(logo.getBoundingClientRect().right).toBeLessThanOrEqual(
-    sidebar.getBoundingClientRect().right,
+    sidebar.getBoundingClientRect().right + 0.5,
   );
   const header = logo.parentElement!;
   await expect(header.getBoundingClientRect().height).toBe(60);
