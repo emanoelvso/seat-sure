@@ -1,0 +1,116 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/release/*.test.mjs
+      - name: Check changed destination paths
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/release/check-paths.mjs "$BASE_SHA" "$HEAD_SHA"
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: seat-sure-test
+        ports: ['5432:5432']
+        options: >-
+          --name seat-sure-db
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create disposable test configuration
+        run: |
+          node --input-type=module <<'JS'
+          import {writeFileSync} from 'node:fs';
+          import {randomBytes} from 'node:crypto';
+          const fixture = {
+            NODE_ENV:'test', PORT:'3001',
+            DATABASE_URL:'postgresql://postgres:postgres@127.0.0.1:5432/seat-sure-test',
+            DATABASE_HOST:'127.0.0.1', DATABASE_PORT:'5432', DATABASE_NAME:'seat-sure-test',
+            DATABASE_USERNAME:'postgres', DATABASE_PASSWORD:'postgres',
+            REDIS_HOST:'unused', REDIS_PORT:'6379', AUTH_CODE_SENDER:'log',
+            JWT_SECRET:randomBytes(32).toString('hex'),
+            BILLING_FINGERPRINT_SECRET:randomBytes(32).toString('hex')
+          };
+          for (const name of ['.env', '.env.test']) writeFileSync(`apps/api/${name}`, Object.entries(fixture).map(([k,v])=>`${k}=${v}`).join('\n'));
+          JS
+      - run: pnpm --filter @seat-sure/shared build
+      - run: pnpm --filter api build
+      - run: pnpm --filter api lint
+      - run: pnpm --filter api typecheck
+      - run: pnpm --filter api test:db:reset
+      - run: pnpm --filter api test:e2e
+      - run: pnpm --filter api test:load
+      - run: pnpm --filter api test:demo
+      - run: node --test apps/api/container/smoke.test.mjs
+  web:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/graphql
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @seat-sure/shared build
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm --filter web build
+      - run: pnpm --filter web lint
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test --project unit
+      - run: pnpm --filter web test --project storybook --no-file-parallelism --maxWorkers=1
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch branch, tag and pull-request audit refs
+        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*' '+refs/pull/*/head:refs/remotes/audit/pull/*'
+      - name: Install checksum-verified scanner
+        run: |
+          curl --fail --location --silent --show-error -o "$RUNNER_TEMP/gitleaks.tar.gz" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          curl --fail --location --silent --show-error -o "$RUNNER_TEMP/checksums.txt" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt
+          cd "$RUNNER_TEMP"
+          expected=$(awk '$2 == "gitleaks_8.30.1_linux_x64.tar.gz" {print $1}' checksums.txt)
+          test -n "$expected"
+          echo "$expected  gitleaks.tar.gz" | sha256sum --check
+          tar -xzf gitleaks.tar.gz gitleaks
+      - name: Scan all fetched history with complete redaction
+        run: '"$RUNNER_TEMP/gitleaks" git --log-opts=--all --redact=100 --no-banner --no-color --ignore-gitleaks-allow --report-format json --report-path "$RUNNER_TEMP/gitleaks-redacted.json"'
+      - name: Preserve redacted findings for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: redacted-history-scan
+          path: ${{ runner.temp }}/gitleaks-redacted.json
+          retention-days: 7

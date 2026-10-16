@@ -55,7 +55,7 @@
     "demo:reset": "node demo/reset.mjs",
     "demo:migrate": "node demo/migrate.mjs",
     "demo:start": "node demo/start.mjs",
-    "test:demo": "node --test --test-concurrency=1 demo/*.test.mjs"
+    "test:demo": "cd ../.. && node --test --test-concurrency=1 apps/api/demo/*.test.mjs"
   },
   "dependencies": {
     "@apollo/server": "^5.5.1",
