@@ -133,7 +133,14 @@ export class BillingService {
     payment: PaymentDetails,
     card: CardInput,
   ): Promise<ChargeOutcome> {
-    const errors = this.validateCard(card, new Date());
+    // Slows card testing (AD-028): a locked user is charged nothing and no
+    // payment is recorded, before any rule or gateway call
+    const now = new Date();
+    if (await this.cardThrottleService.isLocked(payment.userId, now)) {
+      return { status: 'card_attempts_limited' };
+    }
+
+    const errors = this.validateCard(card, now);
     const invalidField = Object.entries(errors).find(
       ([, message]) => message !== '',
     );
@@ -152,11 +159,19 @@ export class BillingService {
       source: { type: 'card', card },
     });
 
-    return this.record(
+    const outcome = await this.record(
       payment,
       { brand: detectBrand(card.number), last4: last4(card.number) },
       result,
     );
+
+    if (result.status === 'failed') {
+      await this.cardThrottleService.recordFailure(payment.userId, now);
+    } else {
+      await this.cardThrottleService.clear(payment.userId);
+    }
+
+    return outcome;
   }
 
   private async record(

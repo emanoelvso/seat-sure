@@ -528,6 +528,29 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(notice.codes).toHaveLength(2);
     });
 
+    it('fails the 6th declined typed charge with CARD_ATTEMPTS_LIMITED, charging nothing and leaving the order payable (TYPEDTHROTTLE-02)', async () => {
+      const { order } = await insertOrder();
+      for (let i = 0; i < 5; i += 1) {
+        expect(errorOf(await payOrder(order.id, DECLINED_CARD))?.reason).toBe(
+          'CARD_DECLINED',
+        );
+      }
+      gateway.charge.mockClear();
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('CARD_ATTEMPTS_LIMITED');
+      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(await paymentsOf(order.id)).toHaveLength(5);
+      expect((await orderRow(order.id)).status).toBe('pending');
+
+      await testDbClient(Tables.BillingCardThrottle).where({ userId }).del();
+      const retried = await payOrder(order.id);
+
+      expect(retried.errors).toBeUndefined();
+      expect(retried.data.payOrder.status).toBe('PAID');
+    });
+
     it('sends no notice when the card is declined', async () => {
       const { order } = await insertOrder();
 
