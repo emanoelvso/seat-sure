@@ -636,6 +636,25 @@ describe('BillingPublicApiProvider (integration)', () => {
       expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
     });
 
+    it('checks the lock before the card rules (assumption: lock first)', async () => {
+      const userId = randomUUID();
+      await declineTyped(userId, 5);
+
+      expect(await chargeTyped(userId, { ...VALID_CARD, cvv: '' })).toEqual({
+        status: 'card_attempts_limited',
+      });
+    });
+
+    it('charges a typed card again once the lock has ended (edge case)', async () => {
+      const userId = randomUUID();
+      await declineTyped(userId, 5);
+      await testDbClient(Tables.BillingCardThrottle)
+        .where({ userId })
+        .update({ lockedUntil: new Date(Date.now() - 1000) });
+
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+    });
+
     it('does not count a typed card rejected by the card rules (TYPEDTHROTTLE-01 AC 6)', async () => {
       const userId = randomUUID();
 
