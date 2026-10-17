@@ -471,8 +471,8 @@ describe('BillingPublicApiProvider (integration)', () => {
     });
   });
 
-  // CARDABUSE-01, CARDABUSE-02 (AD-028)
-  describe('saved-card charge throttle', () => {
+  // CARDABUSE-01, CARDABUSE-02, TYPEDTHROTTLE-01 (AD-028)
+  describe('card charge throttle', () => {
     afterEach(async () => {
       await testDbClient(Tables.BillingPaymentCard).del();
       await testDbClient(Tables.BillingCardThrottle).del();
@@ -487,6 +487,23 @@ describe('BillingPublicApiProvider (integration)', () => {
         currency: 'USD',
         source: { type: 'savedCard', savedCardId },
       });
+
+    const chargeTyped = (userId: string, card: typeof VALID_CARD) =>
+      billingApi.charge({
+        userId,
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card },
+      });
+
+    const declineTyped = async (userId: string, times: number) => {
+      for (let i = 0; i < times; i += 1) {
+        expect((await chargeTyped(userId, DECLINED_CARD)).status).toBe(
+          'failed',
+        );
+      }
+    };
 
     const declinedCard = (userId: string) =>
       billingPaymentCardFactory.build({
@@ -587,21 +604,93 @@ describe('BillingPublicApiProvider (integration)', () => {
       });
     });
 
-    it('still processes a typed-card charge while locked (AC 3)', async () => {
+    it('blocks the 6th declined typed charge with no gateway call and no payment row (TYPEDTHROTTLE-01 AC 1, 2)', async () => {
+      const userId = randomUUID();
+      await declineTyped(userId, 5);
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+
+      expect(await chargeTyped(userId, VALID_CARD)).toEqual({
+        status: 'card_attempts_limited',
+      });
+      expect(chargeSpy).not.toHaveBeenCalled();
+      expect(await paymentRows(userId)).toHaveLength(5);
+    });
+
+    it('counts each declined typed charge, 1 each (TYPEDTHROTTLE-01 AC 1)', async () => {
+      const userId = randomUUID();
+
+      await declineTyped(userId, 2);
+
+      expect(await failedCount(userId)).toBe(2);
+    });
+
+    it('resets the count on a successful typed charge (TYPEDTHROTTLE-01 AC 4)', async () => {
+      const userId = randomUUID();
+      await declineTyped(userId, 4);
+      expect(await failedCount(userId)).toBe(4);
+
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+      expect(await failedCount(userId)).toBe(0);
+
+      await declineTyped(userId, 4);
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+    });
+
+    it('checks the lock before the card rules (assumption: lock first)', async () => {
+      const userId = randomUUID();
+      await declineTyped(userId, 5);
+
+      expect(await chargeTyped(userId, { ...VALID_CARD, cvv: '' })).toEqual({
+        status: 'card_attempts_limited',
+      });
+    });
+
+    it('charges a typed card again once the lock has ended (edge case)', async () => {
+      const userId = randomUUID();
+      await declineTyped(userId, 5);
+      await testDbClient(Tables.BillingCardThrottle)
+        .where({ userId })
+        .update({ lockedUntil: new Date(Date.now() - 1000) });
+
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+    });
+
+    it('does not count a typed card rejected by the card rules (TYPEDTHROTTLE-01 AC 6)', async () => {
+      const userId = randomUUID();
+
+      for (let i = 0; i < 6; i += 1) {
+        await expect(
+          chargeTyped(userId, { ...VALID_CARD, cvv: '' }),
+        ).rejects.toMatchObject({ reason: 'INVALID_CARD' });
+      }
+
+      expect(await failedCount(userId)).toBe(0);
+    });
+
+    it('does not count an unexpected gateway error on a typed card (TYPEDTHROTTLE-01 AC 7)', async () => {
+      const userId = randomUUID();
+      jest
+        .spyOn(module.get(PaymentGateway), 'charge')
+        .mockRejectedValue(new Error('gateway down'));
+
+      await expect(chargeTyped(userId, VALID_CARD)).rejects.toThrow(
+        'gateway down',
+      );
+
+      expect(await failedCount(userId)).toBe(0);
+    });
+
+    it('blocks a typed-card charge once failed saved-card charges lock the user (TYPEDTHROTTLE-01 AC 5)', async () => {
       const userId = randomUUID();
       const declined = declinedCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
       await lockOut(userId, declined.id);
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
 
-      const outcome = await billingApi.charge({
-        userId,
-        orderId: randomUUID(),
-        amountCents: 26000,
-        currency: 'USD',
-        source: { type: 'card', card: VALID_CARD },
+      expect(await chargeTyped(userId, VALID_CARD)).toEqual({
+        status: 'card_attempts_limited',
       });
-
-      expect(outcome.status).toBe('succeeded');
+      expect(chargeSpy).not.toHaveBeenCalled();
     });
 
     it('resets the count on a successful saved-card charge (AC 5)', async () => {

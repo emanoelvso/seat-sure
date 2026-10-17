@@ -122,7 +122,7 @@ One glossary per context, key terms only. The same term can mean something diffe
 - **order**: not owned here. A plain reference to Ticketing's order being paid.
 - **payment method**: a stored way to charge a user, through a provider. Only cards exist today.
 - **payment card**: a card saved for a user. Billing keeps the gateway token and display data (brand, last 4, expiry, holder), never the number or CVV ([ADR-020](../adrs/020-saved-cards-as-gateway-tokens.md)).
-- **card attempt lock**: a 15-minute block on adding cards and on saved-card charges for a user with 5 failed card attempts in 15 minutes ([ADR-021](../adrs/021-card-operations-throttled-per-user-in-billing.md)).
+- **card attempt lock**: a 15-minute block on adding cards and on saved-card and typed-card charges for a user with 5 failed card attempts in 15 minutes ([ADR-021](../adrs/021-card-operations-throttled-per-user-in-billing.md)).
 - **payment**: one charge attempt against an order, with a status independent of the order's own status.
 - **refund**: money returned against a completed payment.
 
