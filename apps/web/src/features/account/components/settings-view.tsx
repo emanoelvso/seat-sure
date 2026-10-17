@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { unstable_rethrow } from "next/navigation";
 import {
   startTransition,
@@ -9,8 +8,6 @@ import {
   useOptimistic,
   useRef,
 } from "react";
-import { Select } from "radix-ui";
-import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import type { MySettings } from "@/features/account/api/find-my-settings";
 import {
   SETTINGS_SAVE_ERROR,
@@ -48,11 +45,6 @@ const NOTIFICATION_SETTINGS = [
     description:
       "Receive instant updates and alerts on your phone for upcoming events and offers.",
   },
-] as const;
-
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "pt-BR", label: "Portuguese (Brazil)" },
 ] as const;
 
 interface SettingsViewProps {
@@ -127,73 +119,6 @@ export function SettingsView({ settings, action }: SettingsViewProps) {
                 onCheckedChange={(checked) => change({ [key]: checked })}
               />
             ))}
-          </div>
-          <div className="flex w-full max-w-[452px] flex-col gap-8">
-            <h2 className="text-lg leading-[22px] font-bold text-white">
-              Select your preferred language
-            </h2>
-            <div className="relative">
-              <span
-                id={`${id}-language`}
-                className="absolute -top-2 left-4 z-10 bg-neutral-1000 px-1 text-sm leading-[17px] text-neutral-200"
-              >
-                Language
-              </span>
-              <Select.Root
-                value={optimistic.language}
-                disabled={pending}
-                onValueChange={(language) => {
-                  if (language === "en" || language === "pt-BR")
-                    change({ language });
-                }}
-              >
-                <Select.Trigger
-                  aria-labelledby={`${id}-language`}
-                  className="flex h-14 w-full cursor-pointer items-center justify-between gap-2 rounded-lg bg-neutral-900 px-5 text-lg leading-[22px] text-neutral-100 outline-none focus-visible:ring-2 focus-visible:ring-tint-400 disabled:cursor-wait"
-                >
-                  <Select.Value />
-                  <Select.Icon>
-                    <AltArrowDownIcon
-                      size={24}
-                      className="text-white"
-                      aria-hidden
-                    />
-                  </Select.Icon>
-                </Select.Trigger>
-                <Select.Portal>
-                  <Select.Content
-                    position="popper"
-                    sideOffset={8}
-                    className="z-50 w-(--radix-select-trigger-width) rounded-lg bg-neutral-700 p-2 shadow-lg"
-                  >
-                    <Select.Viewport>
-                      {LANGUAGES.map(({ value, label }) => (
-                        <Select.Item
-                          key={value}
-                          value={value}
-                          className="cursor-pointer rounded-md px-3 py-3 text-base text-white outline-none select-none data-[highlighted]:bg-neutral-500 data-[state=checked]:bg-neutral-500"
-                        >
-                          <Select.ItemText>
-                            <span className="flex items-center gap-2">
-                              {value === "en" && (
-                                <Image
-                                  src="/account/settings/english.svg"
-                                  alt=""
-                                  width={24}
-                                  height={24}
-                                  unoptimized
-                                />
-                              )}
-                              {label}
-                            </span>
-                          </Select.ItemText>
-                        </Select.Item>
-                      ))}
-                    </Select.Viewport>
-                  </Select.Content>
-                </Select.Portal>
-              </Select.Root>
-            </div>
           </div>
         </div>
         <p role="status" className="sr-only">
