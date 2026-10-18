@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/layouts/brand-logo";
 import { HeaderAccount } from "@/components/layouts/header-account";
-import { UsaIcon } from "@/components/icons/usa-icon";
-import { AltArrowDownIcon } from "@solar-icons/react/outline";
 import { Input } from "@/components/ui/input";
 import { paths } from "@/config/paths";
 import { EVENT_TYPE_LABELS, type EventType } from "@/utils/event-types";
@@ -57,11 +55,6 @@ export function Header({
         </>
       )}
       <div className="flex items-center gap-3">
-        <button className="flex items-center gap-1">
-          <UsaIcon />
-          <span>Eng</span>
-          <AltArrowDownIcon />
-        </button>
         <HeaderAccount />
       </div>
     </header>
