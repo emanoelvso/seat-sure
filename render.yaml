@@ -13,7 +13,24 @@ services:
     # exits before serving if the database is not the confirmed demo database.
     dockerCommand: node demo/start.mjs
     healthCheckPath: /health
-    autoDeployTrigger: off
+    # Deploy after CI passes on main, and only when something the API image
+    # is built from changes (the web app deploys on Vercel).
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/shared/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - tsconfig.base.json
+        - render.yaml
+      ignoredPaths:
+        - "**/*.md"
+        - "**/__test__/**"
+        - apps/api/test/**
+        - apps/api/load/**
+        - apps/api/demo/*.test.mjs
     envVars:
       - key: NODE_ENV
         value: production
