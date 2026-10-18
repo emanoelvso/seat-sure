@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, waitFor, within } from "storybook/test";
+import { expect, fn, waitFor } from "storybook/test";
 import { useState } from "react";
 import { ACCOUNT_SETTINGS } from "@/testing/account-settings.fixture";
 import type {
@@ -73,14 +73,9 @@ export const Default: Story = {
       );
     }
     await expect(
-      canvas.getByText("Select your preferred language"),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole("combobox", { name: "Language" }),
-    ).toHaveTextContent("English");
-    await expect(
-      canvas.getByRole("combobox").querySelector("img"),
-    ).toHaveAttribute("src", "/account/settings/english.svg");
+      canvas.queryByText("Select your preferred language"),
+    ).toBeNull();
+    await expect(canvas.queryByRole("combobox")).toBeNull();
     await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
   },
 };
@@ -109,27 +104,6 @@ export const SavesEverySwitch: Story = {
     ).not.toBeChecked();
   },
 };
-export const LanguageKeyboard: Story = {
-  play: async ({ canvas, userEvent }) => {
-    const field = canvas.getByRole("combobox", { name: "Language" });
-    field.focus();
-    await userEvent.keyboard("{Enter}");
-    const body = within(document.body);
-    await expect(
-      await body.findByRole("option", { name: "English" }),
-    ).toBeVisible();
-    await expect(
-      body.getByRole("option", { name: "Portuguese (Brazil)" }),
-    ).toBeVisible();
-    await userEvent.keyboard("{End}{Enter}");
-    await waitFor(() => expect(field).toBeEnabled());
-    await expect(field).toHaveTextContent("Portuguese (Brazil)");
-    await expect(save).toHaveBeenLastCalledWith({ language: "pt-BR" });
-    await expect(canvas.getByRole("status")).toHaveTextContent(
-      "Settings saved.",
-    );
-  },
-};
 export const RollbackAndRetry: Story = {
   play: async ({ canvas, userEvent }) => {
     save.mockResolvedValueOnce({ error: ERROR });
@@ -148,21 +122,6 @@ export const RollbackAndRetry: Story = {
     await expect(canvas.getByRole("status")).toHaveTextContent(
       "Settings saved.",
     );
-  },
-};
-export const LanguageRollback: Story = {
-  play: async ({ canvas, userEvent }) => {
-    save.mockResolvedValueOnce({ error: ERROR });
-    const field = canvas.getByRole("combobox", { name: "Language" });
-    await userEvent.click(field);
-    await userEvent.click(
-      await within(document.body).findByRole("option", {
-        name: "Portuguese (Brazil)",
-      }),
-    );
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(ERROR);
-    await expect(field).toHaveTextContent("English");
-    await expect(field).toBeEnabled();
   },
 };
 export const TransportFailure: Story = {
@@ -189,9 +148,6 @@ export const PendingSerializesChanges: Story = {
     await expect(control).toBeChecked();
     for (const toggle of canvas.getAllByRole("switch"))
       await expect(toggle).toBeDisabled();
-    await expect(
-      canvas.getByRole("combobox", { name: "Language" }),
-    ).toBeDisabled();
     await userEvent.click(
       canvas.getByRole("switch", { name: "Push notifications" }),
     );
@@ -211,7 +167,6 @@ export const StoredPreferences: Story = {
   args: {
     settings: {
       ...ACCOUNT_SETTINGS,
-      language: "pt-BR",
       eventReminders: true,
       exclusiveOffers: false,
       ticketAvailability: true,
@@ -224,9 +179,6 @@ export const StoredPreferences: Story = {
       await expect(
         canvas.getByRole("switch", { name: LABELS[i] }),
       ).toHaveAttribute("aria-checked", String(!INITIAL[i]));
-    await expect(
-      canvas.getByRole("combobox", { name: "Language" }),
-    ).toHaveTextContent("Portuguese (Brazil)");
   },
 };
 export const Narrow: Story = {
