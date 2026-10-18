@@ -325,9 +325,11 @@ export const TimerExpiry: Story = {
       await vi.advanceTimersByTimeAsync(2000);
       await flushReact();
 
-      await expect(
-        canvas.getByRole("dialog", { name: "Your time ran out" }),
-      ).toBeVisible();
+      await vi.waitFor(() =>
+        expect(
+          canvas.getByRole("dialog", { name: "Your time ran out" }),
+        ).toBeVisible(),
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -702,5 +704,16 @@ export const RecoverWithNoRemainingCards: Story = {
     await expect(canvas.getByRole("heading", { name: "Payment details" })).toBeVisible();
     await expect(canvas.queryByRole("radio")).toBeNull();
     await expect(getRouter().refresh).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const SimulatorPaymentInstructions: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+    await expect(canvas.getByLabelText("Card number")).toBeVisible();
+    const notice = canvas.getByRole("note", { name: "Demo payment instructions" });
+    await expect(notice).toBeVisible();
+    await expect(notice).toHaveTextContent("Demo only. Do not enter real card details.");
+    await expect(notice).toHaveTextContent("4242 4242 4242 4242");
   },
 };

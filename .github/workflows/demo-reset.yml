@@ -1,0 +1,30 @@
+name: Demo reset
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+jobs:
+  reset:
+    # Inactive until the repository variable DEMO_RESET_ENABLED is set to "true".
+    if: vars.DEMO_RESET_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts --filter api
+      - name: Reset the demo database
+        env:
+          DEMO_MODE: 'true'
+          DEMO_DATABASE_NAME: ${{ vars.DEMO_DATABASE_NAME }}
+          DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+        run: pnpm --filter api demo:reset

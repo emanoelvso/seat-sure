@@ -1,3 +1,5 @@
+import { DemoAuthenticationService } from '@identityModule/core/service/demo-authentication.service';
+import { DemoEmailGuard } from '@identityModule/http/guard/demo-email.guard';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
@@ -34,6 +36,7 @@ const RESEND_CODE_PURPOSE_MAP: Record<ResendCodePurpose, CodeSenderPurpose> = {
 @Resolver()
 export class IdentityResolver {
   constructor(
+    private readonly demoAuthenticationService: DemoAuthenticationService,
     private readonly registrationService: RegistrationService,
     private readonly verificationCodeService: VerificationCodeService,
     private readonly authenticationService: AuthenticationService,
@@ -42,11 +45,18 @@ export class IdentityResolver {
     private readonly clsService: ClsService,
   ) {}
 
+  @Mutation(() => SessionTokens)
+  async demoSignIn(): Promise<SessionTokens> {
+    return this.demoAuthenticationService.signIn(new Date());
+  }
+
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => SignUpResult)
   async signUp(@Args('input') input: SignUpInput): Promise<SignUpResult> {
     return this.registrationService.signUp(input, new Date());
   }
 
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => SessionTokens)
   async verifyEmail(
     @Args('input') input: VerifyEmailInput,
@@ -54,6 +64,7 @@ export class IdentityResolver {
     return this.registrationService.verifyEmail(input, new Date());
   }
 
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => CodeDelivery)
   async resendCode(
     @Args('input') input: ResendCodeInput,
@@ -65,6 +76,7 @@ export class IdentityResolver {
     );
   }
 
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => LogInResult)
   async logIn(@Args('input') input: LogInInput): Promise<LogInResult> {
     return this.authenticationService.logIn(input, new Date());
@@ -77,6 +89,7 @@ export class IdentityResolver {
     return this.sessionService.rotate(input.refreshToken, new Date());
   }
 
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => CodeDelivery)
   async requestPasswordReset(
     @Args('input') input: RequestPasswordResetInput,
@@ -84,6 +97,7 @@ export class IdentityResolver {
     return this.passwordResetService.requestReset(input.email, new Date());
   }
 
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => PasswordResetGrant)
   async confirmPasswordResetCode(
     @Args('input') input: ConfirmPasswordResetCodeInput,
@@ -95,6 +109,7 @@ export class IdentityResolver {
     );
   }
 
+  @UseGuards(DemoEmailGuard)
   @Mutation(() => Boolean)
   async resetPassword(
     @Args('input') input: ResetPasswordInput,

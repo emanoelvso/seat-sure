@@ -57,5 +57,7 @@
     "typescript": "^5",
     "vite": "latest",
     "vitest": "latest"
-  }
+  },
+  "license": "MIT",
+  "description": "Seat Sure Next.js event ticketing interface"
 }

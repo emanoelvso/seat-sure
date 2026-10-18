@@ -6,7 +6,6 @@
 - **Tags**: architecture, backend, frontend, catalog, ticketing, pricing
 - **Links**:
   - [ADR-011: Catalog Owns Ticket Types and Seat Maps Until Ticketing Has Behavior](./011-catalog-owns-ticket-types-and-seat-maps.md)
-  - Feature spec: `.specs/features/seat-page-design-parity/` (decision AD-029 in `.specs/STATE.md`)
 
 ## Context
 

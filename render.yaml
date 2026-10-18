@@ -1,0 +1,64 @@
+# Render Blueprint for the free portfolio demo API. It holds variable names only;
+# values are entered in the Render dashboard. See docs/deployment.md.
+services:
+  - type: web
+    name: seat-sure-api
+    runtime: docker
+    plan: free
+    # Same US East location as the Neon database (Washington, D.C.) to keep API-to-database latency low.
+    region: virginia
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    # Migrate every context, seed the demo catalog, then serve. demo/start.mjs
+    # exits before serving if the database is not the confirmed demo database.
+    dockerCommand: node demo/start.mjs
+    healthCheckPath: /health
+    # Deploy after CI passes on main, and only when something the API image
+    # is built from changes (the web app deploys on Vercel).
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/shared/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - tsconfig.base.json
+        - render.yaml
+      ignoredPaths:
+        - "**/*.md"
+        - "**/__test__/**"
+        - apps/api/test/**
+        - apps/api/load/**
+        - apps/api/demo/*.test.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "true"
+      - key: AUTH_CODE_SENDER
+        value: disabled
+      # Config-schema placeholders; nothing connects to Redis.
+      - key: REDIS_HOST
+        value: unused
+      - key: REDIS_PORT
+        value: "6379"
+      # Must equal the Neon database name, which must contain the word "demo".
+      - key: DEMO_DATABASE_NAME
+        value: seat-sure-demo
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BILLING_FINGERPRINT_SECRET
+        generateValue: true
+      # Neon connection string, ending in ?sslmode=verify-full.
+      - key: DATABASE_URL
+        sync: false
+      # Origin of the Vercel deployment, for example https://<project>.vercel.app.
+      - key: CORS_ORIGIN
+        sync: false
+      # TRUST_PROXY is deliberately not set: forwarding headers are ignored, and the
+      # visitor address arrives through CLIENT_ADDRESS_SECRET below.
+      # At least 32 characters, identical to the web app's value (openssl rand -hex 32).
+      # Lets the API rate limit by the visitor address the web server forwards.
+      - key: CLIENT_ADDRESS_SECRET
+        sync: false

@@ -1,3 +1,4 @@
+import { env } from "@/config/env";
 import { redirect } from "next/navigation";
 import { paths } from "@/config/paths";
 import { resendCodeAction } from "@/features/auth/api/resend-code-action";
@@ -22,6 +23,8 @@ export default async function VerifyEmailPage() {
   if (await hasSession()) {
     redirect(paths.home.getHref());
   }
+
+  if (env.demoMode) redirect(paths.login.getHref());
 
   const pending = await readPendingCookie<PendingCookie>();
   if (!pending) {

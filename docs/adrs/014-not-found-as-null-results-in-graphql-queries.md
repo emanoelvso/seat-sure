@@ -6,7 +6,6 @@
 - **Tags**: api, graphql, error-handling
 - **Links**:
   - [ADR-001: GraphQL as Primary API](./001-graphql-primary-api-with-rest-for-specialized-endpoints.md)
-  - Feature specs: `.specs/features/artist-page-redesign/` (ARTIST-04), `.specs/features/buy-ticket-choose-section/` (SECT-04, SECT-05)
 
 ## Context
 

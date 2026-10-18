@@ -1,3 +1,4 @@
+import { env } from "@/config/env";
 import { redirect } from "next/navigation";
 import { paths } from "@/config/paths";
 import {
@@ -20,6 +21,8 @@ export default async function ResetPasswordPage() {
   if (await hasSession()) {
     redirect(paths.home.getHref());
   }
+
+  if (env.demoMode) redirect(paths.login.getHref());
 
   const [grant, resetDone] = await Promise.all([
     readResetGrantCookie(),

@@ -64,7 +64,7 @@ export function HeaderNotifications() {
       {unread > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-neutral-1000 bg-primary px-1 text-xs font-semibold text-neutral-1000"
+          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-neutral-1000 bg-primary px-1 text-xs font-semibold text-white"
         >
           {unread > 99 ? "99+" : unread}
         </span>

@@ -1,6 +1,8 @@
 import { UnprocessableEntityException } from '@nestjs/common';
 
 export type IdentityExceptionReason =
+  | 'DEMO_ONLY'
+  | 'DEMO_DISABLED'
   | 'INVALID_INPUT'
   | 'EMAIL_TAKEN'
   | 'INVALID_CREDENTIALS'

@@ -351,3 +351,15 @@ export const TileResetsForm: Story = {
     await expect(name).toHaveFocus();
   },
 };
+
+export const SimulatorSavedCardInstructions: Story = {
+  args: { cards: [] },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add new card" }));
+    await expect(canvas.getByLabelText("Card number")).toBeVisible();
+    const notice = canvas.getByRole("note", { name: "Demo payment instructions" });
+    await expect(notice).toBeVisible();
+    await expect(notice).toHaveTextContent("Demo only. Do not enter real card details.");
+    await expect(notice).toHaveTextContent("Use any future expiry (MM/YY) and a 3-digit CVV such as 123.");
+  },
+};

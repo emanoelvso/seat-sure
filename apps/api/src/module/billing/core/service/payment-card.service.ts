@@ -1,3 +1,5 @@
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { demoCardError } from '@billingModule/core/util/demo-card-rules';
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
@@ -31,6 +33,7 @@ const cardNotFound = () =>
 @Injectable()
 export class PaymentCardService {
   constructor(
+    private readonly config: ConfigService,
     private readonly paymentCardRepository: BillingPaymentCardRepository,
     private readonly cardThrottleService: CardThrottleService,
     @Inject(PaymentGateway) private readonly gateway: PaymentGateway,
@@ -80,10 +83,14 @@ export class PaymentCardService {
     now: Date,
   ): Promise<void> {
     // Only the invalid fields, so the client marks exactly those (CARD-04 AC 8)
+    const errors = validateCard(card, now);
+    const demoError = demoCardError(
+      card.number,
+      this.config.get('demo.enabled'),
+    );
+    if (demoError) errors.number = demoError;
     const fields = Object.fromEntries(
-      Object.entries(validateCard(card, now)).filter(
-        ([, message]) => message !== '',
-      ),
+      Object.entries(errors).filter(([, message]) => message !== ''),
     );
     if (Object.keys(fields).length > 0) {
       throw new BillingException(

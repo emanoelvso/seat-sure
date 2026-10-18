@@ -44,3 +44,17 @@ redis-data/
 
 # Uploads
 uploads/
+
+# Local agent tooling and design snapshots
+.specs/
+.claude/
+.codex/
+.cursor/
+.windsurf/
+.agents/
+.figwright/
+AGENTS.md
+CLAUDE.md
+.ai-memory.toml
+skills-lock.json
+**/docs/ai-memory.md

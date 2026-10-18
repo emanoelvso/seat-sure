@@ -124,7 +124,7 @@ export const Read: Story = {
 export const ShowsTitleBodyAndTimestamp: Story = {
   play: async ({ canvas }) => {
     const highlight = canvas.getByText("SeatSure!");
-    await expect(highlight).toHaveClass("text-primary");
+    await expect(highlight).toHaveClass("text-tint-500");
     await expect(canvas.getByRole("button")).toHaveTextContent(
       "Welcome to SeatSure!",
     );
