@@ -31,6 +31,8 @@ export const factory = (): Config => {
     },
     billing: {
       fingerprintSecret: process.env.BILLING_FINGERPRINT_SECRET,
+      gateway: process.env.BILLING_GATEWAY || undefined,
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY || undefined,
     },
     app: {
       timeZone: process.env.APP_TIME_ZONE || undefined,

@@ -61,8 +61,12 @@ export const authSchema = z.object({
   codeSender: codeSenderSchema.default('log'),
 });
 
+export const billingGatewaySchema = z.enum(['simulated', 'stripe']);
+
 export const billingSchema = z.object({
   fingerprintSecret: z.string().min(32),
+  gateway: billingGatewaySchema.default('simulated'),
+  stripeSecretKey: z.string().optional(),
 });
 
 export const timeZoneSchema = z
@@ -131,6 +135,16 @@ export const configSchema = z
         code: z.ZodIssueCode.custom,
         path: ['auth', 'codeSender'],
         message: 'Disabled email delivery requires demo mode',
+      });
+    }
+    if (
+      config.billing.gateway === 'stripe' &&
+      !/^(sk|rk)_test_/.test(config.billing.stripeSecretKey ?? '')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['billing', 'stripeSecretKey'],
+        message: 'Stripe requires a test-mode secret key',
       });
     }
     if (config.env === 'production') {
