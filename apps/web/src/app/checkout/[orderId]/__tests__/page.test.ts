@@ -2,7 +2,9 @@ import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { notFound, redirect } from "next/navigation";
 import { getCheckoutPageData } from "@/features/checkout/api/get-checkout-page-data";
+import { confirmOrderPaymentAction } from "@/features/checkout/api/confirm-order-payment-action";
 import { payOrderAction } from "@/features/checkout/api/pay-order-action";
+import { simulatedBankAction } from "@/features/checkout/api/simulated-bank-action";
 import { CheckoutView } from "@/features/checkout/components/checkout-view";
 import CheckoutOrderPage from "@/app/checkout/[orderId]/page";
 
@@ -25,6 +27,12 @@ vi.mock("@/features/checkout/api/get-checkout-page-data", () => ({
 }));
 vi.mock("@/features/checkout/api/pay-order-action", () => ({
   payOrderAction: vi.fn(),
+}));
+vi.mock("@/features/checkout/api/confirm-order-payment-action", () => ({
+  confirmOrderPaymentAction: vi.fn(),
+}));
+vi.mock("@/features/checkout/api/simulated-bank-action", () => ({
+  simulatedBankAction: vi.fn(),
 }));
 vi.mock("@/features/checkout/components/checkout-view", () => ({
   CheckoutView: vi.fn(),
@@ -133,6 +141,8 @@ describe("CheckoutOrderPage", () => {
       order: pendingOrder,
       user,
       payAction: payOrderAction,
+      bankAction: simulatedBankAction,
+      confirmAction: confirmOrderPaymentAction,
     });
   });
 
@@ -151,6 +161,8 @@ describe("CheckoutOrderPage", () => {
       order: expiredOrder,
       user,
       payAction: payOrderAction,
+      bankAction: simulatedBankAction,
+      confirmAction: confirmOrderPaymentAction,
     });
   });
 

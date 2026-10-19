@@ -9,11 +9,20 @@ import {
   useState,
 } from "react";
 import { paths } from "@/config/paths";
+import type {
+  ConfirmOrderPaymentReason,
+  ConfirmOrderPaymentResult,
+} from "@/features/checkout/api/confirm-order-payment-action";
 import type { CheckoutPaymentCard } from "@/features/checkout/api/find-checkout-payment-cards";
 import type {
   PayOrderActionInput,
   PayOrderState,
 } from "@/features/checkout/api/pay-order-action";
+import type { PaymentAction } from "@/features/checkout/api/payment-action";
+import type {
+  SimulatedBankOutcome,
+  SimulatedBankResult,
+} from "@/features/checkout/api/simulated-bank-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CardForm } from "@/features/checkout/components/card-form";
 import { CheckoutEventCard } from "@/features/checkout/components/checkout-event-card";
@@ -24,6 +33,7 @@ import {
 import { CountdownTimer } from "@/features/checkout/components/countdown-timer";
 import { FanProtectCard } from "@/features/checkout/components/fan-protect-card";
 import { OrderSummary } from "@/features/checkout/components/order-summary";
+import { PaymentChallengeDialog } from "@/features/checkout/components/payment-challenge-dialog";
 import { ReviewStep } from "@/features/checkout/components/review-step";
 import {
   NEW_CARD,
@@ -43,6 +53,13 @@ type PayAction = (
   state: PayOrderState,
   input: PayOrderActionInput,
 ) => Promise<PayOrderState>;
+
+type BankAction = (
+  clientSecret: string,
+  outcome: SimulatedBankOutcome,
+) => Promise<SimulatedBankResult>;
+
+type ConfirmAction = (orderId: string) => Promise<ConfirmOrderPaymentResult>;
 
 interface CheckoutViewProps {
   order: {
@@ -72,6 +89,9 @@ interface CheckoutViewProps {
   // The caller's saved cards, default first (CARD-07)
   cards?: CheckoutPaymentCard[];
   payAction: PayAction;
+  // GW-25: answers the simulated bank, then settles the paused order
+  bankAction: BankAction;
+  confirmAction: ConfirmAction;
 }
 
 const emptyCard: CardInput = { number: "", holder: "", expiry: "", cvv: "" };
@@ -93,6 +113,8 @@ export function CheckoutView({
   user,
   cards = [],
   payAction,
+  bankAction,
+  confirmAction,
 }: CheckoutViewProps) {
   const router = useRouter();
   const [step, setStep] = useState<CheckoutStep>("tickets");
@@ -103,10 +125,19 @@ export function CheckoutView({
   const [savedCardId, setSavedCardId] = useState<string | null>(null);
   const [saveCard, setSaveCard] = useState(false);
   const [pickerError, setPickerError] = useState("");
+  // GW-24..GW-29: the 3-D Secure challenge the buyer is completing, and why
+  // the last one ended without a payment
+  const [challenge, setChallenge] = useState<PaymentAction | null>(null);
+  const [settling, setSettling] = useState(false);
+  const [confirmReason, setConfirmReason] =
+    useState<ConfirmOrderPaymentReason | null>(null);
 
   const [payState, dispatchPay, paying] = useActionState(
     async (state: PayOrderState, input: PayOrderActionInput) => {
       const result = await payAction(state, input);
+      if (result.requiresAction) {
+        setChallenge(result.requiresAction);
+      }
       if (result.reason === "INVALID_CARD") {
         setFieldErrors(result.fields);
         setStep("payment");
@@ -128,10 +159,14 @@ export function CheckoutView({
   const handleExpire = useCallback(() => setTimerExpired(true), []);
 
   const timedOut =
-    order.status !== "PENDING" ||
+    (order.status !== "PENDING" && order.status !== "REQUIRES_ACTION") ||
     order.secondsLeft <= 0 ||
     timerExpired ||
-    payState.reason === "ORDER_EXPIRED";
+    payState.reason === "ORDER_EXPIRED" ||
+    confirmReason === "ORDER_EXPIRED";
+  const seatsUnavailable =
+    payState.reason === "SEATS_UNAVAILABLE" ||
+    confirmReason === "SEATS_UNAVAILABLE";
   const seatsHref = paths.eventSeats.getHref(
     order.event.id,
     order.ticketType.id,
@@ -163,6 +198,7 @@ export function CheckoutView({
   // for `paying` to update. `saveCard` is only sent when checked; the API
   // defaults it to false.
   function handlePay() {
+    setConfirmReason(null);
     startTransition(() =>
       dispatchPay(
         savedCardId
@@ -176,14 +212,43 @@ export function CheckoutView({
     );
   }
 
+  // GW-25: the bank hears the outcome first, then the API settles the order.
+  // A bank that can't be reached still lets the API decide: it reads the
+  // payment itself.
+  async function handleChallengeSettled(outcome: SimulatedBankOutcome) {
+    if (!challenge) return;
+    setSettling(true);
+    try {
+      await bankAction(challenge.clientSecret, outcome);
+      const result = await confirmAction(order.id);
+
+      if ("paid" in result) {
+        setChallenge(null);
+        router.push(paths.checkoutSuccess.getHref(order.id));
+      } else if ("requiresAction" in result) {
+        setChallenge(result.requiresAction);
+      } else {
+        setChallenge(null);
+        setConfirmReason(result.reason);
+        setStep("review");
+      }
+    } finally {
+      setSettling(false);
+    }
+  }
+
   const showPicker = usePicker && cards.length > 0;
 
   const reviewError =
     payState.reason === "CARD_DECLINED" ||
     payState.reason === "CARD_ATTEMPTS_LIMITED" ||
+    payState.reason === "AUTHENTICATION_FAILED" ||
     payState.reason === "GENERIC"
       ? payState.reason
-      : undefined;
+      : confirmReason === "AUTHENTICATION_FAILED" ||
+          confirmReason === "GENERIC"
+        ? confirmReason
+        : undefined;
 
   return (
     <div className="flex flex-col gap-12">
@@ -205,7 +270,7 @@ export function CheckoutView({
             onExpire={handleExpire}
           />
 
-          {payState.reason === "SEATS_UNAVAILABLE" ? (
+          {seatsUnavailable ? (
             <div className="flex flex-col gap-2">
               <p role="alert" className="text-sm text-error-300">
                 Your seats were just taken. You haven&apos;t been charged.
@@ -277,6 +342,11 @@ export function CheckoutView({
         </div>
       </div>
 
+      <PaymentChallengeDialog
+        open={challenge !== null && !timedOut}
+        pending={settling}
+        onSettled={handleChallengeSettled}
+      />
       <TimeOutDialog open={timedOut} seatsHref={seatsHref} />
     </div>
   );
