@@ -6,6 +6,7 @@ import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adap
 import { BillingException } from '@billingModule/core/exception/billing.exception';
 import { CardThrottleService } from '@billingModule/core/service/card-throttle.service';
 import {
+  NewPaymentCard,
   PaymentCardModel,
   toPaymentCardModel,
 } from '@billingModule/core/model/payment-card.model';
@@ -109,54 +110,75 @@ export class PaymentCardService {
     const expiry = parseExpiry(card.expiry) as { month: number; year: number };
 
     try {
-      await this.inUserLock(userId, async (manager) => {
-        const count = await this.paymentCardRepository.countForUser(
-          manager,
-          userId,
-        );
-        if (count >= MAX_PAYMENT_CARDS) {
-          throw new BillingException(
-            'CARD_LIMIT_REACHED',
-            `You can save up to ${MAX_PAYMENT_CARDS} cards.`,
-          );
-        }
-
-        if (
-          await this.paymentCardRepository.hasFingerprint(
-            manager,
-            userId,
-            tokenized.fingerprint,
-          )
-        ) {
-          throw new BillingException(
-            'DUPLICATE_CARD',
-            'This card is already saved.',
-            { number: 'This card is already saved.' },
-          );
-        }
-
-        // Only the first card becomes the default (CARD-03 AC 4, 5)
-        await this.paymentCardRepository.insert(
-          manager,
-          new BillingPaymentCard({
-            userId,
-            provider: 'simulated',
-            providerToken: tokenized.token,
-            fingerprint: tokenized.fingerprint,
-            brand: detectBrand(card.number),
-            last4: last4(card.number),
-            expMonth: expiry.month,
-            expYear: expiry.year,
-            holder: card.holder.trim(),
-            isDefault: count === 0,
-          }),
-        );
-      });
+      await this.inUserLock(userId, (manager) =>
+        this.insertCard(manager, userId, {
+          provider: this.gateway.provider,
+          providerToken: tokenized.token,
+          fingerprint: tokenized.fingerprint,
+          brand: detectBrand(card.number),
+          last4: last4(card.number),
+          expMonth: expiry.month,
+          expYear: expiry.year,
+          holder: card.holder.trim(),
+        }),
+      );
     } catch (error) {
       // Nothing was stored, so the gateway must not keep the token either
       await this.gateway.detach(tokenized.token);
       throw error;
     }
+  }
+
+  // The card limit, the duplicate check, then the insert. Runs inside the
+  // user's lock, so the limit and the single default hold under concurrent
+  // requests.
+  async insertCard(
+    manager: EntityManager,
+    userId: string,
+    card: NewPaymentCard,
+  ): Promise<void> {
+    const count = await this.paymentCardRepository.countForUser(
+      manager,
+      userId,
+    );
+    if (count >= MAX_PAYMENT_CARDS) {
+      throw new BillingException(
+        'CARD_LIMIT_REACHED',
+        `You can save up to ${MAX_PAYMENT_CARDS} cards.`,
+      );
+    }
+
+    if (
+      await this.paymentCardRepository.hasFingerprint(
+        manager,
+        userId,
+        card.fingerprint,
+      )
+    ) {
+      throw new BillingException(
+        'DUPLICATE_CARD',
+        'This card is already saved.',
+        { number: 'This card is already saved.' },
+      );
+    }
+
+    // Only the first card becomes the default (CARD-03 AC 4, 5)
+    await this.paymentCardRepository.insert(
+      manager,
+      new BillingPaymentCard({
+        userId,
+        provider: card.provider,
+        providerToken: card.providerToken,
+        customerId: card.customerId ?? null,
+        fingerprint: card.fingerprint,
+        brand: card.brand,
+        last4: card.last4,
+        expMonth: card.expMonth,
+        expYear: card.expYear,
+        holder: card.holder,
+        isDefault: count === 0,
+      }),
+    );
   }
 
   // Makes the card the caller's only default; the current default is left
@@ -263,7 +285,7 @@ export class PaymentCardService {
 
   // Serializes one user's add / set default / remove, so the card limit and
   // the single default hold under concurrent requests
-  private async inUserLock<T>(
+  async inUserLock<T>(
     userId: string,
     work: (manager: EntityManager) => Promise<T>,
   ): Promise<T> {
