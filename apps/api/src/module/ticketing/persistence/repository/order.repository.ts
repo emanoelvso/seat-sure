@@ -28,7 +28,11 @@ const TAB_CONDITIONS: Record<AccountOrdersTab, string> = {
 const tabParameters = (now: Date) => ({
   paid: OrderStatus.PAID,
   cancelled: OrderStatus.CANCELLED,
-  open: [OrderStatus.PENDING, OrderStatus.PROCESSING],
+  open: [
+    OrderStatus.PENDING,
+    OrderStatus.PROCESSING,
+    OrderStatus.REQUIRES_ACTION,
+  ],
   now,
 });
 
@@ -94,12 +98,43 @@ export class OrderRepository extends DefaultTypeOrmRepository<Order> {
     return rows.length === 1;
   }
 
+  // Pauses a claimed attempt on the buyer's 3-D Secure challenge, keeping the
+  // payment it waits on. Only a processing order can pause (GW-08).
+  async markRequiresAction(
+    orderId: string,
+    paymentId: string,
+  ): Promise<boolean> {
+    const result = await this.entityManager.update(
+      Order,
+      { id: orderId, status: OrderStatus.PROCESSING },
+      { status: OrderStatus.REQUIRES_ACTION, paymentId },
+    );
+
+    return result.affected === 1;
+  }
+
+  // Claims a paused order for settlement: only one caller can move it from
+  // requires_action back to processing (GW-14). Expiry is checked by the
+  // caller, which cancels the payment of an expired order (GW-12).
+  async claimConfirm(orderId: string): Promise<boolean> {
+    const [rows]: [{ id: string }[], number] = await this.entityManager.query(
+      `
+      UPDATE "TicketingOrder" SET "status" = $1, "updatedAt" = now()
+      WHERE "id" = $2 AND "status" = $3
+      RETURNING "id"
+      `,
+      [OrderStatus.PROCESSING, orderId, OrderStatus.REQUIRES_ACTION],
+    );
+
+    return rows.length === 1;
+  }
+
   // Ends a payment attempt that charged nothing, so the buyer can retry
   async releasePayment(orderId: string): Promise<void> {
     await this.entityManager.update(
       Order,
       { id: orderId, status: OrderStatus.PROCESSING },
-      { status: OrderStatus.PENDING },
+      { status: OrderStatus.PENDING, paymentId: null },
     );
   }
 

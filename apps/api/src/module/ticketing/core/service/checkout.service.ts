@@ -30,8 +30,9 @@ const seatsUnavailable = () =>
   );
 
 // Maps a stored order to what the buyer sees. `processing` is internal and
-// reads as pending, and a pending or processing order past its expiry reads
-// as expired (PAY-62). `secondsLeft` uses the API clock (AD-025).
+// reads as pending, and an open order past its expiry reads as expired
+// (PAY-62). A requires_action order keeps its own status until it expires
+// (GW-16). `secondsLeft` uses the API clock (AD-025).
 export const toCheckoutOrderModel = (
   order: Order,
   items: OrderItem[],
@@ -39,12 +40,15 @@ export const toCheckoutOrderModel = (
 ): CheckoutOrderModel => {
   const open =
     order.status === OrderStatus.PENDING ||
-    order.status === OrderStatus.PROCESSING;
+    order.status === OrderStatus.PROCESSING ||
+    order.status === OrderStatus.REQUIRES_ACTION;
   const status = !open
     ? (order.status.toUpperCase() as CheckoutOrderStatus)
     : order.expiresAt.getTime() < now.getTime()
       ? CheckoutOrderStatus.EXPIRED
-      : CheckoutOrderStatus.PENDING;
+      : order.status === OrderStatus.REQUIRES_ACTION
+        ? CheckoutOrderStatus.REQUIRES_ACTION
+        : CheckoutOrderStatus.PENDING;
   const [firstItem] = items;
 
   return {
@@ -52,7 +56,8 @@ export const toCheckoutOrderModel = (
     status,
     expiresAt: order.expiresAt,
     secondsLeft:
-      status === CheckoutOrderStatus.PENDING
+      status === CheckoutOrderStatus.PENDING ||
+      status === CheckoutOrderStatus.REQUIRES_ACTION
         ? Math.max(
             0,
             Math.floor((order.expiresAt.getTime() - now.getTime()) / 1000),

@@ -24,7 +24,7 @@ const TAB_COUNTS: Record<AccountOrdersTab, keyof AccountOrderCountsModel> = {
 };
 
 // Only listed orders reach here: paid, cancelled, or open and unexpired.
-// `processing` is internal and reads as pending.
+// `processing` and `requires_action` read as pending.
 const toAccountOrderStatus = (status: OrderStatus): AccountOrderStatus => {
   if (status === OrderStatus.PAID) {
     return AccountOrderStatus.COMPLETED;
