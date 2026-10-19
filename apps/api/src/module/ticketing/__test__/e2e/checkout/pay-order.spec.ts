@@ -4,6 +4,7 @@ import {
   AuthorizeInput,
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import { PendingCardService } from '@billingModule/core/service/pending-card.service';
 import { CardInput } from '@billingModule/core/util/card-rules';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
 import { NotificationsPublicApiProvider } from '@notificationsModule/integration/provider/public-api.provider';
@@ -111,6 +112,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await testDbClient(Tables.BillingPaymentCard).del();
     await testDbClient(Tables.BillingCardThrottle).del();
     await testDbClient(Tables.BillingSimulatedPayment).del();
+    await testDbClient(Tables.BillingPendingCard).del();
     await testDbClient(Tables.NotificationsNotification).del();
   };
 
@@ -506,7 +508,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
     it('answers a gateway error with a generic error, leaves the order pending and records no payment (PAY-53)', async () => {
       const { order } = await insertOrder();
-      gateway.authorize.mockRejectedValueOnce(new Error('gateway unavailable'));
+      gateway.authorize.mockRejectedValue(new Error('gateway unavailable'));
 
       const body = await payOrder(order.id);
 
@@ -844,8 +846,13 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
 
       expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
-      expect(gateway.tokenize).not.toHaveBeenCalled();
       expect(await myPaymentCards()).toEqual([]);
+      // The card was tokenized before the charge, so the declined payment
+      // drops the held card and detaches its token (GW-50)
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+        [],
+      );
+      expect(gateway.detach).toHaveBeenCalledTimes(1);
     });
 
     it('saves no card when the seats were lost after the charge (CARD-09 AC 4)', async () => {
@@ -859,7 +866,6 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      expect(gateway.tokenize).not.toHaveBeenCalled();
       expect(await myPaymentCards()).toEqual([]);
     });
 
@@ -911,9 +917,11 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(await myPaymentCards()).toEqual(before);
     });
 
-    it('still pays when saving fails, and logs the failure with the order id only (AC 5)', async () => {
+    it('still pays when saving the held card fails, and logs the failure with the order and payment ids only (AC 5)', async () => {
       const { order } = await insertOrder();
-      gateway.tokenize.mockRejectedValueOnce(new Error('gateway unavailable'));
+      const promote = jest
+        .spyOn(PendingCardService.prototype, 'promote')
+        .mockRejectedValueOnce(new Error('database unavailable'));
       const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
 
       const body = await payOrderWith({
@@ -928,8 +936,26 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(await myPaymentCards()).toEqual([]);
       expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
         orderId: order.id,
+        paymentId: (await paymentsOf(order.id))[0].id,
       });
+      promote.mockRestore();
       errorSpy.mockRestore();
+    });
+
+    it('answers a tokenize failure with a generic error and leaves the order pending and unpaid', async () => {
+      const { order } = await insertOrder();
+      gateway.tokenize.mockRejectedValueOnce(new Error('gateway unavailable'));
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors[0].extensions.code).toBe('INTERNAL_SERVER_ERROR');
+      expect((await orderRow(order.id)).status).not.toBe('paid');
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+      expect(await myPaymentCards()).toEqual([]);
     });
   });
 
@@ -1065,7 +1091,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
     it('stores none when the gateway throws (NOTIF-03 AC 5)', async () => {
       const { order } = await insertOrder();
-      gateway.authorize.mockRejectedValueOnce(new Error('gateway unavailable'));
+      gateway.authorize.mockRejectedValue(new Error('gateway unavailable'));
 
       const body = await payOrder(order.id);
 

@@ -166,30 +166,7 @@ export class OrderPaymentService {
       throw paymentInProgress();
     }
 
-    const paid = await this.chargeAndIssue(order, source, now);
-
-    // Only once the tickets are issued, and only a typed card (CARD-09)
-    if (saveCard && source.type === 'card') {
-      await this.saveCard(order, source.card, now);
-    }
-
-    return paid;
-  }
-
-  // The order is paid whatever happens here, so a failure is only logged,
-  // with the order id and never the card (CARD-09 AC 5)
-  private async saveCard(
-    order: Order,
-    card: BillingCardInput,
-    now: Date,
-  ): Promise<void> {
-    try {
-      await this.billingApi.saveCard(order.userId, card, now);
-    } catch {
-      this.logger.error("Couldn't save the card of a paid order", {
-        orderId: order.id,
-      });
-    }
+    return this.chargeAndIssue(order, source, saveCard, now);
   }
 
   // Charges the order total, then turns the payment into tickets. A charge
@@ -197,6 +174,7 @@ export class OrderPaymentService {
   private async chargeAndIssue(
     order: Order,
     source: ChargeSource,
+    saveCard: boolean,
     now: Date,
   ): Promise<CheckoutOrderModel> {
     let charge: Awaited<ReturnType<BillingApi['charge']>>;
@@ -207,6 +185,8 @@ export class OrderPaymentService {
         amountCents: order.totalCents,
         currency: order.currency,
         source,
+        // Only a typed card can be saved (CARD-09)
+        saveCard: saveCard && source.type === 'card',
       });
     } catch {
       await this.orderRepository.releasePayment(order.id);
@@ -214,8 +194,13 @@ export class OrderPaymentService {
     }
 
     switch (charge.status) {
-      case 'succeeded':
+      case 'authorized':
         break;
+      case 'requires_action':
+        // Challenges are not handled yet: the payment stays authorized
+        // elsewhere, and the buyer can retry
+        await this.orderRepository.releasePayment(order.id);
+        throw new Error("We couldn't process your payment.");
       case 'failed':
         await this.orderRepository.releasePayment(order.id);
         await this.notify(order, 'payment_unsuccessful', () =>
@@ -269,6 +254,7 @@ export class OrderPaymentService {
       }
       throw seatsUnavailable();
     }
+    await this.capture(order, charge.paymentId);
     await this.sendTickets(order, codes);
     await this.notify(order, 'purchase_confirmed', () =>
       this.notificationsApi.notifyPurchaseConfirmed({
@@ -283,6 +269,19 @@ export class OrderPaymentService {
     order.paymentId = charge.paymentId;
 
     return toCheckoutOrderModel(order, order.items, now);
+  }
+
+  // The order is paid whatever happens here, so a failure is only logged,
+  // with the order id and payment id and never the card
+  private async capture(order: Order, paymentId: string): Promise<void> {
+    try {
+      await this.billingApi.capture(paymentId);
+    } catch {
+      this.logger.error("Couldn't capture the payment of a paid order", {
+        orderId: order.id,
+        paymentId,
+      });
+    }
   }
 
   // A seat lost between the start and the issuance: a missing or foreign hold,

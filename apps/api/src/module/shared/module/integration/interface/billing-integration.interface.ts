@@ -21,14 +21,25 @@ export interface ChargeDto {
   amountCents: number;
   currency: string;
   source: ChargeSource;
+  // Save the typed card once the payment is captured (CARD-09, GW-50)
+  saveCard?: boolean;
 }
 
+// What the buyer's browser needs to finish a 3-D Secure challenge
+export interface PaymentAction {
+  provider: 'simulated' | 'stripe';
+  clientSecret: string;
+}
+
+// `authorized`: the money is held, not yet captured.
+// `requires_action`: the buyer must complete `action` first (3-D Secure).
 // `card_not_found`: the saved card isn't the user's or no longer exists.
 // Nothing was charged and no payment was recorded.
 // `card_attempts_limited`: too many failed card attempts (AD-028); nothing
 // was charged and no payment was recorded.
 export type ChargeOutcome =
-  | { status: 'succeeded' | 'failed'; paymentId: string }
+  | { status: 'authorized' | 'failed'; paymentId: string }
+  | { status: 'requires_action'; paymentId: string; action: PaymentAction }
   | { status: 'card_not_found' }
   | { status: 'card_attempts_limited' };
 
@@ -43,9 +54,8 @@ export interface BillingApi {
     now: Date,
   ): Promise<BillingCardFieldErrors>;
   charge(input: ChargeDto): Promise<ChargeOutcome>;
-  // Saves a typed card for the user. A duplicate, the card limit, or a
-  // decline leaves the saved cards as they are and throws nothing.
-  saveCard(userId: string, card: BillingCardInput, now: Date): Promise<void>;
+  // Captures an authorized payment and saves the card held for it
+  capture(paymentId: string): Promise<void>;
   refund(paymentId: string): Promise<void>;
   findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
 }

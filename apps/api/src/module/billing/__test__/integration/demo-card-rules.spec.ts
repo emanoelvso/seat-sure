@@ -118,13 +118,13 @@ describe('Demo card restrictions (REL-22)', () => {
 
   it('charges the documented success card and records its exact safe summary', async () => {
     const outcome = await charge(SUCCESS);
-    expect(outcome.status).toBe('succeeded');
+    expect(outcome.status).toBe('authorized');
     expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
       userId,
       amountCents: 26000,
       currency: 'USD',
       cardLast4: '4242',
-      status: 'succeeded',
+      status: 'authorized',
     });
   });
 
@@ -150,13 +150,13 @@ describe('Demo card restrictions (REL-22)', () => {
       currency: 'USD',
       source: { type: 'savedCard', savedCardId: saved[0].id },
     });
-    expect(outcome.status).toBe('succeeded');
+    expect(outcome.status).toBe('authorized');
     expect(await testDbClient(Tables.BillingPaymentCard).select()).toHaveLength(
       1,
     );
     expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
       userId,
-      status: 'succeeded',
+      status: 'authorized',
       cardLast4: '4242',
     });
   });
@@ -192,10 +192,10 @@ describe('Demo card restrictions (REL-22)', () => {
 
   it('preserves ordinary Mastercard behavior outside demo mode on both paths', async () => {
     config.set('demo', { ...config.get('demo'), enabled: false });
-    expect((await charge(OTHER)).status).toBe('succeeded');
+    expect((await charge(OTHER)).status).toBe('authorized');
     expect((await cards.add(userId, OTHER, new Date()))[0].last4).toBe('4444');
     expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      status: 'succeeded',
+      status: 'authorized',
       cardLast4: '4444',
     });
     expect(await testDbClient(Tables.BillingPaymentCard).first()).toMatchObject(
