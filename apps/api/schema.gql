@@ -97,6 +97,10 @@ input AddPaymentCardInput {
   number: String!
 }
 
+input AddPaymentMethodInput {
+  paymentMethodId: String!
+}
+
 type Artist {
   bio: String!
   cover: String!
@@ -339,6 +343,7 @@ enum LogInStatus {
 
 type Mutation {
   addPaymentCard(input: AddPaymentCardInput!): [PaymentCard!]!
+  addPaymentMethod(input: AddPaymentMethodInput!): [PaymentCard!]!
   confirmOrderPayment(input: ConfirmOrderPaymentInput!): CheckoutOrder!
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
@@ -411,6 +416,7 @@ type PasswordResetGrant {
 input PayOrderInput {
   card: CardInput
   orderId: String!
+  paymentMethodId: String
   saveCard: Boolean! = false
   savedCardId: ID
 }

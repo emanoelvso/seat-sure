@@ -13,7 +13,9 @@ export type BillingCardFieldErrors = Record<
 // What a charge draws from: a typed card, or one of the user's saved cards
 export type ChargeSource =
   | { type: 'card'; card: BillingCardInput }
-  | { type: 'savedCard'; savedCardId: string };
+  | { type: 'savedCard'; savedCardId: string }
+  // A Stripe PaymentMethod id made in the browser (GW-41)
+  | { type: 'paymentMethod'; paymentMethodId: string };
 
 export interface ChargeDto {
   userId: string;
@@ -58,6 +60,9 @@ export interface BillingApi {
     card: BillingCardInput,
     now: Date,
   ): Promise<BillingCardFieldErrors>;
+  // Whether the active gateway takes this kind of source: typed cards only
+  // in simulated mode, PaymentMethod ids only in Stripe mode (GW-38)
+  acceptsSource(source: ChargeSource): Promise<boolean>;
   charge(input: ChargeDto): Promise<ChargeOutcome>;
   // Captures an authorized payment (3 attempts, then it throws and the payment
   // stays authorized) and saves the card held for it

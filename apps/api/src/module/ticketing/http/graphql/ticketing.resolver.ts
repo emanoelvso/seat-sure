@@ -74,14 +74,15 @@ export class TicketingResolver {
   @UseGuards(AuthGuard)
   @Mutation(() => CheckoutOrder)
   async payOrder(
-    @Args('input') { orderId, card, savedCardId, saveCard }: PayOrderInput,
+    @Args('input')
+    { orderId, card, savedCardId, paymentMethodId, saveCard }: PayOrderInput,
   ): Promise<CheckoutOrder> {
     const userId = this.clsService.get<string>('userId');
     return this.admissionLimiter.run(() =>
       this.orderPaymentService.pay({
         userId,
         orderId,
-        source: toChargeSource(card, savedCardId),
+        source: toChargeSource(card, savedCardId, paymentMethodId),
         saveCard: saveCard ?? false,
         now: new Date(),
       }),

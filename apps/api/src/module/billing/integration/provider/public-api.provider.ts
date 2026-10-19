@@ -5,6 +5,7 @@ import {
   BillingCardInput,
   BillingPaymentCard,
   ChargeDto,
+  ChargeSource,
   ChargeOutcome,
   PaymentAction,
   SettleOutcome,
@@ -20,6 +21,10 @@ export class BillingPublicApiProvider implements BillingApi {
     now: Date,
   ): Promise<BillingCardFieldErrors> {
     return this.billingService.validateCard(card, now);
+  }
+
+  async acceptsSource(source: ChargeSource): Promise<boolean> {
+    return this.billingService.acceptsSource(source);
   }
 
   async charge(input: ChargeDto): Promise<ChargeOutcome> {

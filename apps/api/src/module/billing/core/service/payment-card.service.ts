@@ -25,6 +25,9 @@ import { DataSource, EntityManager } from 'typeorm';
 
 export const MAX_PAYMENT_CARDS = 5;
 
+const choosePaymentMethod = () =>
+  new BillingException('INVALID_CARD', 'Choose a payment method.');
+
 const cardNotFound = () =>
   new BillingException('CARD_NOT_FOUND', 'This card is no longer available.');
 
@@ -61,6 +64,7 @@ export class PaymentCardService {
     card: CardInput,
     now: Date,
   ): Promise<PaymentCardModel[]> {
+    this.assertAcceptsTypedCards();
     await this.cardThrottleService.assertNotLocked(userId, now);
 
     try {
@@ -78,6 +82,74 @@ export class PaymentCardService {
     await this.cardThrottleService.clear(userId);
 
     return this.list(userId, now);
+  }
+
+  // Stripe mode: attaches a browser-made PaymentMethod to the user's customer
+  // and saves it. Throttled like `add` (AD-028, GW-37, GW-38).
+  async addPaymentMethod(
+    userId: string,
+    paymentMethodId: string,
+    now: Date,
+  ): Promise<PaymentCardModel[]> {
+    if (this.gateway.acceptsTypedCards) {
+      throw choosePaymentMethod();
+    }
+    await this.cardThrottleService.assertNotLocked(userId, now);
+
+    try {
+      await this.savePaymentMethod(userId, paymentMethodId);
+    } catch (error) {
+      if (
+        error instanceof BillingException &&
+        (error.reason === 'INVALID_CARD' || error.reason === 'CARD_DECLINED')
+      ) {
+        await this.cardThrottleService.recordFailure(userId, now);
+      }
+      throw error;
+    }
+
+    await this.cardThrottleService.clear(userId);
+
+    return this.list(userId, now);
+  }
+
+  private async savePaymentMethod(
+    userId: string,
+    paymentMethodId: string,
+  ): Promise<void> {
+    const attached = await this.gateway.attachPaymentMethod(
+      paymentMethodId,
+      userId,
+    );
+    if (attached.status === 'failed') {
+      throw new BillingException('CARD_DECLINED', 'This card was declined.');
+    }
+
+    try {
+      await this.inUserLock(userId, (manager) =>
+        this.insertCard(manager, userId, {
+          provider: this.gateway.provider,
+          providerToken: attached.token,
+          customerId: attached.customerId,
+          fingerprint: attached.fingerprint,
+          brand: attached.brand,
+          last4: attached.last4,
+          expMonth: attached.expMonth,
+          expYear: attached.expYear,
+          holder: attached.holder,
+        }),
+      );
+    } catch (error) {
+      // Nothing was stored, so the gateway must not keep the method either
+      await this.gateway.detach(attached.token);
+      throw error;
+    }
+  }
+
+  private assertAcceptsTypedCards(): void {
+    if (!this.gateway.acceptsTypedCards) {
+      throw choosePaymentMethod();
+    }
   }
 
   // Rules, then tokenize, then a locked insert (CARD-03, CARD-04, CARD-05)

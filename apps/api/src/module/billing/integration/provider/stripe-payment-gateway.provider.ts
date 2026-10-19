@@ -77,6 +77,16 @@ export class StripePaymentGateway implements PaymentGateway {
     };
   }
 
+  async describePaymentMethod(
+    paymentMethodId: string,
+  ): Promise<{ brand: string; last4: string }> {
+    const method = await this.stripe.paymentMethods.retrieve(paymentMethodId);
+    if (!method.card) {
+      throw new Error('Stripe payment method is not a card');
+    }
+    return { brand: method.card.brand, last4: method.card.last4 };
+  }
+
   async detach(token: string): Promise<void> {
     await this.stripe.paymentMethods.detach(token);
   }

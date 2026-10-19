@@ -730,6 +730,21 @@ describe('TicketingResolver payOrder (e2e)', () => {
       );
     });
 
+    it('refuses a PaymentMethod id in simulated mode with INVALID_CARD before any gateway call (GW-38)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        paymentMethodId: 'pm_card_visa',
+      });
+
+      expect(errorOf(body)?.reason).toBe('INVALID_CARD');
+      expect(errorOf(body)?.message).toBe('Choose a payment method.');
+      expect(gateway.authorize).not.toHaveBeenCalled();
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+      expect((await orderRow(order.id)).status).toBe('pending');
+    });
+
     it('fails a card of another provider with CARD_NOT_FOUND and charges nothing (GW-39)', async () => {
       const { order } = await insertOrder();
       const stripeCard = billingPaymentCardFactory.build({

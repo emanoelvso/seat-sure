@@ -58,6 +58,10 @@ export interface PaymentGateway {
     paymentMethodId: string,
     userId: string,
   ): Promise<AttachResult>;
+  // The brand and last 4 of a PaymentMethod, for the payment record
+  describePaymentMethod(
+    paymentMethodId: string,
+  ): Promise<{ brand: string; last4: string }>;
   detach(token: string): Promise<void>;
   authorize(input: AuthorizeInput, key: string): Promise<AuthorizeResult>;
   getPayment(providerPaymentId: string): Promise<GatewayPayment>;

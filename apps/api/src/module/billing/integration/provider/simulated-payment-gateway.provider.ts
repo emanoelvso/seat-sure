@@ -79,6 +79,12 @@ export class SimulatedPaymentGateway implements PaymentGateway {
     );
   }
 
+  async describePaymentMethod(): Promise<{ brand: string; last4: string }> {
+    throw new Error(
+      'Payment methods are not supported by the simulated gateway',
+    );
+  }
+
   async detach(): Promise<void> {
     return;
   }

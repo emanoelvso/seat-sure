@@ -33,17 +33,24 @@ const seatsUnavailable = () =>
     'Some of your seats were just taken. Pick your seats again.',
   );
 
-// The charge source of a payOrder input: exactly one of a typed card and a
-// saved card id. The web maps this failure to its generic message.
+// The charge source of a payOrder input: exactly one of a typed card, a saved
+// card id and a PaymentMethod id. The web maps this failure to its generic
+// message.
 export const toChargeSource = (
   card: BillingCardInput | null | undefined,
   savedCardId: string | null | undefined,
+  paymentMethodId?: string | null,
 ): ChargeSource => {
-  if (card && savedCardId == null) {
-    return { type: 'card', card };
-  }
-  if (!card && savedCardId != null) {
-    return { type: 'savedCard', savedCardId };
+  const given = [card, savedCardId, paymentMethodId].filter(
+    (value) => value != null,
+  );
+  if (given.length === 1) {
+    if (card) return { type: 'card', card };
+    if (savedCardId != null) return { type: 'savedCard', savedCardId };
+    return {
+      type: 'paymentMethod',
+      paymentMethodId: paymentMethodId as string,
+    };
   }
   throw new TicketingException('INVALID_CARD', 'Choose a payment method.');
 };
@@ -144,6 +151,11 @@ export class OrderPaymentService {
 
     const order = await findOrder();
     assertPayable(order, now);
+
+    // The active gateway takes only one kind of new card (GW-38)
+    if (!(await this.billingApi.acceptsSource(source))) {
+      throw new TicketingException('INVALID_CARD', 'Choose a payment method.');
+    }
 
     // A typed card only: a saved card passed the rules when it was saved.
     // Only the invalid fields, so the client marks exactly those (PAY-44).
@@ -279,8 +291,8 @@ export class OrderPaymentService {
         amountCents: order.totalCents,
         currency: order.currency,
         source,
-        // Only a typed card can be saved (CARD-09)
-        saveCard: saveCard && source.type === 'card',
+        // Only a new card can be saved (CARD-09)
+        saveCard: saveCard && source.type !== 'savedCard',
       });
     } catch {
       await this.orderRepository.releasePayment(order.id);

@@ -29,7 +29,8 @@ import { randomUUID } from 'crypto';
 
 export type ChargeSource =
   | { type: 'card'; card: CardInput }
-  | { type: 'savedCard'; savedCardId: string };
+  | { type: 'savedCard'; savedCardId: string }
+  | { type: 'paymentMethod'; paymentMethodId: string };
 
 export interface ChargeDto {
   userId: string;
@@ -92,7 +93,20 @@ export class BillingService {
     return errors;
   }
 
-  // Authorizes a typed card or a saved card and records the payment (PAY-37,
+  // A typed card needs a gateway that takes card numbers, a PaymentMethod id
+  // one that doesn't (GW-38); a saved card works with both
+  acceptsSource(source: ChargeSource): boolean {
+    switch (source.type) {
+      case 'card':
+        return this.gateway.acceptsTypedCards;
+      case 'paymentMethod':
+        return !this.gateway.acceptsTypedCards;
+      default:
+        return true;
+    }
+  }
+
+  // Authorizes a typed card, a PaymentMethod or a saved card and records the payment (PAY-37,
   // PAY-40, PAY-44, CARD-08). The money is only held: capturing it is the
   // caller's next step. The card number and CVV are only ever held in local
   // variables - they never reach the inserted row or a log line (PAY-47).
@@ -103,6 +117,20 @@ export class BillingService {
     ...payment
   }: ChargeDto): Promise<ChargeOutcome> {
     const paymentId = randomUUID();
+
+    // Refused before any gateway call and without a payment row
+    if (!this.acceptsSource(source)) {
+      throw new BillingException('INVALID_CARD', 'Choose a payment method.');
+    }
+
+    if (source.type === 'paymentMethod') {
+      return this.chargePaymentMethod(
+        paymentId,
+        payment,
+        source.paymentMethodId,
+        saveCard,
+      );
+    }
 
     if (source.type === 'card') {
       return this.chargeTypedCard(paymentId, payment, source.card, saveCard);
@@ -205,6 +233,72 @@ export class BillingService {
         holder: card.holder.trim(),
       });
       source = { type: 'token', token: tokenized.token };
+    }
+
+    let result: ChargeResult;
+    try {
+      result = await this.authorize(paymentId, {
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        source,
+      });
+    } catch (error) {
+      if (saveCard) await this.pendingCardService.discard(paymentId);
+      throw error;
+    }
+
+    const outcome = await this.finish(paymentId, payment, display, result, now);
+    if (saveCard && result.status === 'failed') {
+      await this.pendingCardService.discard(paymentId);
+    }
+
+    return outcome;
+  }
+
+  // A Stripe PaymentMethod made in the browser. One to save is attached to the
+  // user's customer first and held until the payment is captured (GW-50).
+  private async chargePaymentMethod(
+    paymentId: string,
+    payment: PaymentDetails,
+    paymentMethodId: string,
+    saveCard: boolean,
+  ): Promise<ChargeOutcome> {
+    const now = new Date();
+    if (await this.cardThrottleService.isLocked(payment.userId, now)) {
+      return { status: 'card_attempts_limited' };
+    }
+
+    const display = await this.gateway.describePaymentMethod(paymentMethodId);
+    let source: AuthorizeInput['source'] = {
+      type: 'token',
+      token: paymentMethodId,
+    };
+
+    if (saveCard) {
+      const attached = await this.gateway.attachPaymentMethod(
+        paymentMethodId,
+        payment.userId,
+      );
+      if (attached.status === 'failed') {
+        return this.finish(paymentId, payment, display, attached, now);
+      }
+
+      await this.pendingCardService.hold(paymentId, payment.userId, {
+        provider: this.gateway.provider,
+        providerToken: attached.token,
+        customerId: attached.customerId,
+        fingerprint: attached.fingerprint,
+        brand: attached.brand,
+        last4: attached.last4,
+        expMonth: attached.expMonth,
+        expYear: attached.expYear,
+        holder: attached.holder,
+      });
+      source = {
+        type: 'token',
+        token: attached.token,
+        customerId: attached.customerId,
+      };
     }
 
     let result: ChargeResult;
