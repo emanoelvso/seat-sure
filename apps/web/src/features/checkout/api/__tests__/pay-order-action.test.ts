@@ -100,6 +100,7 @@ describe("payOrderAction", () => {
     "SEATS_UNAVAILABLE",
     "ORDER_EXPIRED",
     "CARD_ATTEMPTS_LIMITED",
+    "AUTHENTICATION_FAILED",
   ] as const)(
     "passes %s through as the reason (PAY-50, PAY-51, PAY-61, CARDABUSE-03 AC 2)",
     async (reason) => {
@@ -115,6 +116,66 @@ describe("payOrderAction", () => {
       expect(refresh).not.toHaveBeenCalled();
     },
   );
+
+  describe("when the bank asks for 3-D Secure (GW-08)", () => {
+    const paused = {
+      payOrder: {
+        id: "order-1",
+        status: "REQUIRES_ACTION",
+        paymentAction: { provider: "simulated", clientSecret: "sim_secret_abc" },
+      },
+    };
+
+    it("returns the payment action instead of navigating", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockResolvedValueOnce(paused as never);
+
+      const result = await payOrderAction(initialState, buildInput());
+
+      expect(result).toEqual({
+        requiresAction: { provider: "simulated", clientSecret: "sim_secret_abc" },
+      });
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("keeps the Stripe provider and treats any other as simulated", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockResolvedValueOnce({
+        payOrder: {
+          ...paused.payOrder,
+          paymentAction: { provider: "stripe", clientSecret: "pi_secret" },
+        },
+      } as never);
+
+      const result = await payOrderAction(initialState, buildInput());
+
+      expect(result.requiresAction).toEqual({
+        provider: "stripe",
+        clientSecret: "pi_secret",
+      });
+    });
+
+    it("still navigates to the success page when the order is paid", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockResolvedValueOnce({
+        payOrder: { id: "order-1", status: "PAID", paymentAction: null },
+      } as never);
+
+      await expectRedirectTo("/checkout/order-1/success", buildInput());
+    });
+
+    it("never puts the client secret in a failure state", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockRejectedValueOnce(
+        new GraphQLRequestError("declined", "BAD_USER_INPUT", "CARD_DECLINED"),
+      );
+
+      const result = await payOrderAction(initialState, buildInput());
+
+      expect(result).toEqual({ reason: "CARD_DECLINED" });
+      expect(JSON.stringify(result)).not.toContain("secret");
+    });
+  });
 
   it("passes INVALID_CARD through with the API's field errors (PAY-52)", async () => {
     mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));

@@ -4,8 +4,9 @@ import type {
   PayOrderMutationVariables,
 } from "@/types/__generated__/graphql";
 
-// Charges the card and issues tickets on success (PAY-36..PAY-61). Selects
-// every CheckoutOrder field the checkout pages need.
+// Charges the card and issues tickets on success (PAY-36..PAY-61), or pauses
+// the order on a 3-D Secure challenge (GW-08). Selects every CheckoutOrder
+// field the checkout pages need.
 export const PAY_ORDER: TypedDocumentNode<
   PayOrderMutation,
   PayOrderMutationVariables
@@ -42,6 +43,10 @@ export const PAY_ORDER: TypedDocumentNode<
         seatId
         row
         number
+      }
+      paymentAction {
+        provider
+        clientSecret
       }
     }
   }

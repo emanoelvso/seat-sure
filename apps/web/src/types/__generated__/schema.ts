@@ -143,6 +143,7 @@ export type CheckoutOrder = {
   expiresAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   items: Array<CheckoutOrderItem>;
+  paymentAction: Maybe<PaymentAction>;
   quantity: Scalars['Int']['output'];
   secondsLeft: Scalars['Int']['output'];
   serviceFeeCents: Scalars['Int']['output'];
@@ -168,7 +169,8 @@ export type CheckoutOrderStatus =
   | 'EXPIRED'
   | 'FAILED'
   | 'PAID'
-  | 'PENDING';
+  | 'PENDING'
+  | 'REQUIRES_ACTION';
 
 export type CheckoutTicketType = {
   __typename: 'CheckoutTicketType';
@@ -180,6 +182,10 @@ export type CodeDelivery = {
   __typename: 'CodeDelivery';
   codeSent: Scalars['Boolean']['output'];
   resendAvailableAt: Scalars['DateTime']['output'];
+};
+
+export type ConfirmOrderPaymentInput = {
+  orderId: Scalars['String']['input'];
 };
 
 export type ConfirmPasswordResetCodeInput = {
@@ -356,6 +362,7 @@ export type LogInStatus =
 export type Mutation = {
   __typename: 'Mutation';
   addPaymentCard: Array<PaymentCard>;
+  confirmOrderPayment: CheckoutOrder;
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
   demoSignIn: SessionTokens;
@@ -379,6 +386,11 @@ export type Mutation = {
 
 export type MutationAddPaymentCardArgs = {
   input: AddPaymentCardInput;
+};
+
+
+export type MutationConfirmOrderPaymentArgs = {
+  input: ConfirmOrderPaymentInput;
 };
 
 
@@ -516,6 +528,12 @@ export type PayOrderInput = {
   orderId: Scalars['String']['input'];
   saveCard?: Scalars['Boolean']['input'];
   savedCardId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+export type PaymentAction = {
+  __typename: 'PaymentAction';
+  clientSecret: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
 };
 
 export type PaymentCard = {
