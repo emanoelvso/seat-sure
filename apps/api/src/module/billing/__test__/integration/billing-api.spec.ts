@@ -28,6 +28,11 @@ const VALID_CARD = {
 const DECLINED_CARD = { ...VALID_CARD, number: '4000 0000 0000 0002' };
 
 // Narrows an outcome that recorded a payment
+const UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const ISO_TIMESTAMP_PATTERN =
+  /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g;
+
 const recorded = (outcome: ChargeOutcome) => {
   if (
     outcome.status === 'card_not_found' ||
@@ -234,8 +239,6 @@ describe('BillingPublicApiProvider (integration)', () => {
       Tables.BillingCardThrottle,
     ];
     const TEXT_TYPES = ['character varying', 'character', 'text'];
-    const UUID_PATTERN =
-      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
     // Every stored text value of the user's rows, with where it lives
     const textValues = async () => {
@@ -1096,25 +1099,47 @@ describe('BillingPublicApiProvider (integration)', () => {
       const challenge = await charge(userId, CHALLENGE_CARD);
       await charge(userId, VALID_CARD, true);
       await charge(userId, DECLINED_CARD);
+      const clientSecret =
+        recorded(challenge).status === 'requires_action'
+          ? (challenge as { action: { clientSecret: string } }).action
+              .clientSecret
+          : '';
+      expect(clientSecret).not.toBe('');
+      // Short fixed secrets are scanned in text only: a uuid, timestamp or
+      // number cannot hold card text, but its digits can contain the CVV by
+      // chance. The client secret embeds a uuid itself, so it is matched
+      // whole against the raw output.
       const secrets = [
         CVV,
         '4242424242424242',
         '4000002760003184',
         '4000000000000002',
         'sim_pm_',
-        recorded(challenge).status === 'requires_action'
-          ? (challenge as { action: { clientSecret: string } }).action
-              .clientSecret
-          : '',
       ];
 
-      const rows = JSON.stringify(
-        await testDbClient(Tables.BillingPayment).where({ userId }),
-      );
+      const rows = await testDbClient(Tables.BillingPayment).where({ userId });
+      const columns: Array<{ column_name: string }> = await testDbClient(
+        'information_schema.columns',
+      )
+        .select('column_name')
+        .where({ table_schema: 'public', table_name: Tables.BillingPayment })
+        .whereIn('data_type', ['character varying', 'character', 'text']);
+      const storedText = rows
+        .flatMap((row: Record<string, unknown>) =>
+          columns.map(({ column_name }) => row[column_name]),
+        )
+        .filter((value) => value !== null && value !== undefined)
+        .map(String)
+        .join('\n');
+      const loggedText = JSON.stringify(logged)
+        .replace(UUID_PATTERN, '')
+        .replace(ISO_TIMESTAMP_PATTERN, '');
       for (const secret of secrets) {
-        expect(rows).not.toContain(secret);
-        expect(JSON.stringify(logged)).not.toContain(secret);
+        expect(storedText).not.toContain(secret);
+        expect(loggedText).not.toContain(secret);
       }
+      expect(JSON.stringify(rows)).not.toContain(clientSecret);
+      expect(JSON.stringify(logged)).not.toContain(clientSecret);
     });
   });
 
