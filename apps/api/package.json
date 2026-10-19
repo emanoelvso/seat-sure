@@ -86,6 +86,7 @@
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "stripe": "^23.0.0",
     "typeorm": "^1.1.0",
     "typeorm-extension": "^3.9.0",
     "typeorm-transactional": "^0.5.0",
