@@ -52,7 +52,10 @@ export type PayOrderActionInput =
       };
       saveCard?: boolean;
     }
-  | { orderId: string; savedCardId: string };
+  | { orderId: string; savedCardId: string }
+  // A card Stripe.js already tokenized in the browser (GW-41): the number and
+  // CVV never reach the server, only the PaymentMethod id.
+  | { orderId: string; paymentMethodId: string; saveCard?: boolean };
 
 // PAY-36, PAY-48, PAY-50..53, PAY-61: client validation first (no API
 // call on an invalid card), then withAccessToken(PAY_ORDER). The returned
@@ -68,6 +71,11 @@ export async function payOrderAction(
   let source;
   if ("savedCardId" in input) {
     source = { savedCardId: input.savedCardId };
+  } else if ("paymentMethodId" in input) {
+    source = {
+      paymentMethodId: input.paymentMethodId,
+      saveCard: input.saveCard,
+    };
   } else {
     const parsed = cardSchema.safeParse(input.card);
     if (!parsed.success) {

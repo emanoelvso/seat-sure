@@ -326,4 +326,73 @@ describe("payOrderAction", () => {
       expect(mockedWithAccessToken).not.toHaveBeenCalled();
     });
   });
+
+  describe("with a Stripe PaymentMethod id (GW-41)", () => {
+    it("forwards only the id, without card fields or client-side card validation", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockResolvedValueOnce({ payOrder: { id: "order-1" } });
+
+      await expect(
+        payOrderAction(initialState, {
+          orderId: "order-1",
+          paymentMethodId: "pm_123",
+        }),
+      ).rejects.toBe(REDIRECT_ERROR);
+
+      const [document, variables] = mockedFetch.mock.calls[0];
+      expect(document).toBe(PAY_ORDER);
+      expect(variables).toMatchObject({
+        input: { orderId: "order-1", paymentMethodId: "pm_123" },
+      });
+      expect(JSON.stringify(variables)).not.toMatch(/"(card|number|cvv)"/);
+      expect(redirect).toHaveBeenCalledWith("/checkout/order-1/success");
+    });
+
+    it("forwards saveCard when asked to save the card", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockResolvedValueOnce({ payOrder: { id: "order-1" } });
+
+      await expect(
+        payOrderAction(initialState, {
+          orderId: "order-1",
+          paymentMethodId: "pm_123",
+          saveCard: true,
+        }),
+      ).rejects.toBe(REDIRECT_ERROR);
+
+      expect(mockedFetch.mock.calls[0][1]).toMatchObject({
+        input: { paymentMethodId: "pm_123", saveCard: true },
+      });
+    });
+
+    it.each(["CARD_DECLINED", "AUTHENTICATION_FAILED", "SEATS_UNAVAILABLE"] as const)(
+      "maps %s and the state never echoes the id",
+      async (reason) => {
+        mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+        mockedFetch.mockRejectedValueOnce(
+          new GraphQLRequestError("failed", "BAD_USER_INPUT", reason),
+        );
+
+        const result = await payOrderAction(initialState, {
+          orderId: "order-1",
+          paymentMethodId: "pm_123",
+        });
+
+        expect(result).toEqual({ reason });
+        expect(JSON.stringify(result)).not.toContain("pm_123");
+      },
+    );
+
+    it("maps an unknown error to GENERIC without echoing the id", async () => {
+      mockedWithAccessToken.mockImplementation((fn) => fn("access-token-1"));
+      mockedFetch.mockRejectedValueOnce(new Error("boom"));
+
+      const result = await payOrderAction(initialState, {
+        orderId: "order-1",
+        paymentMethodId: "pm_123",
+      });
+
+      expect(result).toEqual({ reason: "GENERIC" });
+    });
+  });
 });

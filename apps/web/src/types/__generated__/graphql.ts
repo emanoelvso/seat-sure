@@ -26,6 +26,10 @@ export type AddPaymentCardInput = {
   number: string;
 };
 
+export type AddPaymentMethodInput = {
+  paymentMethodId: string;
+};
+
 export type CardInput = {
   cvv: string;
   expiry: string;
@@ -135,6 +139,7 @@ export type NotificationsTab =
 export type PayOrderInput = {
   card?: CardInput | null | undefined;
   orderId: string;
+  paymentMethodId?: string | null | undefined;
   saveCard?: boolean;
   savedCardId?: string | number | null | undefined;
 };
@@ -220,6 +225,13 @@ export type AddPaymentCardMutationVariables = Exact<{
 
 
 export type AddPaymentCardMutation = { addPaymentCard: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
+
+export type AddPaymentMethodMutationVariables = Exact<{
+  input: AddPaymentMethodInput;
+}>;
+
+
+export type AddPaymentMethodMutation = { addPaymentMethod: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
 
 export type FindAccountOrderQueryVariables = Exact<{
   input: FindAccountOrderInput;

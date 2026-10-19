@@ -111,6 +111,10 @@ export type AddPaymentCardInput = {
   number: Scalars['String']['input'];
 };
 
+export type AddPaymentMethodInput = {
+  paymentMethodId: Scalars['String']['input'];
+};
+
 export type Artist = {
   __typename: 'Artist';
   bio: Scalars['String']['output'];
@@ -362,6 +366,7 @@ export type LogInStatus =
 export type Mutation = {
   __typename: 'Mutation';
   addPaymentCard: Array<PaymentCard>;
+  addPaymentMethod: Array<PaymentCard>;
   confirmOrderPayment: CheckoutOrder;
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
@@ -386,6 +391,11 @@ export type Mutation = {
 
 export type MutationAddPaymentCardArgs = {
   input: AddPaymentCardInput;
+};
+
+
+export type MutationAddPaymentMethodArgs = {
+  input: AddPaymentMethodInput;
 };
 
 
@@ -526,6 +536,7 @@ export type PasswordResetGrant = {
 export type PayOrderInput = {
   card?: InputMaybe<CardInput>;
   orderId: Scalars['String']['input'];
+  paymentMethodId?: InputMaybe<Scalars['String']['input']>;
   saveCard?: Scalars['Boolean']['input'];
   savedCardId?: InputMaybe<Scalars['ID']['input']>;
 };
