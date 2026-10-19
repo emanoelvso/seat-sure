@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import {
+  AttachResult,
   AuthorizeInput,
   AuthorizeResult,
   GatewayPayment,
@@ -69,6 +70,13 @@ export class SimulatedPaymentGateway implements PaymentGateway {
       token: `${prefix}${randomUUID()}`,
       fingerprint,
     };
+  }
+
+  // Simulated cards are typed and tokenized; only Stripe attaches methods
+  async attachPaymentMethod(): Promise<AttachResult> {
+    throw new Error(
+      'Payment methods are not supported by the simulated gateway',
+    );
   }
 
   async detach(): Promise<void> {

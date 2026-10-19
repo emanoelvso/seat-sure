@@ -1,12 +1,17 @@
+import { createHmac } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import {
+  AttachResult,
   AuthorizeInput,
   AuthorizeResult,
   GatewayPayment,
   PaymentGateway,
   TokenizeResult,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import { BillingCustomer } from '@billingModule/persistence/entity/billing-customer.entity';
+import { BillingCustomerRepository } from '@billingModule/persistence/repository/billing-customer.repository';
+import { ConfigService } from '@sharedModules/config/service/config.service';
 import { StripeClient } from '@billingModule/integration/provider/stripe-client.provider';
 
 const isCardError = (error: unknown): boolean =>
@@ -20,11 +25,59 @@ export class StripePaymentGateway implements PaymentGateway {
   readonly provider = 'stripe' as const;
   readonly acceptsTypedCards = false;
 
-  constructor(@Inject(StripeClient) private readonly stripe: Stripe) {}
+  constructor(
+    @Inject(StripeClient) private readonly stripe: Stripe,
+    private readonly configService: ConfigService,
+    private readonly customers: BillingCustomerRepository,
+  ) {}
 
   // Stripe cards are collected by Elements in the browser as a PaymentMethod
   async tokenize(): Promise<TokenizeResult> {
     throw new Error('Typed cards are not supported by the Stripe gateway');
+  }
+
+  // Attaches the browser-made PaymentMethod to the user's Stripe Customer
+  // (created once per user) and reads the display data from Stripe. The
+  // fingerprint is a keyed HMAC of Stripe's own card fingerprint (AD-026).
+  async attachPaymentMethod(
+    paymentMethodId: string,
+    userId: string,
+  ): Promise<AttachResult> {
+    const customerId = await this.customerOf(userId);
+
+    let method: Stripe.PaymentMethod;
+    try {
+      method = await this.stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+    } catch (error) {
+      if (isCardError(error)) {
+        return { status: 'failed', reason: 'card_declined' };
+      }
+      throw error;
+    }
+
+    const card = method.card;
+    if (!card) {
+      throw new Error('Stripe payment method is not a card');
+    }
+
+    return {
+      status: 'succeeded',
+      token: method.id,
+      customerId,
+      fingerprint: createHmac(
+        'sha256',
+        this.configService.get('billing.fingerprintSecret'),
+      )
+        .update(card.fingerprint ?? method.id)
+        .digest('hex'),
+      brand: card.brand,
+      last4: card.last4,
+      expMonth: card.exp_month,
+      expYear: card.exp_year,
+      holder: (method.billing_details?.name ?? '').trim().slice(0, 50),
+    };
   }
 
   async detach(token: string): Promise<void> {
@@ -129,5 +182,28 @@ export class StripePaymentGateway implements PaymentGateway {
       throw new Error('Stripe payment has no client secret');
     }
     return intent.client_secret;
+  }
+
+  // One Stripe Customer per user. The Stripe-side idempotency key makes a
+  // race create a single customer; the row insert keeps the first one.
+  private async customerOf(userId: string): Promise<string> {
+    const known = await this.customers.findForUser(userId, this.provider);
+    if (known) {
+      return known.providerCustomerId;
+    }
+
+    const created = await this.stripe.customers.create(
+      { metadata: { userId } },
+      { idempotencyKey: `customer:${userId}` },
+    );
+    const stored = await this.customers.insertOnce(
+      new BillingCustomer({
+        userId,
+        provider: this.provider,
+        providerCustomerId: created.id,
+      }),
+    );
+
+    return stored.providerCustomerId;
   }
 }

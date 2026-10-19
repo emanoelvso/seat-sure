@@ -1,5 +1,15 @@
+import { BillingModule } from '@billingModule/billing.module';
+import { BillingCustomerRepository } from '@billingModule/persistence/repository/billing-customer.repository';
 import { StripePaymentGateway } from '@billingModule/integration/provider/stripe-payment-gateway.provider';
+import { ConfigService } from '@sharedModules/config/service/config.service';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getDataSourceToken } from '@nestjs/typeorm';
+import { Tables } from '@testInfra/enum/table.enum';
+import { testDbClient } from '@testInfra/knex.database';
+import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
+import { DataSource } from 'typeorm';
+import { initializeTransactionalContext } from 'typeorm-transactional';
 
 const stub = () => ({
   paymentIntents: {
@@ -9,7 +19,11 @@ const stub = () => ({
     cancel: jest.fn().mockResolvedValue({}),
   },
   refunds: { create: jest.fn().mockResolvedValue({}) },
-  paymentMethods: { detach: jest.fn().mockResolvedValue({}) },
+  paymentMethods: {
+    detach: jest.fn().mockResolvedValue({}),
+    attach: jest.fn(),
+  },
+  customers: { create: jest.fn() },
 });
 
 const INPUT = {
@@ -22,10 +36,32 @@ const KEY = 'payment-1:authorize';
 describe('StripePaymentGateway (integration, stub client)', () => {
   let client: ReturnType<typeof stub>;
   let gateway: StripePaymentGateway;
+  let module: TestingModule;
 
-  beforeEach(() => {
+  beforeAll(async () => {
+    initializeTransactionalContext();
+    module = await Test.createTestingModule({
+      imports: [BillingModule],
+    }).compile();
+  });
+
+  afterAll(async () => {
+    await testDbClient(Tables.BillingCustomer).del();
+    await testDbClient.destroy();
+    const dataSource = module.get<DataSource>(getDataSourceToken('billing'));
+    if (dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
+  });
+
+  beforeEach(async () => {
+    await testDbClient(Tables.BillingCustomer).del();
     client = stub();
-    gateway = new StripePaymentGateway(client as unknown as Stripe);
+    gateway = new StripePaymentGateway(
+      client as unknown as Stripe,
+      module.get(ConfigService),
+      module.get(BillingCustomerRepository),
+    );
   });
 
   describe('authorize', () => {
@@ -234,5 +270,109 @@ describe('StripePaymentGateway (integration, stub client)', () => {
   it('does not tokenize typed cards', () => {
     expect(gateway.acceptsTypedCards).toBe(false);
     expect(gateway.provider).toBe('stripe');
+  });
+
+  describe('attachPaymentMethod', () => {
+    const userId = randomUUID();
+    const method = (overrides = {}) => ({
+      id: 'pm_1',
+      billing_details: { name: 'Jane Doe' },
+      card: {
+        brand: 'visa',
+        last4: '4242',
+        exp_month: 6,
+        exp_year: 2030,
+        fingerprint: 'stripe-fp-1',
+      },
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      client.customers.create.mockResolvedValue({ id: 'cus_1' });
+      client.paymentMethods.attach.mockResolvedValue(method());
+    });
+
+    it('attaches to a new customer and returns display data with a 64-hex fingerprint', async () => {
+      const result = await gateway.attachPaymentMethod('pm_1', userId);
+
+      expect(client.paymentMethods.attach).toHaveBeenCalledWith('pm_1', {
+        customer: 'cus_1',
+      });
+      expect(result).toEqual({
+        status: 'succeeded',
+        token: 'pm_1',
+        customerId: 'cus_1',
+        fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
+        brand: 'visa',
+        last4: '4242',
+        expMonth: 6,
+        expYear: 2030,
+        holder: 'Jane Doe',
+      });
+      expect(JSON.stringify(result)).not.toContain('stripe-fp-1');
+    });
+
+    it('creates the customer once per user and reuses it', async () => {
+      await gateway.attachPaymentMethod('pm_1', userId);
+      await gateway.attachPaymentMethod('pm_2', userId);
+
+      expect(client.customers.create).toHaveBeenCalledTimes(1);
+      expect(client.paymentMethods.attach).toHaveBeenLastCalledWith('pm_2', {
+        customer: 'cus_1',
+      });
+      const rows = await testDbClient(Tables.BillingCustomer).where({ userId });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        provider: 'stripe',
+        providerCustomerId: 'cus_1',
+      });
+    });
+
+    it('gives the same fingerprint to the same card and another to a different one', async () => {
+      const fingerprintOf = (result: unknown) =>
+        (result as { fingerprint: string }).fingerprint;
+      const first = await gateway.attachPaymentMethod('pm_1', userId);
+      const again = await gateway.attachPaymentMethod('pm_2', userId);
+      client.paymentMethods.attach.mockResolvedValue(
+        method({ card: { ...method().card, fingerprint: 'stripe-fp-2' } }),
+      );
+      const other = await gateway.attachPaymentMethod('pm_3', userId);
+
+      expect(fingerprintOf(again)).toBe(fingerprintOf(first));
+      expect(fingerprintOf(other)).not.toBe(fingerprintOf(first));
+    });
+
+    it('maps a card error on attach to declined', async () => {
+      client.paymentMethods.attach.mockRejectedValue(
+        new Stripe.errors.StripeCardError({
+          type: 'card_error',
+          message: 'declined',
+          code: 'card_declined',
+        }),
+      );
+
+      await expect(
+        gateway.attachPaymentMethod('pm_1', userId),
+      ).resolves.toEqual({ status: 'failed', reason: 'card_declined' });
+    });
+
+    it('throws on a non-card error', async () => {
+      client.paymentMethods.attach.mockRejectedValue(
+        new Stripe.errors.StripeConnectionError({
+          type: 'api_error',
+          message: 'down',
+        }),
+      );
+
+      await expect(
+        gateway.attachPaymentMethod('pm_1', userId),
+      ).rejects.toThrow();
+    });
+
+    it('detaches with the token', async () => {
+      await gateway.detach('pm_1');
+
+      expect(client.paymentMethods.detach).toHaveBeenCalledWith('pm_1');
+    });
   });
 });

@@ -9,6 +9,7 @@ import { BillingPaymentRepository } from './repository/billing-payment.repositor
 import { BillingPaymentCardRepository } from './repository/billing-payment-card.repository';
 import { BillingSimulatedPaymentRepository } from './repository/billing-simulated-payment.repository';
 import { BillingPendingCardRepository } from './repository/billing-pending-card.repository';
+import { BillingCustomerRepository } from './repository/billing-customer.repository';
 import { CardThrottleRepository } from './repository/card-throttle.repository';
 
 @Module({
@@ -40,6 +41,7 @@ import { CardThrottleRepository } from './repository/card-throttle.repository';
     CardThrottleRepository,
     BillingSimulatedPaymentRepository,
     BillingPendingCardRepository,
+    BillingCustomerRepository,
   ],
   exports: [
     BillingPaymentRepository,
@@ -47,6 +49,7 @@ import { CardThrottleRepository } from './repository/card-throttle.repository';
     CardThrottleRepository,
     BillingSimulatedPaymentRepository,
     BillingPendingCardRepository,
+    BillingCustomerRepository,
   ],
 })
 export class BillingPersistenceModule {}

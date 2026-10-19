@@ -33,12 +33,31 @@ export type TokenizeResult =
   | { status: 'succeeded'; token: string; fingerprint: string }
   | { status: 'failed'; reason: 'card_declined' };
 
+// A Stripe PaymentMethod attached to the user's customer (GW-37)
+export type AttachResult =
+  | {
+      status: 'succeeded';
+      token: string;
+      customerId: string;
+      fingerprint: string;
+      brand: string;
+      last4: string;
+      expMonth: number;
+      expYear: number;
+      holder: string;
+    }
+  | { status: 'failed'; reason: 'card_declined' };
+
 // Every money-moving call carries an idempotency key, so a retry never moves
 // money twice (GW-02)
 export interface PaymentGateway {
   readonly provider: GatewayProvider;
   readonly acceptsTypedCards: boolean;
   tokenize(card: CardInput): Promise<TokenizeResult>;
+  attachPaymentMethod(
+    paymentMethodId: string,
+    userId: string,
+  ): Promise<AttachResult>;
   detach(token: string): Promise<void>;
   authorize(input: AuthorizeInput, key: string): Promise<AuthorizeResult>;
   getPayment(providerPaymentId: string): Promise<GatewayPayment>;
