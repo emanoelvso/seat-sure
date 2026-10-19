@@ -328,5 +328,29 @@ export const StripeIncompleteFieldBlocksSave: Story = {
   },
 };
 
-// GW-42 is covered by the stripeMode unit test; GW-45: with no publishable key
-// the typed form above is what renders (see Default).
+// GW-42: a publishable key that is not a pk_test_ key (a live key here) never
+// loads Stripe.js; the form shows the notice and no card field.
+export const LiveKeyShowsUnavailable: Story = {
+  beforeEach: () => {
+    const previous = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_live_not_allowed";
+    return () => {
+      if (previous === undefined) {
+        delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = previous;
+      }
+    };
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Payments are unavailable right now.",
+    );
+    await expect(canvas.queryByRole("textbox", { name: "Card number" })).toBeNull();
+    await expect(canvas.queryByRole("textbox", { name: "CVC" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Save card" })).toBeNull();
+  },
+};
+
+// GW-45: with no publishable key the typed form above is what renders (see
+// Default).
