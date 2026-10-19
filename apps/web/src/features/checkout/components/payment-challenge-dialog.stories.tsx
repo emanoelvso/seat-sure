@@ -1,6 +1,14 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn } from "storybook/test";
+import { expect, fn, waitFor } from "storybook/test";
+import { createFakeStripe } from "@/components/stripe/fake-stripe";
+import { StripeProvider } from "@/components/stripe/stripe-provider";
 import { PaymentChallengeDialog } from "./payment-challenge-dialog";
+
+const settlingStripe = createFakeStripe();
+const failingStripe = createFakeStripe({
+  nextActionError: { code: "payment_intent_authentication_failure", message: "Failed" },
+});
+const idleStripe = createFakeStripe();
 
 const meta: Meta<typeof PaymentChallengeDialog> = {
   title: "Features/Checkout/PaymentChallengeDialog",
@@ -92,5 +100,67 @@ export const Closed: Story = {
   args: { open: false },
   play: async ({ canvas }) => {
     await expect(canvas.queryByRole("dialog")).toBeNull();
+  },
+};
+
+const stripeAction = { provider: "stripe" as const, clientSecret: "pi_secret_1" };
+
+// GW-43: in Stripe mode the dialog hands the client secret to Stripe.js and
+// settles when it is done; there are no simulated bank buttons.
+export const StripeChallengeSettles: Story = {
+  args: { action: stripeAction },
+  decorators: [
+    (Story) => {
+      return (
+        <StripeProvider stripe={settlingStripe.stripe}>
+          <Story />
+        </StripeProvider>
+      );
+    },
+  ],
+  play: async ({ args, canvas }) => {
+    await waitFor(() =>
+      expect(settlingStripe.handleNextAction).toHaveBeenCalledWith({
+        clientSecret: "pi_secret_1",
+      }),
+    );
+    await waitFor(() => expect(args.onSettled).toHaveBeenCalledTimes(1));
+    await expect(settlingStripe.handleNextAction).toHaveBeenCalledTimes(1);
+    await expect(canvas.queryByRole("button", { name: "Approve" })).toBeNull();
+  },
+};
+
+// GW-43: an error from Stripe still settles, so the order is confirmed and the
+// API decides from the payment's real state.
+export const StripeChallengeErrorStillSettles: Story = {
+  args: { action: stripeAction },
+  decorators: [
+    (Story) => (
+      <StripeProvider stripe={failingStripe.stripe}>
+        <Story />
+      </StripeProvider>
+    ),
+  ],
+  play: async ({ args }) => {
+    await waitFor(() => expect(args.onSettled).toHaveBeenCalledTimes(1));
+    await expect(failingStripe.handleNextAction).toHaveBeenCalledWith({
+      clientSecret: "pi_secret_1",
+    });
+  },
+};
+
+// Stripe is not asked to run a challenge while the dialog is closed.
+export const StripeClosedDoesNothing: Story = {
+  args: { action: stripeAction, open: false },
+  decorators: [
+    (Story) => (
+      <StripeProvider stripe={idleStripe.stripe}>
+        <Story />
+      </StripeProvider>
+    ),
+  ],
+  play: async ({ args }) => {
+    await expect(idleStripe.handleNextAction).not.toHaveBeenCalled();
+    await expect(args.onSettled).not.toHaveBeenCalled();
   },
 };

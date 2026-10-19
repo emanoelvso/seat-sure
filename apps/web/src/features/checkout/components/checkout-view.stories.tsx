@@ -972,3 +972,37 @@ export const PayWithStripeElements: Story = {
     });
   },
 };
+
+const stripeChallengeStripe = createFakeStripe({ paymentMethodId: "pm_fake_123" });
+
+// GW-43: a Stripe payment that needs 3-D Secure hands the client secret to
+// Stripe.js, never to the simulated bank, then confirms the order.
+export const StripeChallengeConfirms: Story = {
+  args: { stripe: stripeChallengeStripe.stripe },
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.payAction).mockResolvedValueOnce({
+      requiresAction: { provider: "stripe", clientSecret: "pi_secret_1" },
+    });
+    await goToPayment(canvas, userEvent);
+    await userEvent.type(
+      await canvas.findByRole("textbox", { name: "Card number" }),
+      "4242424242424242",
+    );
+    await userEvent.type(canvas.getByRole("textbox", { name: "Card holder" }), "Negar Khosravi");
+    await userEvent.type(canvas.getByRole("textbox", { name: "Expiry" }), "0830");
+    await userEvent.type(canvas.getByRole("textbox", { name: "CVC" }), "123");
+    await userEvent.click(canvas.getByRole("button", { name: "Review order" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Pay" }));
+
+    await waitFor(() =>
+      expect(stripeChallengeStripe.handleNextAction).toHaveBeenCalledWith({
+        clientSecret: "pi_secret_1",
+      }),
+    );
+    await waitFor(() =>
+      expect(getRouter().push).toHaveBeenCalledWith("/checkout/order-81/success"),
+    );
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+    await expect(args.bankAction).not.toHaveBeenCalled();
+  },
+};
