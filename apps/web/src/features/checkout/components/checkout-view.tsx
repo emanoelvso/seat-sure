@@ -9,6 +9,16 @@ import {
   useState,
 } from "react";
 import { paths } from "@/config/paths";
+import { env } from "@/config/env";
+import {
+  PAYMENTS_UNAVAILABLE,
+  stripeMode,
+} from "@/components/stripe/stripe-mode";
+import {
+  StripeProvider,
+  type StripeSource,
+} from "@/components/stripe/stripe-provider";
+import { StripeCardFields } from "@/components/stripe/stripe-card-fields";
 import type {
   ConfirmOrderPaymentReason,
   ConfirmOrderPaymentResult,
@@ -98,6 +108,8 @@ interface CheckoutViewProps {
   // GW-25: answers the simulated bank, then settles the paused order
   bankAction: BankAction;
   confirmAction: ConfirmAction;
+  // Stories hand in a fake Stripe; the real one loads from the publishable key
+  stripe?: StripeSource;
 }
 
 const emptyCard: CardInput = { number: "", holder: "", expiry: "", cvv: "" };
@@ -121,8 +133,12 @@ export function CheckoutView({
   payAction,
   bankAction,
   confirmAction,
+  stripe,
 }: CheckoutViewProps) {
   const router = useRouter();
+  // GW-41, GW-42, GW-45: Stripe Elements with a test-mode key, the typed card
+  // form without one, a notice with any other key
+  const mode = stripe ? "test" : stripeMode(env.stripePublishableKey);
   // GW-30: an order that was paused by a 3-D Secure challenge before a reload
   // opens on a resume panel instead of the Tickets step
   const [resuming, setResuming] = useState(order.status === "REQUIRES_ACTION");
@@ -135,6 +151,8 @@ export function CheckoutView({
   const [usePicker, setUsePicker] = useState(true);
   const [savedCardId, setSavedCardId] = useState<string | null>(null);
   const [saveCard, setSaveCard] = useState(false);
+  // GW-41: the PaymentMethod Stripe made from the card typed in Elements
+  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState("");
   // GW-24..GW-29: the 3-D Secure challenge the buyer is completing, and why
   // the last one ended without a payment
@@ -202,6 +220,13 @@ export function CheckoutView({
 
   function handleCardSubmit() {
     setSavedCardId(null);
+    setPaymentMethodId(null);
+    setStep("review");
+  }
+
+  function handlePaymentMethod(id: string) {
+    setSavedCardId(null);
+    setPaymentMethodId(id);
     setStep("review");
   }
 
@@ -214,11 +239,17 @@ export function CheckoutView({
       dispatchPay(
         savedCardId
           ? { orderId: order.id, savedCardId }
-          : {
-              orderId: order.id,
-              card: { ...card, number: normalizeNumber(card.number) },
-              ...(saveCard && { saveCard: true }),
-            },
+          : mode === "test" && paymentMethodId
+            ? {
+                orderId: order.id,
+                paymentMethodId,
+                ...(saveCard && { saveCard: true }),
+              }
+            : {
+                orderId: order.id,
+                card: { ...card, number: normalizeNumber(card.number) },
+                ...(saveCard && { saveCard: true }),
+              },
       ),
     );
   }
@@ -250,7 +281,10 @@ export function CheckoutView({
     if (!challenge) return;
     setSettling(true);
     try {
-      await bankAction(challenge.clientSecret, outcome);
+      // Stripe's own challenge has no simulated bank to tell
+      if (challenge.provider === "simulated") {
+        await bankAction(challenge.clientSecret, outcome);
+      }
       await confirmOrder();
     } finally {
       setSettling(false);
@@ -274,6 +308,27 @@ export function CheckoutView({
 
   const showPicker = usePicker && cards.length > 0;
 
+  const cardFooter = (
+    <div className="flex flex-col items-start gap-4">
+      {cards.length < MAX_SAVED_CARDS && (
+        <Checkbox
+          label="Save this card for future payments"
+          checked={saveCard}
+          onCheckedChange={setSaveCard}
+        />
+      )}
+      {cards.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setUsePicker(true)}
+          className="cursor-pointer text-base text-tint-400 underline hover:text-tint-300"
+        >
+          Use a saved card
+        </button>
+      )}
+    </div>
+  );
+
   const reviewError =
     payState.reason === "CARD_DECLINED" ||
     payState.reason === "CARD_ATTEMPTS_LIMITED" ||
@@ -285,7 +340,7 @@ export function CheckoutView({
         ? confirmReason
         : undefined;
 
-  return (
+  const view = (
     <div className="flex flex-col gap-12">
       <div className="mx-auto w-full max-w-[704px]">
         <CheckoutSteps current={step} />
@@ -351,32 +406,30 @@ export function CheckoutView({
               {!resuming && step === "payment" && !showPicker && (
                 <>
                   <OrderSummary order={order} />
-                  <CardForm
-                    value={card}
-                    onChange={handleCardChange}
-                    errors={fieldErrors}
-                    onSubmit={handleCardSubmit}
-                    footer={
-                      <div className="flex flex-col items-start gap-4">
-                        {cards.length < MAX_SAVED_CARDS && (
-                          <Checkbox
-                            label="Save this card for future payments"
-                            checked={saveCard}
-                            onCheckedChange={setSaveCard}
-                          />
-                        )}
-                        {cards.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setUsePicker(true)}
-                            className="cursor-pointer text-base text-tint-400 underline hover:text-tint-300"
-                          >
-                            Use a saved card
-                          </button>
-                        )}
-                      </div>
-                    }
-                  />
+                  {mode === "invalid" ? (
+                    <p role="alert" className="text-sm text-error-300">
+                      {PAYMENTS_UNAVAILABLE}
+                    </p>
+                  ) : mode === "test" ? (
+                    <div className="flex flex-col gap-6">
+                      <h2 className="text-xl font-bold text-white">
+                        Payment details
+                      </h2>
+                      <StripeCardFields
+                        submitLabel="Review order"
+                        onPaymentMethod={handlePaymentMethod}
+                        footer={cardFooter}
+                      />
+                    </div>
+                  ) : (
+                    <CardForm
+                      value={card}
+                      onChange={handleCardChange}
+                      errors={fieldErrors}
+                      onSubmit={handleCardSubmit}
+                      footer={cardFooter}
+                    />
+                  )}
                 </>
               )}
               {!resuming && step === "review" && (
@@ -398,10 +451,17 @@ export function CheckoutView({
 
       <PaymentChallengeDialog
         open={challenge !== null && !timedOut}
+        action={challenge}
         pending={settling}
         onSettled={handleChallengeSettled}
       />
       <TimeOutDialog open={timedOut} seatsHref={seatsHref} />
     </div>
+  );
+
+  return mode === "test" ? (
+    <StripeProvider stripe={stripe}>{view}</StripeProvider>
+  ) : (
+    view
   );
 }

@@ -1,13 +1,17 @@
 "use client";
 
+import { useStripe } from "@stripe/react-stripe-js";
 import { useEffect, useId, useRef, type SyntheticEvent } from "react";
 import { Button } from "@/components/ui/button";
+import type { PaymentAction } from "@/features/checkout/api/payment-action";
 import type { SimulatedBankOutcome } from "@/features/checkout/api/simulated-bank-action";
 
 interface PaymentChallengeDialogProps {
   open: boolean;
   // While the outcome is being posted and confirmed: the choice is made
   pending?: boolean;
+  // Which bank runs the challenge; Stripe's runs in Stripe's own window (GW-43)
+  action?: PaymentAction | null;
   onSettled: (outcome: SimulatedBankOutcome) => void;
 }
 
@@ -17,6 +21,7 @@ interface PaymentChallengeDialogProps {
 export function PaymentChallengeDialog({
   open,
   pending = false,
+  action,
   onSettled,
 }: PaymentChallengeDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -38,6 +43,16 @@ export function PaymentChallengeDialog({
   function handleCancel(event: SyntheticEvent<HTMLDialogElement>) {
     event.preventDefault();
     settle("fail");
+  }
+
+  if (action?.provider === "stripe") {
+    return (
+      <StripeChallenge
+        open={open}
+        clientSecret={action.clientSecret}
+        onSettled={onSettled}
+      />
+    );
   }
 
   if (!open) return null;
@@ -94,4 +109,38 @@ export function PaymentChallengeDialog({
       </div>
     </dialog>
   );
+}
+
+interface StripeChallengeProps {
+  open: boolean;
+  clientSecret: string;
+  onSettled: (outcome: SimulatedBankOutcome) => void;
+}
+
+// GW-43: hands the intent to Stripe.js, which opens the bank's 3-D Secure
+// window itself, and settles when it closes. Whatever the result, the API
+// reads the payment's real state when the order is confirmed, so an error here
+// only reports "fail" and never decides the outcome.
+function StripeChallenge({ open, clientSecret, onSettled }: StripeChallengeProps) {
+  const stripe = useStripe();
+  const started = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      started.current = null;
+      return;
+    }
+    if (!stripe || started.current === clientSecret) return;
+    started.current = clientSecret;
+    stripe.handleNextAction({ clientSecret }).then(
+      (result) => onSettled(result.error ? "fail" : "approve"),
+      () => onSettled("fail"),
+    );
+  }, [open, stripe, clientSecret, onSettled]);
+
+  return open ? (
+    <p role="status" className="sr-only">
+      Verifying your payment with your bank
+    </p>
+  ) : null;
 }

@@ -10,6 +10,7 @@ import type {
   PayOrderActionInput,
   PayOrderState,
 } from "@/features/checkout/api/pay-order-action";
+import { createFakeStripe } from "@/components/stripe/fake-stripe";
 import { zonedIso } from "@/testing/dates";
 import { CheckoutView } from "./checkout-view";
 
@@ -943,5 +944,31 @@ export const ResumeWithoutAction: Story = {
     );
     await expect(args.bankAction).not.toHaveBeenCalled();
     await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+  },
+};
+
+const fakeStripe = createFakeStripe({ paymentMethodId: "pm_fake_123" });
+
+// GW-41: in Stripe mode the card is typed into Elements and "Pay" sends only
+// the PaymentMethod id, never a card.
+export const PayWithStripeElements: Story = {
+  args: { stripe: fakeStripe.stripe },
+  play: async ({ args, canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+    await userEvent.type(
+      await canvas.findByRole("textbox", { name: "Card number" }),
+      "4242424242424242",
+    );
+    await userEvent.type(canvas.getByRole("textbox", { name: "Card holder" }), "Negar Khosravi");
+    await userEvent.type(canvas.getByRole("textbox", { name: "Expiry" }), "0830");
+    await userEvent.type(canvas.getByRole("textbox", { name: "CVC" }), "123");
+    await userEvent.click(canvas.getByRole("button", { name: "Review order" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Pay" }));
+
+    await expect(args.payAction).toHaveBeenCalledTimes(1);
+    await expect(vi.mocked(args.payAction).mock.calls[0][1]).toEqual({
+      orderId: "order-81",
+      paymentMethodId: "pm_fake_123",
+    });
   },
 };
