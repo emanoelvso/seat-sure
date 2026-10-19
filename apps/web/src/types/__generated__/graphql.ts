@@ -41,6 +41,10 @@ export type CheckoutOrderStatus =
   | 'PENDING'
   | 'REQUIRES_ACTION';
 
+export type ConfirmOrderPaymentInput = {
+  orderId: string;
+};
+
 export type ConfirmPasswordResetCodeInput = {
   code: string;
   email: string;
@@ -365,6 +369,13 @@ export type VerifyEmailMutationVariables = Exact<{
 
 
 export type VerifyEmailMutation = { verifyEmail: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } };
+
+export type ConfirmOrderPaymentMutationVariables = Exact<{
+  input: ConfirmOrderPaymentInput;
+}>;
+
+
+export type ConfirmOrderPaymentMutation = { confirmOrderPayment: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, paymentAction: { __typename: 'PaymentAction', provider: string, clientSecret: string } | null } };
 
 export type FindCheckoutOrderQueryVariables = Exact<{
   input: FindCheckoutOrderInput;
