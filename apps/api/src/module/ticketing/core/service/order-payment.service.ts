@@ -173,6 +173,94 @@ export class OrderPaymentService {
     return this.chargeAndIssue(order, source, saveCard, now);
   }
 
+  // Settles a paused order once the buyer is back from the challenge (GW-09
+  // to GW-15). The owner's own order only; anything not paused or paid reads
+  // as not found. `now` is the API clock (AD-025).
+  async confirm({
+    userId,
+    orderId,
+    now,
+  }: {
+    userId: string;
+    orderId: string;
+    now: Date;
+  }): Promise<CheckoutOrderModel> {
+    if (!isUUID(orderId)) {
+      throw orderNotFound();
+    }
+
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId, userId },
+      relations: { items: true },
+    });
+    if (!order) {
+      throw orderNotFound();
+    }
+    // Already paid: nothing left to settle, so the gateway isn't called (GW-13)
+    if (order.status === OrderStatus.PAID) {
+      return toCheckoutOrderModel(order, order.items, now);
+    }
+    if (order.status === OrderStatus.PROCESSING) {
+      throw paymentInProgress();
+    }
+    if (order.status !== OrderStatus.REQUIRES_ACTION || !order.paymentId) {
+      throw orderNotFound();
+    }
+    const paymentId = order.paymentId;
+
+    // One caller settles; the other waits behind it (GW-14)
+    if (!(await this.orderRepository.claimConfirm(order.id))) {
+      throw paymentInProgress();
+    }
+
+    // The time to pay ran out during the challenge: nothing was captured, so
+    // the authorization is cancelled and the order reads as expired (GW-12)
+    if (order.expiresAt.getTime() < now.getTime()) {
+      await this.cancelPayment(order, paymentId);
+      await this.orderRepository.releasePayment(order.id);
+      throw new TicketingException(
+        'ORDER_EXPIRED',
+        'Your time to pay for this order ran out.',
+      );
+    }
+
+    let settled: Awaited<ReturnType<BillingApi['settle']>>;
+    try {
+      settled = await this.billingApi.settle(paymentId);
+    } catch (error) {
+      // Nothing was decided: the order waits for the challenge again
+      await this.orderRepository.markRequiresAction(order.id, paymentId);
+      throw error;
+    }
+
+    switch (settled.status) {
+      case 'authorized':
+        return this.issueAndCapture(order, paymentId, now);
+      case 'failed':
+        await this.orderRepository.releasePayment(order.id);
+        await this.notify(order, 'payment_unsuccessful', () =>
+          this.notificationsApi.notifyPaymentUnsuccessful({
+            userId: order.userId,
+            paymentId,
+            eventName: order.eventName,
+            now,
+          }),
+        );
+        throw new TicketingException(
+          'AUTHENTICATION_FAILED',
+          "We couldn't verify this payment with your bank. Try again or use another card.",
+        );
+      case 'requires_action':
+        await this.orderRepository.markRequiresAction(order.id, paymentId);
+        order.status = OrderStatus.REQUIRES_ACTION;
+        return this.toPausedModel(order, now, settled.action);
+      default: {
+        const unhandled: never = settled;
+        throw new Error(`Unhandled settle outcome: ${String(unhandled)}`);
+      }
+    }
+  }
+
   // Authorizes the order total, then turns the payment into tickets and
   // captures it. A charge that fails leaves the order pending so the buyer can
   // retry (PAY-40). One that needs a 3-D Secure challenge pauses the order
