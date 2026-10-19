@@ -126,6 +126,7 @@ type CheckoutOrder {
   expiresAt: DateTime!
   id: ID!
   items: [CheckoutOrderItem!]!
+  paymentAction: PaymentAction
   quantity: Int!
   secondsLeft: Int!
   serviceFeeCents: Int!
@@ -151,6 +152,7 @@ enum CheckoutOrderStatus {
   FAILED
   PAID
   PENDING
+  REQUIRES_ACTION
 }
 
 type CheckoutTicketType {
@@ -161,6 +163,10 @@ type CheckoutTicketType {
 type CodeDelivery {
   codeSent: Boolean!
   resendAvailableAt: DateTime!
+}
+
+input ConfirmOrderPaymentInput {
+  orderId: String!
 }
 
 input ConfirmPasswordResetCodeInput {
@@ -333,6 +339,7 @@ enum LogInStatus {
 
 type Mutation {
   addPaymentCard(input: AddPaymentCardInput!): [PaymentCard!]!
+  confirmOrderPayment(input: ConfirmOrderPaymentInput!): CheckoutOrder!
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
   demoSignIn: SessionTokens!
@@ -406,6 +413,11 @@ input PayOrderInput {
   orderId: String!
   saveCard: Boolean! = false
   savedCardId: ID
+}
+
+type PaymentAction {
+  clientSecret: String!
+  provider: String!
 }
 
 type PaymentCard {

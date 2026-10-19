@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
+import { BillingApi } from '@sharedModules/integration/interface/billing-integration.interface';
 import { CatalogApi } from '@sharedModules/integration/interface/catalog-integration.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
 import { TicketingException } from '@ticketingModule/core/exception/ticketing.exception';
@@ -97,6 +98,8 @@ export class CheckoutService {
     private readonly dataSource: DataSource,
     @Inject(CatalogApi)
     private readonly catalogApi: CatalogApi,
+    @Inject(BillingApi)
+    private readonly billingApi: BillingApi,
     private readonly orderRepository: OrderRepository,
     private readonly seatHoldRepository: SeatHoldRepository,
     private readonly ticketRepository: TicketRepository,
@@ -260,6 +263,23 @@ export class CheckoutService {
       relations: { items: true },
     });
 
-    return order ? toCheckoutOrderModel(order, order.items, now) : null;
+    if (!order) {
+      return null;
+    }
+
+    // A paused order carries the challenge its owner must finish. Billing
+    // reads it from the gateway on demand and Ticketing never stores it
+    // (GW-30, GW-32).
+    const model = toCheckoutOrderModel(order, order.items, now);
+    if (model.status !== CheckoutOrderStatus.REQUIRES_ACTION) {
+      return model;
+    }
+
+    return {
+      ...model,
+      paymentAction: order.paymentId
+        ? await this.billingApi.findPaymentAction(order.paymentId)
+        : null,
+    };
   }
 }
