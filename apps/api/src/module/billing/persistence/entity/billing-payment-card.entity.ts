@@ -17,6 +17,9 @@ export class BillingPaymentCard extends DefaultEntity<BillingPaymentCard> {
   @Column({ type: 'varchar' })
   providerToken: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  customerId: string | null;
+
   @Column({ type: 'char', length: 64 })
   fingerprint: string;
 
