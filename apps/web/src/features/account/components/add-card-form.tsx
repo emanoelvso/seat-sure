@@ -15,6 +15,17 @@ import {
   type FormEvent,
   type Ref,
 } from "react";
+import { env } from "@/config/env";
+import {
+  PAYMENTS_UNAVAILABLE,
+  stripeMode,
+} from "@/components/stripe/stripe-mode";
+import { StripeCardFields } from "@/components/stripe/stripe-card-fields";
+import {
+  StripeProvider,
+  type StripeSource,
+} from "@/components/stripe/stripe-provider";
+import { addPaymentMethodAction } from "@/features/account/api/add-payment-method-action";
 import { DemoPaymentNotice } from "@/components/demo-payment-notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,8 +49,17 @@ export interface AddCardFormHandle {
   reset: () => void;
 }
 
+type AddStripeCardAction = (
+  state: AddPaymentCardState,
+  paymentMethodId: string,
+) => Promise<AddPaymentCardState>;
+
 interface AddCardFormProps {
   action: AddCardAction;
+  // Used instead of `action` when Stripe Elements are on (GW-41)
+  stripeAction?: AddStripeCardAction;
+  // Stories hand in a fake Stripe; the real one loads from the publishable key
+  stripe?: StripeSource;
   /** True while the user has no saved card (CARD-03 AC 6). */
   isFirstCard: boolean;
   onSaved: (cards: PaymentCard[]) => void;
@@ -63,11 +83,104 @@ const FIELD_CLASS = "py-4! text-lg!";
 // 16px gap. The values live in this component and are only sent to the
 // injected action; nothing is kept once the card is saved.
 export function AddCardForm({
+  stripeAction = addPaymentMethodAction,
+  stripe,
+  ref,
+  ...props
+}: AddCardFormProps) {
+  const mode = stripe ? "test" : stripeMode(env.stripePublishableKey);
+
+  if (mode === "off") return <TypedAddCardForm ref={ref} {...props} />;
+  if (mode === "invalid") {
+    return (
+      <p role="alert" className="text-sm text-error-300">
+        {PAYMENTS_UNAVAILABLE}
+      </p>
+    );
+  }
+  return (
+    <StripeProvider stripe={stripe}>
+      <StripeAddCardForm
+        action={stripeAction}
+        isFirstCard={props.isFirstCard}
+        onSaved={props.onSaved}
+        ref={ref}
+      />
+    </StripeProvider>
+  );
+}
+
+// GW-41: the same page section with Stripe Elements for the card. The
+// action gets only the PaymentMethod id; nothing typed is kept once saved.
+function StripeAddCardForm({
   action,
   isFirstCard,
   onSaved,
   ref,
-}: AddCardFormProps) {
+}: {
+  action: AddStripeCardAction;
+  isFirstCard: boolean;
+  onSaved: (cards: PaymentCard[]) => void;
+  ref?: Ref<AddCardFormHandle>;
+}) {
+  const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
+  // A new key remounts the fields, which clears the Elements and the name
+  const [formKey, setFormKey] = useState(0);
+  const [lastState, setLastState] = useState(state);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  if (state !== lastState) {
+    setLastState(state);
+    if (state.status === "saved") setFormKey((key) => key + 1);
+  }
+
+  useEffect(() => {
+    if (state.status === "saved") onSaved(state.cards);
+    // onSaved is a parent callback; only a new result should fire it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  useImperativeHandle(ref, () => ({
+    reset() {
+      setFormKey((key) => key + 1);
+      requestAnimationFrame(() =>
+        containerRef.current
+          ?.querySelector<HTMLInputElement>('input[autocomplete="cc-name"]')
+          ?.focus(),
+      );
+    },
+  }));
+
+  const formError = state.status === "error" ? state.formError : undefined;
+
+  return (
+    <div ref={containerRef} className="flex flex-col gap-12">
+      {isFirstCard && (
+        <p className="text-base text-neutral-100">
+          This credit card will be used by default for billing.
+        </p>
+      )}
+      <StripeCardFields
+        key={formKey}
+        holderLabel="Name on card"
+        submitLabel="Save card"
+        pendingLabel="Saving…"
+        pending={pending}
+        formError={formError}
+        onPaymentMethod={(paymentMethodId) =>
+          startTransition(() => formAction(paymentMethodId))
+        }
+      />
+    </div>
+  );
+}
+
+function TypedAddCardForm({
+  action,
+  isFirstCard,
+  onSaved,
+  ref,
+}: Omit<AddCardFormProps, "stripeAction" | "stripe">) {
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
   const [values, setValues] = useState<CardInput>(EMPTY);
   const [touched, setTouched] = useState<Partial<Record<CardField, boolean>>>(
