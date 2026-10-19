@@ -191,6 +191,30 @@ describe('BillingPublicApiProvider (integration)', () => {
     expect(row.refundedAt).not.toBeNull();
   });
 
+  it('refunds at the gateway with the payment refund idempotency key (GW-02)', async () => {
+    const outcome = recorded(
+      await billingApi.charge({
+        userId: randomUUID(),
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card: VALID_CARD },
+      }),
+    );
+    const gateway = module.get<PaymentGateway>(PaymentGateway);
+    const refundSpy = jest.spyOn(gateway, 'refund');
+
+    await billingApi.refund(outcome.paymentId);
+
+    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect(refundSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      `${outcome.paymentId}:refund`,
+    );
+
+    refundSpy.mockRestore();
+  });
+
   // PAY-47, CARDABUSE-05. Deterministic by construction: the ids and the
   // gateway's token, fingerprint and payment id are fixed and contain no
   // digit, and only text columns are scanned (a uuid, timestamp or number
