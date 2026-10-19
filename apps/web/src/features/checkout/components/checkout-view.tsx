@@ -18,11 +18,15 @@ import type {
   PayOrderActionInput,
   PayOrderState,
 } from "@/features/checkout/api/pay-order-action";
-import type { PaymentAction } from "@/features/checkout/api/payment-action";
+import {
+  toPaymentAction,
+  type PaymentAction,
+} from "@/features/checkout/api/payment-action";
 import type {
   SimulatedBankOutcome,
   SimulatedBankResult,
 } from "@/features/checkout/api/simulated-bank-action";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CardForm } from "@/features/checkout/components/card-form";
 import { CheckoutEventCard } from "@/features/checkout/components/checkout-event-card";
@@ -84,6 +88,8 @@ interface CheckoutViewProps {
     };
     ticketType: { id: string; name: string };
     items: { row: string; number: string }[];
+    // A paused order's challenge, for its owner only (GW-30)
+    paymentAction?: { provider: string; clientSecret: string } | null;
   };
   user: { firstName: string; lastName: string; email: string };
   // The caller's saved cards, default first (CARD-07)
@@ -117,7 +123,12 @@ export function CheckoutView({
   confirmAction,
 }: CheckoutViewProps) {
   const router = useRouter();
-  const [step, setStep] = useState<CheckoutStep>("tickets");
+  // GW-30: an order that was paused by a 3-D Secure challenge before a reload
+  // opens on a resume panel instead of the Tickets step
+  const [resuming, setResuming] = useState(order.status === "REQUIRES_ACTION");
+  const [step, setStep] = useState<CheckoutStep>(
+    order.status === "REQUIRES_ACTION" ? "review" : "tickets",
+  );
   const [card, setCard] = useState<CardInput>(emptyCard);
   const [fieldErrors, setFieldErrors] = useState<Partial<CardFieldErrors>>();
   const [timerExpired, setTimerExpired] = useState(false);
@@ -212,6 +223,26 @@ export function CheckoutView({
     );
   }
 
+  // Settles the paused order: a result either ends the flow (paid, or the
+  // reason it didn't go through) or keeps the challenge going
+  async function confirmOrder() {
+    const result = await confirmAction(order.id);
+
+    if ("paid" in result) {
+      setChallenge(null);
+      router.push(paths.checkoutSuccess.getHref(order.id));
+    } else if ("requiresAction" in result) {
+      setChallenge(result.requiresAction);
+    } else {
+      setChallenge(null);
+      setConfirmReason(result.reason);
+      // A resumed order lost the card typed before the reload: start again
+      // from Payment
+      setStep(resuming ? "payment" : "review");
+      setResuming(false);
+    }
+  }
+
   // GW-25: the bank hears the outcome first, then the API settles the order.
   // A bank that can't be reached still lets the API decide: it reads the
   // payment itself.
@@ -220,18 +251,22 @@ export function CheckoutView({
     setSettling(true);
     try {
       await bankAction(challenge.clientSecret, outcome);
-      const result = await confirmAction(order.id);
+      await confirmOrder();
+    } finally {
+      setSettling(false);
+    }
+  }
 
-      if ("paid" in result) {
-        setChallenge(null);
-        router.push(paths.checkoutSuccess.getHref(order.id));
-      } else if ("requiresAction" in result) {
-        setChallenge(result.requiresAction);
-      } else {
-        setChallenge(null);
-        setConfirmReason(result.reason);
-        setStep("review");
-      }
+  // GW-31: "Continue" reopens the challenge. A payment that no longer needs
+  // one is settled straight away.
+  async function handleResume() {
+    if (order.paymentAction) {
+      setChallenge(toPaymentAction(order.paymentAction));
+      return;
+    }
+    setSettling(true);
+    try {
+      await confirmOrder();
     } finally {
       setSettling(false);
     }
@@ -281,20 +316,39 @@ export function CheckoutView({
             </div>
           ) : (
             <>
-              {step === "tickets" && (
+              {resuming && (
+                <div className="flex flex-col items-start gap-4">
+                  <h2 className="text-xl font-bold text-white">
+                    Finish verifying your payment
+                  </h2>
+                  <p className="text-sm text-neutral-200">
+                    Your bank asked you to verify this payment. Continue to
+                    complete it before your time runs out.
+                  </p>
+                  <Button
+                    type="button"
+                    size="xl"
+                    disabled={settling}
+                    onClick={handleResume}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              )}
+              {!resuming && step === "tickets" && (
                 <TicketsStep
                   quantity={order.quantity}
                   onConfirm={() => setStep("payment")}
                 />
               )}
-              {step === "payment" && showPicker && (
+              {!resuming && step === "payment" && showPicker && (
                 <SavedCardPicker
                   cards={cards}
                   error={pickerError || undefined}
                   onConfirm={handlePickerConfirm}
                 />
               )}
-              {step === "payment" && !showPicker && (
+              {!resuming && step === "payment" && !showPicker && (
                 <>
                   <OrderSummary order={order} />
                   <CardForm
@@ -325,7 +379,7 @@ export function CheckoutView({
                   />
                 </>
               )}
-              {step === "review" && (
+              {!resuming && step === "review" && (
                 <ReviewStep
                   user={user}
                   totalLabel={formatPrice(order.totalCents, order.currency)}

@@ -872,3 +872,76 @@ export const ChallengeTimerRunsOut: Story = {
     await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
   },
 };
+
+const pausedOrder = {
+  ...order,
+  status: "REQUIRES_ACTION" as const,
+  paymentAction: challenge,
+};
+
+// GW-30: a paused order opens on the resume panel, not on the Tickets step.
+export const ResumePanel: Story = {
+  args: { order: pausedOrder },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Finish verifying your payment" }),
+    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Continue" })).toBeEnabled();
+    await expect(canvas.queryByRole("button", { name: "Confirm" })).toBeNull();
+    await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
+    await expect(canvas.getByRole("timer")).toBeVisible();
+  },
+};
+
+// GW-31: Continue reopens the challenge, and approving it ends on the
+// success page.
+export const ResumeChallenge: Story = {
+  args: { order: pausedOrder },
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+    await expect(
+      await canvas.findByRole("dialog", { name: "Verify your payment" }),
+    ).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() =>
+      expect(getRouter().push).toHaveBeenCalledWith("/checkout/order-81/success"),
+    );
+    await expect(args.bankAction).toHaveBeenCalledWith("sim_secret_abc", "approve");
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+  },
+};
+
+// GW-31: a resumed challenge that fails sends the buyer back to Payment with
+// the bank message, since the typed card is gone after a reload.
+export const ResumeChallengeFailed: Story = {
+  args: { order: pausedOrder },
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.confirmAction).mockResolvedValueOnce({
+      reason: "AUTHENTICATION_FAILED",
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+
+    await userEvent.click(await canvas.findByRole("button", { name: "Fail" }));
+
+    await waitFor(() => expect(currentStep(canvas)).toBe("Payment"));
+    await expect(canvas.queryByRole("heading", { name: "Finish verifying your payment" })).toBeNull();
+    await expect(canvas.getByLabelText("Card number")).toBeVisible();
+  },
+};
+
+// A paused order whose payment needs no challenge any more is settled by
+// Continue alone.
+export const ResumeWithoutAction: Story = {
+  args: { order: { ...pausedOrder, paymentAction: null } },
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() =>
+      expect(getRouter().push).toHaveBeenCalledWith("/checkout/order-81/success"),
+    );
+    await expect(args.bankAction).not.toHaveBeenCalled();
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+  },
+};

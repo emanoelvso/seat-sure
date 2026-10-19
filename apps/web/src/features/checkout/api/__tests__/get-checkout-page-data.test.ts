@@ -127,6 +127,37 @@ describe("getCheckoutPageData", () => {
     );
   });
 
+  it("passes a paused order's payment action through to the page (GW-30)", async () => {
+    const paused = {
+      ...order,
+      status: "REQUIRES_ACTION" as const,
+      paymentAction: {
+        __typename: "PaymentAction" as const,
+        provider: "simulated",
+        clientSecret: "sim_secret_abc",
+      },
+    };
+    mockedReadAccessToken.mockResolvedValue("access-token-1");
+    mockedFetch.mockImplementation(async (document) => {
+      if (document === FIND_CHECKOUT_ORDER) {
+        return { findCheckoutOrder: paused };
+      }
+      if (document === ME) {
+        return { me: user };
+      }
+      return { myPaymentCards: [] };
+    });
+
+    const result = await getCheckoutPageData("o1", "/checkout/o1");
+
+    expect(result.order).toEqual(paused);
+    expect(result.order?.paymentAction).toEqual({
+      __typename: "PaymentAction",
+      provider: "simulated",
+      clientSecret: "sim_secret_abc",
+    });
+  });
+
   it("redirects to the refresh route when the token is missing but a refresh cookie exists (PAY-22)", async () => {
     mockedReadAccessToken.mockResolvedValue(undefined);
     mockedReadRefreshToken.mockResolvedValue("refresh-token-1");
