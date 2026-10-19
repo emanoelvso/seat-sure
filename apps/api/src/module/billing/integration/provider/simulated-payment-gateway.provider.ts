@@ -14,8 +14,8 @@ import { ConfigService } from '@sharedModules/config/service/config.service';
 
 // Declined by both tokenize and charge
 const DECLINED_NUMBER = '4000000000000002';
-// Tokenizes, but charging its token declines (Stripe's "attach OK, charge
-// fails" test card)
+// Tokenizes, but every charge declines, typed or by saved token (Stripe's
+// "attach OK, charge fails" test card)
 const TOKEN_DECLINED_NUMBER = '4000000000000341';
 const TOKEN_PREFIX = 'sim_pm_';
 const DECLINING_TOKEN_PREFIX = 'sim_pm_decline_';
@@ -56,7 +56,9 @@ export class SimulatedPaymentGateway implements PaymentGateway {
   async charge({ source }: ChargeInput): Promise<ChargeResult> {
     const declined =
       source.type === 'card'
-        ? normalizeNumber(source.card.number) === DECLINED_NUMBER
+        ? [DECLINED_NUMBER, TOKEN_DECLINED_NUMBER].includes(
+            normalizeNumber(source.card.number),
+          )
         : source.token.startsWith(DECLINING_TOKEN_PREFIX);
 
     if (declined) {

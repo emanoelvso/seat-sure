@@ -208,6 +208,16 @@ describe('SimulatedPaymentGateway (integration)', () => {
     });
   });
 
+  it('declines a typed charge on the 0341 card, matching its saved token', async () => {
+    const result = await gateway.charge({
+      amountCents: 26000,
+      currency: 'USD',
+      source: { type: 'card', card: TOKEN_DECLINED_CARD },
+    });
+
+    expect(result).toEqual({ status: 'failed', reason: 'card_declined' });
+  });
+
   it('resolves detach', async () => {
     await expect(gateway.detach('sim_pm_x')).resolves.toBeUndefined();
   });

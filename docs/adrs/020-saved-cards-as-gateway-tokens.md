@@ -37,7 +37,7 @@ Checkout charged a typed card and forgot it. Users now save cards on `/account/p
 
 - Rotating `BILLING_FINGERPRINT_SECRET` changes every fingerprint, so duplicate checks stop matching older rows until they are re-keyed.
 - Detach after commit can leave an orphan token at the gateway if the process dies in between. The simulated gateway hides this; a real one needs a reconciliation job.
-- The simulated gateway decides outcomes from test card numbers (`4000 0000 0000 0002` declines at tokenize, `4000 0000 0000 0341` saves but its token charge declines). Those rules are fixtures, not product behaviour.
+- The simulated gateway decides outcomes from test card numbers (`4000 0000 0000 0002` declines at tokenize, `4000 0000 0000 0341` saves, and every charge on it declines, typed or by saved token). Those rules are fixtures, not product behaviour.
 
 ### Trade-offs
 
