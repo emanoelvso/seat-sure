@@ -240,7 +240,7 @@ describe('Demo mutation request budget (REL-20)', () => {
     await gql();
     const gateway = module.get<PaymentGateway>(PaymentGateway);
     const tokenize = jest.spyOn(gateway, 'tokenize');
-    const charge = jest.spyOn(gateway, 'charge');
+    const charge = jest.spyOn(gateway, 'authorize');
     const cards = await testDbClient(Tables.BillingPaymentCard).select();
     const payments = await testDbClient(Tables.BillingPayment).select();
     const cardInput =

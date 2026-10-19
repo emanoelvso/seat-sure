@@ -14,7 +14,8 @@ import { BillingApi } from '@sharedModules/integration/interface/billing-integra
 @Module({
   imports: [BillingPersistenceModule, AuthModule, LoggerModule],
   providers: [
-    { provide: PaymentGateway, useClass: SimulatedPaymentGateway },
+    SimulatedPaymentGateway,
+    { provide: PaymentGateway, useExisting: SimulatedPaymentGateway },
     BillingService,
     PaymentCardService,
     CardThrottleService,

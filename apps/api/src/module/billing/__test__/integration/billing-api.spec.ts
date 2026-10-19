@@ -124,7 +124,7 @@ describe('BillingPublicApiProvider (integration)', () => {
   it('rejects and leaves no row when the gateway throws', async () => {
     const gateway = module.get<PaymentGateway>(PaymentGateway);
     const chargeSpy = jest
-      .spyOn(gateway, 'charge')
+      .spyOn(gateway, 'authorize')
       .mockRejectedValueOnce(new Error('gateway unavailable'));
 
     await expect(
@@ -145,7 +145,7 @@ describe('BillingPublicApiProvider (integration)', () => {
 
   it('rejects an invalid card without calling the gateway and without a row (PAY-44)', async () => {
     const gateway = module.get<PaymentGateway>(PaymentGateway);
-    const chargeSpy = jest.spyOn(gateway, 'charge');
+    const chargeSpy = jest.spyOn(gateway, 'authorize');
 
     await expect(
       billingApi.charge({
@@ -272,10 +272,11 @@ describe('BillingPublicApiProvider (integration)', () => {
         token: TOKEN,
         fingerprint: FINGERPRINT,
       });
-      jest.spyOn(gateway, 'charge').mockResolvedValue({
-        status: 'succeeded',
+      jest.spyOn(gateway, 'authorize').mockResolvedValue({
+        status: 'authorized',
         providerPaymentId: PROVIDER_PAYMENT_ID,
       });
+      jest.spyOn(gateway, 'capture').mockResolvedValue(undefined);
     });
 
     afterEach(async () => {
@@ -372,7 +373,7 @@ describe('BillingPublicApiProvider (integration)', () => {
 
     it("charges the saved card's token and records its brand and last 4 (AC 8, 11)", async () => {
       const gateway = module.get<PaymentGateway>(PaymentGateway);
-      const chargeSpy = jest.spyOn(gateway, 'charge');
+      const chargeSpy = jest.spyOn(gateway, 'authorize');
       const savedCard = billingPaymentCardFactory.build({
         brand: 'mastercard',
         last4: '4444',
@@ -382,11 +383,14 @@ describe('BillingPublicApiProvider (integration)', () => {
       const outcome = await chargeSaved(savedCard.userId, savedCard.id);
 
       expect(outcome.status).toBe('succeeded');
-      expect(chargeSpy).toHaveBeenCalledWith({
-        amountCents: 26000,
-        currency: 'USD',
-        source: { type: 'token', token: savedCard.providerToken },
-      });
+      expect(chargeSpy).toHaveBeenCalledWith(
+        {
+          amountCents: 26000,
+          currency: 'USD',
+          source: { type: 'token', token: savedCard.providerToken },
+        },
+        expect.any(String),
+      );
       const row = await testDbClient(Tables.BillingPayment)
         .where('id', recorded(outcome).paymentId)
         .first();
@@ -408,7 +412,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       'returns card_not_found for %s, with no payment row and no gateway call (AC 9)',
       async (_, pickCardId) => {
         const gateway = module.get<PaymentGateway>(PaymentGateway);
-        const chargeSpy = jest.spyOn(gateway, 'charge');
+        const chargeSpy = jest.spyOn(gateway, 'authorize');
         const foreignCard = billingPaymentCardFactory.build();
         await testDbClient.batchInsert(Tables.BillingPaymentCard, [
           foreignCard,
@@ -428,7 +432,7 @@ describe('BillingPublicApiProvider (integration)', () => {
 
     it('records a failed card_expired payment for an expired card without calling the gateway', async () => {
       const gateway = module.get<PaymentGateway>(PaymentGateway);
-      const chargeSpy = jest.spyOn(gateway, 'charge');
+      const chargeSpy = jest.spyOn(gateway, 'authorize');
       const savedCard = billingPaymentCardFactory.build({
         expMonth: 1,
         expYear: 2020,
@@ -543,7 +547,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       const declined = declinedCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
       await lockOut(userId, declined.id);
-      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'authorize');
 
       const outcome = await chargeSaved(userId, declined.id);
 
@@ -607,7 +611,7 @@ describe('BillingPublicApiProvider (integration)', () => {
     it('blocks the 6th declined typed charge with no gateway call and no payment row (TYPEDTHROTTLE-01 AC 1, 2)', async () => {
       const userId = randomUUID();
       await declineTyped(userId, 5);
-      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'authorize');
 
       expect(await chargeTyped(userId, VALID_CARD)).toEqual({
         status: 'card_attempts_limited',
@@ -670,7 +674,7 @@ describe('BillingPublicApiProvider (integration)', () => {
     it('does not count an unexpected gateway error on a typed card (TYPEDTHROTTLE-01 AC 7)', async () => {
       const userId = randomUUID();
       jest
-        .spyOn(module.get(PaymentGateway), 'charge')
+        .spyOn(module.get(PaymentGateway), 'authorize')
         .mockRejectedValue(new Error('gateway down'));
 
       await expect(chargeTyped(userId, VALID_CARD)).rejects.toThrow(
@@ -685,7 +689,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       const declined = declinedCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
       await lockOut(userId, declined.id);
-      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'authorize');
 
       expect(await chargeTyped(userId, VALID_CARD)).toEqual({
         status: 'card_attempts_limited',
@@ -745,7 +749,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       const ok = okCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [ok]);
       jest
-        .spyOn(module.get(PaymentGateway), 'charge')
+        .spyOn(module.get(PaymentGateway), 'authorize')
         .mockRejectedValue(new Error('gateway down'));
 
       await expect(chargeSaved(userId, ok.id)).rejects.toThrow('gateway down');

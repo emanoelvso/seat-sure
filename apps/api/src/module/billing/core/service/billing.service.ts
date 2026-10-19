@@ -2,7 +2,7 @@ import { ConfigService } from '@sharedModules/config/service/config.service';
 import { demoCardError } from '@billingModule/core/util/demo-card-rules';
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  ChargeResult,
+  AuthorizeInput,
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { isCardExpired } from '@billingModule/core/model/payment-card.model';
@@ -20,6 +20,7 @@ import { PaymentStatus } from '@billingModule/core/enum/payment-status.enum';
 import { BillingPayment } from '@billingModule/persistence/entity/billing-payment.entity';
 import { BillingPaymentRepository } from '@billingModule/persistence/repository/billing-payment.repository';
 import { isUUID } from 'class-validator';
+import { randomUUID } from 'crypto';
 
 export type ChargeSource =
   | { type: 'card'; card: CardInput }
@@ -37,6 +38,10 @@ export type ChargeOutcome =
   | { status: 'succeeded' | 'failed'; paymentId: string }
   | { status: 'card_not_found' }
   | { status: 'card_attempts_limited' };
+
+type ChargeResult =
+  | { status: 'succeeded'; providerPaymentId: string }
+  | { status: 'failed'; reason: 'card_declined' };
 
 export type SaveCardOutcome = 'saved' | 'duplicate' | 'limit' | 'declined';
 
@@ -111,7 +116,7 @@ export class BillingService {
     const result: ChargeResult | { status: 'failed'; reason: 'card_expired' } =
       isCardExpired(savedCard, now)
         ? { status: 'failed', reason: 'card_expired' }
-        : await this.gateway.charge({
+        : await this.authorizeAndCapture({
             amountCents: payment.amountCents,
             currency: payment.currency,
             source: { type: 'token', token: savedCard.providerToken },
@@ -153,7 +158,7 @@ export class BillingService {
       );
     }
 
-    const result = await this.gateway.charge({
+    const result = await this.authorizeAndCapture({
       amountCents: payment.amountCents,
       currency: payment.currency,
       source: { type: 'card', card },
@@ -174,6 +179,27 @@ export class BillingService {
     return outcome;
   }
 
+  // Stands in for the authorize/capture lifecycle until charge records
+  // authorized payments: the charge is authorized and captured at once, and a
+  // 3-D Secure challenge is cancelled and reported as a decline
+  private async authorizeAndCapture(
+    input: AuthorizeInput,
+  ): Promise<ChargeResult> {
+    const id = randomUUID();
+    const result = await this.gateway.authorize(input, `${id}:authorize`);
+
+    if (result.status === 'requires_action') {
+      await this.gateway.cancel(result.providerPaymentId, `${id}:cancel`);
+      return { status: 'failed', reason: 'card_declined' };
+    }
+    if (result.status === 'failed') {
+      return result;
+    }
+
+    await this.gateway.capture(result.providerPaymentId, `${id}:capture`);
+    return { status: 'succeeded', providerPaymentId: result.providerPaymentId };
+  }
+
   private async record(
     { userId, orderId, amountCents, currency }: PaymentDetails,
     card: PaymentCard,
@@ -182,7 +208,7 @@ export class BillingService {
     const payment = new BillingPayment({
       userId,
       orderId,
-      provider: 'simulated',
+      provider: this.gateway.provider,
       providerPaymentId:
         result.status === 'succeeded' ? result.providerPaymentId : null,
       amountCents,
@@ -230,7 +256,10 @@ export class BillingService {
     }
 
     if (payment.providerPaymentId) {
-      await this.gateway.refund(payment.providerPaymentId);
+      await this.gateway.refund(
+        payment.providerPaymentId,
+        `${payment.id}:refund`,
+      );
     }
 
     payment.status = PaymentStatus.REFUNDED;

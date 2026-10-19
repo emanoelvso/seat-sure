@@ -74,7 +74,7 @@ describe('Demo card restrictions (REL-22)', () => {
   });
 
   it('rejects non-test cards before direct charge and stores no payment', async () => {
-    const spy = jest.spyOn(gateway, 'charge');
+    const spy = jest.spyOn(gateway, 'authorize');
     await expect(charge(OTHER)).rejects.toMatchObject({
       reason: 'INVALID_CARD',
       fields: { number: MESSAGE },
@@ -103,6 +103,17 @@ describe('Demo card restrictions (REL-22)', () => {
     });
     expect(spy).not.toHaveBeenCalled();
     expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual([]);
+  });
+
+  it('accepts the documented 3-D Secure card 4000002760003184 (GW-23)', async () => {
+    const challenge = { ...SUCCESS, number: '4000 0027 6000 3184' };
+
+    expect(await api.validateCard(challenge, new Date())).toEqual({
+      number: '',
+      holder: '',
+      expiry: '',
+      cvv: '',
+    });
   });
 
   it('charges the documented success card and records its exact safe summary', async () => {

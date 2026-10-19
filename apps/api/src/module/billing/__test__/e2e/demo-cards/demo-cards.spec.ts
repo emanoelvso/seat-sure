@@ -119,7 +119,7 @@ describe('Demo card GraphQL boundary (REL-22)', () => {
       .first();
     const charge = jest.spyOn(
       module.get<PaymentGateway>(PaymentGateway),
-      'charge',
+      'authorize',
     );
     const response = await gql(
       `mutation { payOrder(input:{orderId:"${order.id}",card:${INPUT}}) { status } }`,
