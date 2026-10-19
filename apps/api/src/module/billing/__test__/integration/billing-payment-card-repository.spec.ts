@@ -70,7 +70,7 @@ describe('BillingPaymentCardRepository (integration)', () => {
         oldest,
       ]);
 
-      const cards = await repository.listForUser(userId);
+      const cards = await repository.listForUser(userId, 'simulated');
 
       expect(cards.map((card) => card.id)).toEqual([
         defaultCard.id,
@@ -86,9 +86,27 @@ describe('BillingPaymentCardRepository (integration)', () => {
       const theirs = billingPaymentCardFactory.build({ isDefault: true });
       await testDbClient(Tables.BillingPaymentCard).insert([mine, theirs]);
 
-      const cards = await repository.listForUser(userId);
+      const cards = await repository.listForUser(userId, 'simulated');
 
       expect(cards.map((card) => card.id)).toEqual([mine.id]);
+    });
+
+    it("returns only the asked provider's cards (GW-39)", async () => {
+      const userId = randomUUID();
+      const simulated = billingPaymentCardFactory.build({
+        userId,
+        isDefault: true,
+      });
+      const stripe = billingPaymentCardFactory.build({
+        userId,
+        provider: 'stripe',
+        isDefault: true,
+      });
+      await testDbClient(Tables.BillingPaymentCard).insert([simulated, stripe]);
+
+      const cards = await repository.listForUser(userId, 'stripe');
+
+      expect(cards.map((card) => card.id)).toEqual([stripe.id]);
     });
 
     it('returns an empty list for a user with no cards', async () => {
@@ -96,7 +114,9 @@ describe('BillingPaymentCardRepository (integration)', () => {
         billingPaymentCardFactory.build({ isDefault: true }),
       );
 
-      await expect(repository.listForUser(randomUUID())).resolves.toEqual([]);
+      await expect(
+        repository.listForUser(randomUUID(), 'simulated'),
+      ).resolves.toEqual([]);
     });
   });
 

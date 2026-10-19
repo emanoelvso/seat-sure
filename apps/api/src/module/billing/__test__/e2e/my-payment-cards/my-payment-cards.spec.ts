@@ -88,6 +88,26 @@ describe('BillingResolver myPaymentCards (e2e)', () => {
     return response.body;
   };
 
+  it("lists only the active provider's cards (GW-39)", async () => {
+    const simulated = billingPaymentCardFactory.build({
+      userId,
+      isDefault: true,
+    });
+    const stripe = billingPaymentCardFactory.build({
+      userId,
+      provider: 'stripe',
+      isDefault: true,
+    });
+    await testDbClient(Tables.BillingPaymentCard).insert([simulated, stripe]);
+
+    const body = await graphql(MY_PAYMENT_CARDS, tokenFor(userId));
+
+    expect(body.errors).toBeUndefined();
+    expect(
+      body.data.myPaymentCards.map((card: { id: string }) => card.id),
+    ).toEqual([simulated.id]);
+  });
+
   it("returns the caller's cards with their display fields, default first, then oldest (CARD-01 AC 3, 4)", async () => {
     const oldest = billingPaymentCardFactory.build({
       userId,

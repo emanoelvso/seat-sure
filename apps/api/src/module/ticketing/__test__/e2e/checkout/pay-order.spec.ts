@@ -730,6 +730,25 @@ describe('TicketingResolver payOrder (e2e)', () => {
       );
     });
 
+    it('fails a card of another provider with CARD_NOT_FOUND and charges nothing (GW-39)', async () => {
+      const { order } = await insertOrder();
+      const stripeCard = billingPaymentCardFactory.build({
+        userId,
+        provider: 'stripe',
+        providerToken: 'pm_card_visa',
+      });
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [stripeCard]);
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: stripeCard.id,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_NOT_FOUND');
+      expect(gateway.authorize).not.toHaveBeenCalled();
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+    });
+
     it.each([
       [
         "another user's card",

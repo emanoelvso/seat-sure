@@ -1,5 +1,4 @@
 import { createHmac } from 'crypto';
-import { Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import {
   AttachResult,
@@ -12,7 +11,6 @@ import {
 import { BillingCustomer } from '@billingModule/persistence/entity/billing-customer.entity';
 import { BillingCustomerRepository } from '@billingModule/persistence/repository/billing-customer.repository';
 import { ConfigService } from '@sharedModules/config/service/config.service';
-import { StripeClient } from '@billingModule/integration/provider/stripe-client.provider';
 
 const isCardError = (error: unknown): boolean =>
   (error as { type?: string } | null)?.type === 'StripeCardError';
@@ -20,13 +18,12 @@ const isCardError = (error: unknown): boolean =>
 // Stripe test-mode adapter (GW-33..GW-40). Every money-moving call carries the
 // caller's idempotency key. A card error is a decline; any other error
 // (network, auth, rate limit) throws so the order is released (GW-40).
-@Injectable()
 export class StripePaymentGateway implements PaymentGateway {
   readonly provider = 'stripe' as const;
   readonly acceptsTypedCards = false;
 
   constructor(
-    @Inject(StripeClient) private readonly stripe: Stripe,
+    private readonly stripe: Stripe,
     private readonly configService: ConfigService,
     private readonly customers: BillingCustomerRepository,
   ) {}

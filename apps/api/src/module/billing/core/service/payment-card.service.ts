@@ -44,7 +44,10 @@ export class PaymentCardService {
 
   // The caller's cards, default first, then oldest saved first (CARD-01 AC 3)
   async list(userId: string, now: Date): Promise<PaymentCardModel[]> {
-    const cards = await this.paymentCardRepository.listForUser(userId);
+    const cards = await this.paymentCardRepository.listForUser(
+      userId,
+      this.gateway.provider,
+    );
 
     return cards.map((card) => toPaymentCardModel(card, now));
   }
@@ -140,6 +143,7 @@ export class PaymentCardService {
     const count = await this.paymentCardRepository.countForUser(
       manager,
       userId,
+      card.provider,
     );
     if (count >= MAX_PAYMENT_CARDS) {
       throw new BillingException(
@@ -197,6 +201,7 @@ export class PaymentCardService {
       const card = await this.paymentCardRepository.findForUser(
         manager,
         userId,
+        this.gateway.provider,
         cardId,
       );
       if (!card) {
@@ -204,7 +209,12 @@ export class PaymentCardService {
       }
 
       if (!card.isDefault) {
-        await this.paymentCardRepository.moveDefault(manager, userId, cardId);
+        await this.paymentCardRepository.moveDefault(
+          manager,
+          userId,
+          this.gateway.provider,
+          cardId,
+        );
       }
     });
 
@@ -228,6 +238,7 @@ export class PaymentCardService {
       const card = await this.paymentCardRepository.findForUser(
         manager,
         userId,
+        this.gateway.provider,
         cardId,
       );
       if (!card) {
@@ -239,12 +250,14 @@ export class PaymentCardService {
       if (card.isDefault) {
         const [oldest] = await this.paymentCardRepository.listForUser(
           userId,
+          this.gateway.provider,
           manager,
         );
         if (oldest) {
           await this.paymentCardRepository.moveDefault(
             manager,
             userId,
+            this.gateway.provider,
             oldest.id,
           );
         }
@@ -279,6 +292,7 @@ export class PaymentCardService {
     return this.paymentCardRepository.findForUser(
       this.dataSource.manager,
       userId,
+      this.gateway.provider,
       cardId,
     );
   }

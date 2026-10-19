@@ -6,7 +6,7 @@ import { Column, Entity, Index, Unique } from 'typeorm';
 // Billing. The user is a plain id of another module, with no foreign key.
 @Entity('BillingPaymentCard')
 @Unique(['userId', 'fingerprint'])
-@Index(['userId'], { unique: true, where: '"isDefault"' })
+@Index(['userId', 'provider'], { unique: true, where: '"isDefault"' })
 export class BillingPaymentCard extends DefaultEntity<BillingPaymentCard> {
   @Column({ type: 'uuid' })
   userId: string;
