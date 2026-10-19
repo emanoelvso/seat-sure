@@ -6,6 +6,7 @@ import {
   CheckoutOrderStatus,
   CheckoutTicketTypeModel,
 } from '@ticketingModule/core/model/checkout-order.model';
+import { PaymentAction } from './payment-action.type';
 
 registerEnumType(CheckoutOrderStatus, { name: 'CheckoutOrderStatus' });
 
@@ -103,4 +104,7 @@ export class CheckoutOrder implements CheckoutOrderModel {
 
   @Field(() => [CheckoutOrderItem])
   items: CheckoutOrderItem[];
+
+  @Field(() => PaymentAction, { nullable: true })
+  paymentAction?: PaymentAction | null;
 }

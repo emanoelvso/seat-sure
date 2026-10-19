@@ -41,6 +41,10 @@ const PAY_ORDER = `
       items {
         seatId
       }
+      paymentAction {
+        provider
+        clientSecret
+      }
     }
   }
 `;
@@ -72,6 +76,7 @@ const VALID_CARD = {
 };
 
 const DECLINED_CARD = { ...VALID_CARD, number: '4000 0000 0000 0002' };
+const CHALLENGE_CARD = { ...VALID_CARD, number: '4000 0027 6000 3184' };
 
 describe('TicketingResolver payOrder (e2e)', () => {
   let app: INestApplication;
@@ -417,6 +422,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         items: expect.arrayContaining(
           items.map((item) => ({ seatId: item.seatId })),
         ),
+        paymentAction: null,
       });
       const [payment] = await paymentsOf(order.id);
       const row = await orderRow(order.id);
@@ -462,6 +468,53 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(
         await testDbClient(Tables.SeatHold).where({ eventId: order.eventId }),
       ).toHaveLength(0);
+    });
+
+    it('authorizes then captures with the idempotency keys of the payment, in that order (GW-02, GW-04)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrder(order.id);
+
+      expect(body.data.payOrder.status).toBe('PAID');
+      const [payment] = await paymentsOf(order.id);
+      expect(payment.status).toBe('succeeded');
+      expect(gateway.authorize).toHaveBeenCalledWith(
+        expect.anything(),
+        `${payment.id}:authorize`,
+      );
+      expect(gateway.capture).toHaveBeenCalledTimes(1);
+      expect(gateway.capture).toHaveBeenCalledWith(
+        payment.providerPaymentId,
+        `${payment.id}:capture`,
+      );
+      expect(gateway.authorize.mock.invocationCallOrder[0]).toBeLessThan(
+        gateway.capture.mock.invocationCallOrder[0],
+      );
+      expect(gateway.refund).not.toHaveBeenCalled();
+    });
+
+    it('answers PAID with one error log holding only the order and payment ids when capture throws 3 times (GW-06)', async () => {
+      const { order } = await insertOrder();
+      gateway.capture.mockRejectedValue(new Error('gateway unavailable'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(gateway.capture).toHaveBeenCalledTimes(3);
+      const [payment] = await paymentsOf(order.id);
+      expect(payment.status).toBe('authorized');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId }),
+      ).toHaveLength(2);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
+        orderId: order.id,
+        paymentId: payment.id,
+      });
+      errorSpy.mockRestore();
     });
 
     it('keeps both seats unavailable once sold (PAY-57)', async () => {
@@ -983,7 +1036,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
     });
 
-    it('stores no purchase notification when the seats were lost and the charge was refunded', async () => {
+    it('stores no purchase notification when the seats were lost and the authorization was cancelled', async () => {
       const { order, holds } = await insertOrder();
       await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
 
@@ -1133,6 +1186,67 @@ describe('TicketingResolver payOrder (e2e)', () => {
     });
   });
 
+  describe('a card that needs a 3-D Secure challenge (GW-08, GW-16)', () => {
+    it('pauses the order as REQUIRES_ACTION with the payment action, issuing and capturing nothing', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrder(order.id, CHALLENGE_CARD);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('REQUIRES_ACTION');
+      expect(body.data.payOrder.paymentAction).toEqual({
+        provider: 'simulated',
+        clientSecret: expect.stringMatching(/^sim_secret_/),
+      });
+      const [payment] = await paymentsOf(order.id);
+      expect(payment.status).toBe('requires_action');
+      expect(await paymentsOf(order.id)).toHaveLength(1);
+      const row = await orderRow(order.id);
+      expect(row.status).toBe('requires_action');
+      expect(row.paymentId).toBe(payment.id);
+      expect(gateway.capture).not.toHaveBeenCalled();
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+      expect(
+        await testDbClient(Tables.SeatHold).where({ userId }),
+      ).toHaveLength(2);
+      expect(sender.send).not.toHaveBeenCalled();
+    });
+
+    it('fails a second payOrder with PAYMENT_IN_PROGRESS without charging', async () => {
+      const { order } = await insertOrder();
+      await payOrder(order.id, CHALLENGE_CARD);
+      gateway.authorize.mockClear();
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('PAYMENT_IN_PROGRESS');
+      expect(gateway.authorize).not.toHaveBeenCalled();
+      expect((await orderRow(order.id)).status).toBe('requires_action');
+    });
+
+    it('does not change the card throttle (GW-17)', async () => {
+      const { order } = await insertOrder();
+
+      await payOrder(order.id, CHALLENGE_CARD);
+
+      expect(await testDbClient(Tables.BillingCardThrottle)).toHaveLength(0);
+    });
+
+    it('saves no card while the challenge is pending, holding it instead (GW-50)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: CHALLENGE_CARD,
+        saveCard: true,
+      });
+
+      expect(body.data.payOrder.status).toBe('REQUIRES_ACTION');
+      expect(await testDbClient(Tables.BillingPaymentCard)).toHaveLength(0);
+      expect(await testDbClient(Tables.BillingPendingCard)).toHaveLength(1);
+    });
+  });
+
   describe('concurrent payments (PAY-45)', () => {
     it('charges once when the same order is paid twice at the same time, 5 times over', async () => {
       for (let round = 0; round < 5; round++) {
@@ -1160,33 +1274,35 @@ describe('TicketingResolver payOrder (e2e)', () => {
     });
   });
 
-  describe('PAY-46: seats lost after the charge are refunded', () => {
-    const expectRefundedAndFailed = async (orderId: string) => {
+  describe('GW-05: seats lost after the authorization cancel it', () => {
+    const expectCancelledAndFailed = async (orderId: string) => {
       const payments = await paymentsOf(orderId);
       expect(payments).toHaveLength(1);
-      expect(payments[0].status).toBe('refunded');
-      expect(payments[0].refundedAt).not.toBeNull();
-      expect(gateway.refund).toHaveBeenCalledTimes(1);
-      expect(gateway.refund).toHaveBeenCalledWith(
+      expect(payments[0].status).toBe('cancelled');
+      expect(payments[0].refundedAt).toBeNull();
+      expect(gateway.cancel).toHaveBeenCalledTimes(1);
+      expect(gateway.cancel).toHaveBeenCalledWith(
         payments[0].providerPaymentId,
-        `${payments[0].id}:refund`,
+        `${payments[0].id}:cancel`,
       );
+      expect(gateway.capture).not.toHaveBeenCalled();
+      expect(gateway.refund).not.toHaveBeenCalled();
       expect((await orderRow(orderId)).status).toBe('failed');
     };
 
-    it('refunds and fails the order when a hold was deleted after the checkout started', async () => {
+    it('cancels the payment and fails the order when a hold was deleted after the checkout started', async () => {
       const { order, holds } = await insertOrder();
       await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
 
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      await expectRefundedAndFailed(order.id);
+      await expectCancelledAndFailed(order.id);
       expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
       expect(sender.send).not.toHaveBeenCalled();
     });
 
-    it('refunds and fails the order when another user reclaimed a hold after the checkout started', async () => {
+    it('cancels the payment and fails the order when another user reclaimed a hold after the checkout started', async () => {
       const { order, holds } = await insertOrder();
       const otherUserId = randomUUID();
       await testDbClient(Tables.SeatHold)
@@ -1196,7 +1312,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      await expectRefundedAndFailed(order.id);
+      await expectCancelledAndFailed(order.id);
       expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
       const reclaimed = await testDbClient(Tables.SeatHold).where({
         id: holds[0].id,
@@ -1206,7 +1322,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(sender.send).not.toHaveBeenCalled();
     });
 
-    it('refunds and fails the order when a seat already has an issued ticket of another order', async () => {
+    it('cancels the payment and fails the order when a seat already has an issued ticket of another order', async () => {
       const { order, items } = await insertOrder();
       const sold = ticketFactory.build({
         eventId: order.eventId,
@@ -1218,7 +1334,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      await expectRefundedAndFailed(order.id);
+      await expectCancelledAndFailed(order.id);
       const tickets = await testDbClient(Tables.Ticket);
       expect(tickets.map((ticket) => ticket.id)).toEqual([sold.id]);
       expect(sender.send).not.toHaveBeenCalled();
@@ -1263,7 +1379,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(codes).not.toContain(TAKEN_CODE);
     });
 
-    it('refunds and fails the order with a generic error when every retry collides', async () => {
+    it('cancels the payment and fails the order with a generic error when every retry collides', async () => {
       const { order } = await insertOrder();
       const taken = await insertTicketWithTakenCode();
       const generate = spyOnCodes().mockReturnValue(TAKEN_CODE);
@@ -1279,8 +1395,9 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(gateway.authorize).toHaveBeenCalledTimes(1);
       const payments = await paymentsOf(order.id);
       expect(payments).toHaveLength(1);
-      expect(payments[0].status).toBe('refunded');
-      expect(gateway.refund).toHaveBeenCalledTimes(1);
+      expect(payments[0].status).toBe('cancelled');
+      expect(gateway.cancel).toHaveBeenCalledTimes(1);
+      expect(gateway.refund).not.toHaveBeenCalled();
       expect((await orderRow(order.id)).status).toBe('failed');
       const tickets = await testDbClient(Tables.Ticket);
       expect(tickets.map((ticket) => ticket.id)).toEqual([taken.id]);

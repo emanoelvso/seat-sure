@@ -1,3 +1,5 @@
+import { PaymentAction } from '@sharedModules/integration/interface/billing-integration.interface';
+
 // What the buyer sees of an order. `processing` is reported as PENDING, and an
 // open order past its expiry as EXPIRED. REQUIRES_ACTION is a payment waiting
 // on the buyer's 3-D Secure challenge.
@@ -49,4 +51,7 @@ export interface CheckoutOrderModel {
   event: CheckoutEventModel;
   ticketType: CheckoutTicketTypeModel;
   items: CheckoutOrderItemModel[];
+  // The 3-D Secure challenge a REQUIRES_ACTION order awaits. Never stored by
+  // Ticketing: Billing reads it from the gateway on demand (GW-32).
+  paymentAction?: PaymentAction | null;
 }
