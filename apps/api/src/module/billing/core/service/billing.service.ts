@@ -51,6 +51,12 @@ export type ChargeOutcome =
   | { status: 'card_not_found' }
   | { status: 'card_attempts_limited' };
 
+export type SettleOutcome =
+  | { status: 'authorized' | 'failed' }
+  | { status: 'requires_action'; action: PaymentAction };
+
+const MAX_CAPTURE_ATTEMPTS = 3;
+
 type ChargeResult =
   AuthorizeResult | { status: 'failed'; reason: 'card_expired' };
 
@@ -298,8 +304,11 @@ export class BillingService {
     return { status: result.status, paymentId: id };
   }
 
-  // Captures the held money, then saves the card held for the payment. A
-  // card that can't be saved never fails a captured payment (CARD-09).
+  // Captures the held money, then saves the card held for the payment. The
+  // gateway is asked up to 3 times with the same key, so a lost response never
+  // captures twice; after 3 failures the error propagates and the payment
+  // stays authorized (GW-06). A card that can't be saved never fails a
+  // captured payment (CARD-09).
   async capture(paymentId: string): Promise<void> {
     const payment = await this.paymentRepository.findOneById(paymentId);
 
@@ -310,10 +319,19 @@ export class BillingService {
       return;
     }
 
-    await this.gateway.capture(
-      payment.providerPaymentId,
-      `${payment.id}:capture`,
-    );
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.gateway.capture(
+          payment.providerPaymentId,
+          `${payment.id}:capture`,
+        );
+        break;
+      } catch (error) {
+        if (attempt >= MAX_CAPTURE_ATTEMPTS) {
+          throw error;
+        }
+      }
+    }
     payment.status = PaymentStatus.SUCCEEDED;
     await this.paymentRepository.save(payment);
 
@@ -325,6 +343,105 @@ export class BillingService {
         paymentId: payment.id,
       });
     }
+  }
+
+  // Releases the held money (an expired order, a lost seat) and drops the card
+  // held for the payment. Never a refund: nothing was captured (GW-05, GW-12).
+  async cancel(paymentId: string): Promise<void> {
+    const payment = await this.paymentRepository.findOneById(paymentId);
+
+    if (
+      !payment?.providerPaymentId ||
+      ![PaymentStatus.AUTHORIZED, PaymentStatus.REQUIRES_ACTION].includes(
+        payment.status,
+      )
+    ) {
+      return;
+    }
+
+    await this.gateway.cancel(
+      payment.providerPaymentId,
+      `${payment.id}:cancel`,
+    );
+    payment.status = PaymentStatus.CANCELLED;
+    await this.paymentRepository.save(payment);
+    await this.pendingCardService.discard(payment.id);
+  }
+
+  // Reads where a challenged payment stands at the gateway and records it
+  // (GW-10, GW-11, GW-17). A failed challenge counts as a card failure and
+  // drops the card held for the payment.
+  async settle(paymentId: string): Promise<SettleOutcome> {
+    const payment = await this.paymentRepository.findOneById(paymentId);
+
+    if (!payment?.providerPaymentId) {
+      throw new Error('Unknown payment');
+    }
+    if (payment.status === PaymentStatus.AUTHORIZED) {
+      return { status: 'authorized' };
+    }
+    if (payment.status !== PaymentStatus.REQUIRES_ACTION) {
+      return { status: 'failed' };
+    }
+
+    const current = await this.gateway.getPayment(payment.providerPaymentId);
+
+    switch (current.status) {
+      case 'requires_action':
+        return {
+          status: 'requires_action',
+          action: {
+            provider: this.gateway.provider,
+            clientSecret: current.clientSecret,
+          },
+        };
+      case 'authentication_failed':
+        payment.status = PaymentStatus.FAILED;
+        payment.failureReason = 'authentication_failed';
+        await this.paymentRepository.save(payment);
+        await this.cardThrottleService.recordFailure(
+          payment.userId,
+          new Date(),
+        );
+        await this.pendingCardService.discard(payment.id);
+        return { status: 'failed' };
+      case 'cancelled':
+        payment.status = PaymentStatus.CANCELLED;
+        await this.paymentRepository.save(payment);
+        await this.pendingCardService.discard(payment.id);
+        return { status: 'failed' };
+      default:
+        // authorized, or already captured behind our back
+        payment.status = PaymentStatus.AUTHORIZED;
+        await this.paymentRepository.save(payment);
+        await this.cardThrottleService.clear(payment.userId);
+        return { status: 'authorized' };
+    }
+  }
+
+  // What the buyer's browser needs to finish a challenge: only while the
+  // payment still awaits one, otherwise null (GW-30, GW-32)
+  async findPaymentAction(paymentId: string): Promise<PaymentAction | null> {
+    if (!isUUID(paymentId)) {
+      return null;
+    }
+
+    const payment = await this.paymentRepository.findOneById(paymentId);
+    if (
+      !payment?.providerPaymentId ||
+      payment.status !== PaymentStatus.REQUIRES_ACTION
+    ) {
+      return null;
+    }
+
+    const current = await this.gateway.getPayment(payment.providerPaymentId);
+
+    return current.status === 'requires_action'
+      ? {
+          provider: this.gateway.provider,
+          clientSecret: current.clientSecret,
+        }
+      : null;
   }
 
   async refund(paymentId: string): Promise<void> {

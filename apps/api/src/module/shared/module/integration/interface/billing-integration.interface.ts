@@ -43,6 +43,11 @@ export type ChargeOutcome =
   | { status: 'card_not_found' }
   | { status: 'card_attempts_limited' };
 
+// Where a challenged payment stands once the buyer is back
+export type SettleOutcome =
+  | { status: 'authorized' | 'failed' }
+  | { status: 'requires_action'; action: PaymentAction };
+
 export interface BillingPaymentCard {
   brand: string;
   last4: string;
@@ -54,8 +59,15 @@ export interface BillingApi {
     now: Date,
   ): Promise<BillingCardFieldErrors>;
   charge(input: ChargeDto): Promise<ChargeOutcome>;
-  // Captures an authorized payment and saves the card held for it
+  // Captures an authorized payment (3 attempts, then it throws and the payment
+  // stays authorized) and saves the card held for it
   capture(paymentId: string): Promise<void>;
+  // Releases an authorized or challenged payment without a refund
+  cancel(paymentId: string): Promise<void>;
+  // Records the result of a payment's 3-D Secure challenge
+  settle(paymentId: string): Promise<SettleOutcome>;
+  // The challenge a payment still awaits, or null
+  findPaymentAction(paymentId: string): Promise<PaymentAction | null>;
   refund(paymentId: string): Promise<void>;
   findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
 }
