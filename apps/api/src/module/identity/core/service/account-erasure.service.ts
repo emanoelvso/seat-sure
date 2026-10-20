@@ -109,6 +109,11 @@ export class AccountErasureService {
   }
 
   private logFailure(userId: string, step: string, exception: unknown): void {
-    this.logger.error('account-erasure-failed', { userId, step, exception });
+    // The error class only: a message can carry a gateway id (REC AC 12)
+    this.logger.error('account-erasure-failed', {
+      userId,
+      step,
+      error: exception instanceof Error ? exception.name : 'UnknownError',
+    });
   }
 }

@@ -1,3 +1,4 @@
+import { inspect } from 'util';
 import { randomUUID } from 'crypto';
 import { AccountErasureService } from '@identityModule/core/service/account-erasure.service';
 import { IdentityModule } from '@identityModule/identity.module';
@@ -20,6 +21,7 @@ import { initializeTransactionalContext } from 'typeorm-transactional';
 const probe = {
   calls: [] as string[],
   failing: new Set<string>(),
+  failureDetail: '',
   blockers: new Map<string, AccountErasureBlocker | null>(),
 };
 
@@ -29,7 +31,7 @@ abstract class FakeEraser implements AccountEraser {
   async erase(userId: string): Promise<void> {
     probe.calls.push(`${this.name}:${userId}`);
     if (probe.failing.has(this.name)) {
-      throw new Error(`${this.name} is down`);
+      throw new Error(`${this.name} is down${probe.failureDetail}`);
     }
   }
 }
@@ -161,6 +163,7 @@ describe('AccountErasureService (integration)', () => {
     await cleanTables();
     probe.calls = [];
     probe.failing.clear();
+    probe.failureDetail = '';
     probe.blockers.clear();
     errorLog.mockClear();
   });
@@ -241,6 +244,19 @@ describe('AccountErasureService (integration)', () => {
         'account-erasure-failed',
         expect.objectContaining({ userId, step: 'fake-charlie' }),
       );
+    });
+
+    it('never logs a gateway id carried by the failure (REC AC 12)', async () => {
+      const { userId } = await seedAccount();
+      probe.failing.add('fake-charlie');
+      probe.failureDetail = ' for cus_secret123 pm_secret456';
+
+      await service.erase(userId, now);
+
+      const output = inspect(errorLog.mock.calls, { depth: 6 });
+      expect(output).toContain(userId);
+      expect(output).not.toContain('cus_secret123');
+      expect(output).not.toContain('pm_secret456');
     });
 
     it('completes the deletion when re-run after the failing eraser recovers', async () => {

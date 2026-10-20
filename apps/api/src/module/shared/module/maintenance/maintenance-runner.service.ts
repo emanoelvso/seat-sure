@@ -44,7 +44,11 @@ export class MaintenanceRunner {
     try {
       return await job();
     } catch (exception) {
-      this.logger.error('maintenance-step-failed', { step, exception });
+      // The error class only: a message can carry a gateway id (REC AC 12)
+      this.logger.error('maintenance-step-failed', {
+        step,
+        error: exception instanceof Error ? exception.name : 'UnknownError',
+      });
       return null;
     }
   }

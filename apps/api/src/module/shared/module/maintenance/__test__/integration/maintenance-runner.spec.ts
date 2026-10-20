@@ -1,3 +1,4 @@
+import { inspect } from 'util';
 import { Test } from '@nestjs/testing';
 import { MaintenanceRunner } from '@sharedModules/maintenance/maintenance-runner.service';
 import {
@@ -120,5 +121,21 @@ describe('MaintenanceRunner (integration)', () => {
       deletions: cleanDeletions,
       reconciliation: null,
     });
+  });
+
+  it('never logs a gateway id carried by the failure of a job (REC AC 12)', async () => {
+    reconcileGatewayTokens.mockRejectedValue(
+      new Error('refused cus_secret123 pm_secret456'),
+    );
+
+    await runner.run(NOW);
+
+    const output = inspect(logger.error.mock.calls, { depth: 6 });
+    expect(logger.error).toHaveBeenCalledWith(
+      'maintenance-step-failed',
+      expect.objectContaining({ step: 'reconcile-gateway-tokens' }),
+    );
+    expect(output).not.toContain('cus_secret123');
+    expect(output).not.toContain('pm_secret456');
   });
 });
