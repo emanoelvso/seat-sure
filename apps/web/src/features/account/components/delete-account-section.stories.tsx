@@ -60,6 +60,11 @@ export const Section: Story = {
       canvas.getByRole("button", { name: "Delete account" }),
     ).toBeVisible();
     await expect(canvas.queryByRole("dialog")).toBeNull();
+    // Destructive: the error-500 token (#850d06), not the primary colour
+    await expect(
+      getComputedStyle(canvas.getByRole("button", { name: "Delete account" }))
+        .backgroundColor,
+    ).toBe("rgb(133, 13, 6)");
   },
 };
 
