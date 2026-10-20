@@ -26,6 +26,7 @@ Names only. Never commit values.
 | `TRUST_PROXY` | Render | Leave unset (decided): forwarding headers are ignored. See [HTTPS, CORS and proxy](#https-cors-and-proxy) |
 | `JWT_SECRET`, `BILLING_FINGERPRINT_SECRET` | Render (generated) | Render generates them on first sync; keep them out of the repository |
 | `NODE_ENV`, `DEMO_MODE`, `AUTH_CODE_SENDER`, `REDIS_HOST`, `REDIS_PORT` | Render (preset) | `production`, `true`, `disabled`, and two unused placeholders |
+| `BILLING_GATEWAY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Not set | The hosted demo keeps the default simulated gateway. To try Stripe, set them to test-mode values only; live keys are rejected. See the [API README](../apps/api/README.md#payments) |
 | `NEXT_PUBLIC_API_URL` | Vercel | The Render service origin, `https://...`, no trailing slash |
 | `DEMO_MODE` | Vercel | `true` |
 | `NEXT_PUBLIC_TIME_ZONE` | Vercel (optional) | An IANA zone; default `UTC` |

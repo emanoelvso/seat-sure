@@ -83,7 +83,7 @@ Run the oversell check again by hand with `node load/verify/oversell.mjs <eventI
 Orders, seats, payments and tickets relate like this:
 
 - An order has one item per seat.
-- A successful payment (`BillingPayment` with status `succeeded`) pays one order for all its seats. Failed attempts may come before it, and a refunded payment no longer counts.
+- A successful payment (`BillingPayment` with status `succeeded`, meaning captured) pays one order for all its seats. An order is paid once its tickets are issued, before the capture; if the capture fails after three tries, the payment stays `authorized` and the check counts that order as unbalanced. Failed attempts may come before it, and a refunded payment no longer counts.
 - An order has at most one successful payment.
 - A paid order holds one live ticket (`issued`, `used` or `transferred`) per seat, linked through `orderItemId`. An unpaid order holds none.
 
