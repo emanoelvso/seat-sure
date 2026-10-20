@@ -18,6 +18,7 @@ export enum Tables {
   IdentitySession = 'IdentitySession',
   IdentityLoginThrottle = 'IdentityLoginThrottle',
   IdentityPasswordResetGrant = 'IdentityPasswordResetGrant',
+  IdentityAccountDeletion = 'IdentityAccountDeletion',
   BillingPayment = 'BillingPayment',
   BillingPaymentCard = 'BillingPaymentCard',
   BillingCardThrottle = 'BillingCardThrottle',

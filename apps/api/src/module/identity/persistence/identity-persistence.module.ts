@@ -10,6 +10,7 @@ import { SessionRepository } from './repository/session.repository';
 import { VerificationCodeRepository } from './repository/verification-code.repository';
 import { LoginThrottleRepository } from './repository/login-throttle.repository';
 import { PasswordResetGrantRepository } from './repository/password-reset-grant.repository';
+import { AccountDeletionRepository } from './repository/account-deletion.repository';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { PasswordResetGrantRepository } from './repository/password-reset-grant.
     SessionRepository,
     LoginThrottleRepository,
     PasswordResetGrantRepository,
+    AccountDeletionRepository,
   ],
   exports: [
     UserRepository,
@@ -47,6 +49,7 @@ import { PasswordResetGrantRepository } from './repository/password-reset-grant.
     SessionRepository,
     LoginThrottleRepository,
     PasswordResetGrantRepository,
+    AccountDeletionRepository,
   ],
 })
 export class IdentityPersistenceModule {}
