@@ -13,13 +13,16 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
     super(BillingPaymentCard, datasource.manager);
   }
 
-  // The user's cards, default first, then oldest saved first (CARD-01 AC 3)
+  // The user's cards of one provider, default first, then oldest saved first
+  // (CARD-01 AC 3). A card of another provider is never listed or charged
+  // (GW-39).
   async listForUser(
     userId: string,
+    provider: string,
     manager: EntityManager = this.datasource.manager,
   ): Promise<BillingPaymentCard[]> {
     return manager.find(BillingPaymentCard, {
-      where: { userId },
+      where: { userId, provider },
       order: { isDefault: 'DESC', createdAt: 'ASC', id: 'ASC' },
     });
   }
@@ -30,8 +33,12 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
     await manager.delete(BillingPaymentCard, { id });
   }
 
-  async countForUser(manager: EntityManager, userId: string): Promise<number> {
-    return manager.count(BillingPaymentCard, { where: { userId } });
+  async countForUser(
+    manager: EntityManager,
+    userId: string,
+    provider: string,
+  ): Promise<number> {
+    return manager.count(BillingPaymentCard, { where: { userId, provider } });
   }
 
   async hasFingerprint(
@@ -54,26 +61,30 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
   async findForUser(
     manager: EntityManager,
     userId: string,
+    provider: string,
     id: string,
   ): Promise<BillingPaymentCard | null> {
-    return manager.findOne(BillingPaymentCard, { where: { id, userId } });
+    return manager.findOne(BillingPaymentCard, {
+      where: { id, userId, provider },
+    });
   }
 
   // Clears the old default before setting the new one, as the partial unique
-  // index allows one default per user at any moment
+  // index allows one default per user and provider at any moment
   async moveDefault(
     manager: EntityManager,
     userId: string,
+    provider: string,
     id: string,
   ): Promise<void> {
     await manager.update(
       BillingPaymentCard,
-      { userId, isDefault: true },
+      { userId, provider, isDefault: true },
       { isDefault: false },
     );
     await manager.update(
       BillingPaymentCard,
-      { id, userId },
+      { id, userId, provider },
       { isDefault: true },
     );
   }

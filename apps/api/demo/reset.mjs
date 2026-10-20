@@ -6,7 +6,7 @@ import { seedCatalog, refreshEventDates, ids } from './seed.mjs';
 export const reset = (env = process.env) => transaction(env, async (client) => {
   const tables = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename ~ '^(Identity|UserProfile|Billing|Ticketing|Notifications)' ORDER BY tablename`);
   // Dependent order for the existing per-context foreign keys.
-  const ordered = ['TicketingTicket', 'TicketingOrderItem', 'TicketingSeatHold', 'TicketingOrder', 'IdentitySession', 'IdentityVerificationCode', 'IdentityPasswordResetGrant', 'IdentityLoginThrottle', 'IdentityUser', 'BillingPayment', 'BillingPaymentCard', 'BillingCardThrottle', 'NotificationsNotification', 'UserProfileUser'];
+  const ordered = ['TicketingTicket', 'TicketingOrderItem', 'TicketingSeatHold', 'TicketingOrder', 'IdentitySession', 'IdentityVerificationCode', 'IdentityPasswordResetGrant', 'IdentityLoginThrottle', 'IdentityUser', 'BillingPayment', 'BillingPaymentCard', 'BillingCardThrottle', 'BillingSimulatedPayment', 'BillingPendingCard', 'BillingCustomer', 'NotificationsNotification', 'UserProfileUser'];
   const present = new Set(tables.rows.map(({ tablename }) => tablename));
   for (const table of ordered) if (present.has(table)) await client.query(`DELETE FROM "${table}"`);
   // Only the reserved sample namespace is rebuilt; the catalog the migrations create stays.

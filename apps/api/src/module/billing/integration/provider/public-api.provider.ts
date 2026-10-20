@@ -5,7 +5,10 @@ import {
   BillingCardInput,
   BillingPaymentCard,
   ChargeDto,
+  ChargeSource,
   ChargeOutcome,
+  PaymentAction,
+  SettleOutcome,
 } from '@sharedModules/integration/interface/billing-integration.interface';
 import { BillingService } from '@billingModule/core/service/billing.service';
 
@@ -20,16 +23,28 @@ export class BillingPublicApiProvider implements BillingApi {
     return this.billingService.validateCard(card, now);
   }
 
+  async acceptsSource(source: ChargeSource): Promise<boolean> {
+    return this.billingService.acceptsSource(source);
+  }
+
   async charge(input: ChargeDto): Promise<ChargeOutcome> {
     return this.billingService.charge(input);
   }
 
-  async saveCard(
-    userId: string,
-    card: BillingCardInput,
-    now: Date,
-  ): Promise<void> {
-    await this.billingService.saveCard(userId, card, now);
+  async capture(paymentId: string): Promise<void> {
+    return this.billingService.capture(paymentId);
+  }
+
+  async cancel(paymentId: string): Promise<void> {
+    return this.billingService.cancel(paymentId);
+  }
+
+  async settle(paymentId: string): Promise<SettleOutcome> {
+    return this.billingService.settle(paymentId);
+  }
+
+  async findPaymentAction(paymentId: string): Promise<PaymentAction | null> {
+    return this.billingService.findPaymentAction(paymentId);
   }
 
   async refund(paymentId: string): Promise<void> {

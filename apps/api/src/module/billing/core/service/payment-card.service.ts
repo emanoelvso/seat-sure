@@ -6,6 +6,7 @@ import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adap
 import { BillingException } from '@billingModule/core/exception/billing.exception';
 import { CardThrottleService } from '@billingModule/core/service/card-throttle.service';
 import {
+  NewPaymentCard,
   PaymentCardModel,
   toPaymentCardModel,
 } from '@billingModule/core/model/payment-card.model';
@@ -23,6 +24,9 @@ import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DataSource, EntityManager } from 'typeorm';
 
 export const MAX_PAYMENT_CARDS = 5;
+
+const choosePaymentMethod = () =>
+  new BillingException('INVALID_CARD', 'Choose a payment method.');
 
 const cardNotFound = () =>
   new BillingException('CARD_NOT_FOUND', 'This card is no longer available.');
@@ -43,7 +47,10 @@ export class PaymentCardService {
 
   // The caller's cards, default first, then oldest saved first (CARD-01 AC 3)
   async list(userId: string, now: Date): Promise<PaymentCardModel[]> {
-    const cards = await this.paymentCardRepository.listForUser(userId);
+    const cards = await this.paymentCardRepository.listForUser(
+      userId,
+      this.gateway.provider,
+    );
 
     return cards.map((card) => toPaymentCardModel(card, now));
   }
@@ -57,6 +64,7 @@ export class PaymentCardService {
     card: CardInput,
     now: Date,
   ): Promise<PaymentCardModel[]> {
+    this.assertAcceptsTypedCards();
     await this.cardThrottleService.assertNotLocked(userId, now);
 
     try {
@@ -74,6 +82,74 @@ export class PaymentCardService {
     await this.cardThrottleService.clear(userId);
 
     return this.list(userId, now);
+  }
+
+  // Stripe mode: attaches a browser-made PaymentMethod to the user's customer
+  // and saves it. Throttled like `add` (AD-028, GW-37, GW-38).
+  async addPaymentMethod(
+    userId: string,
+    paymentMethodId: string,
+    now: Date,
+  ): Promise<PaymentCardModel[]> {
+    if (this.gateway.acceptsTypedCards) {
+      throw choosePaymentMethod();
+    }
+    await this.cardThrottleService.assertNotLocked(userId, now);
+
+    try {
+      await this.savePaymentMethod(userId, paymentMethodId);
+    } catch (error) {
+      if (
+        error instanceof BillingException &&
+        (error.reason === 'INVALID_CARD' || error.reason === 'CARD_DECLINED')
+      ) {
+        await this.cardThrottleService.recordFailure(userId, now);
+      }
+      throw error;
+    }
+
+    await this.cardThrottleService.clear(userId);
+
+    return this.list(userId, now);
+  }
+
+  private async savePaymentMethod(
+    userId: string,
+    paymentMethodId: string,
+  ): Promise<void> {
+    const attached = await this.gateway.attachPaymentMethod(
+      paymentMethodId,
+      userId,
+    );
+    if (attached.status === 'failed') {
+      throw new BillingException('CARD_DECLINED', 'This card was declined.');
+    }
+
+    try {
+      await this.inUserLock(userId, (manager) =>
+        this.insertCard(manager, userId, {
+          provider: this.gateway.provider,
+          providerToken: attached.token,
+          customerId: attached.customerId,
+          fingerprint: attached.fingerprint,
+          brand: attached.brand,
+          last4: attached.last4,
+          expMonth: attached.expMonth,
+          expYear: attached.expYear,
+          holder: attached.holder,
+        }),
+      );
+    } catch (error) {
+      // Nothing was stored, so the gateway must not keep the method either
+      await this.gateway.detach(attached.token);
+      throw error;
+    }
+  }
+
+  private assertAcceptsTypedCards(): void {
+    if (!this.gateway.acceptsTypedCards) {
+      throw choosePaymentMethod();
+    }
   }
 
   // Rules, then tokenize, then a locked insert (CARD-03, CARD-04, CARD-05)
@@ -109,54 +185,76 @@ export class PaymentCardService {
     const expiry = parseExpiry(card.expiry) as { month: number; year: number };
 
     try {
-      await this.inUserLock(userId, async (manager) => {
-        const count = await this.paymentCardRepository.countForUser(
-          manager,
-          userId,
-        );
-        if (count >= MAX_PAYMENT_CARDS) {
-          throw new BillingException(
-            'CARD_LIMIT_REACHED',
-            `You can save up to ${MAX_PAYMENT_CARDS} cards.`,
-          );
-        }
-
-        if (
-          await this.paymentCardRepository.hasFingerprint(
-            manager,
-            userId,
-            tokenized.fingerprint,
-          )
-        ) {
-          throw new BillingException(
-            'DUPLICATE_CARD',
-            'This card is already saved.',
-            { number: 'This card is already saved.' },
-          );
-        }
-
-        // Only the first card becomes the default (CARD-03 AC 4, 5)
-        await this.paymentCardRepository.insert(
-          manager,
-          new BillingPaymentCard({
-            userId,
-            provider: 'simulated',
-            providerToken: tokenized.token,
-            fingerprint: tokenized.fingerprint,
-            brand: detectBrand(card.number),
-            last4: last4(card.number),
-            expMonth: expiry.month,
-            expYear: expiry.year,
-            holder: card.holder.trim(),
-            isDefault: count === 0,
-          }),
-        );
-      });
+      await this.inUserLock(userId, (manager) =>
+        this.insertCard(manager, userId, {
+          provider: this.gateway.provider,
+          providerToken: tokenized.token,
+          fingerprint: tokenized.fingerprint,
+          brand: detectBrand(card.number),
+          last4: last4(card.number),
+          expMonth: expiry.month,
+          expYear: expiry.year,
+          holder: card.holder.trim(),
+        }),
+      );
     } catch (error) {
       // Nothing was stored, so the gateway must not keep the token either
       await this.gateway.detach(tokenized.token);
       throw error;
     }
+  }
+
+  // The card limit, the duplicate check, then the insert. Runs inside the
+  // user's lock, so the limit and the single default hold under concurrent
+  // requests.
+  async insertCard(
+    manager: EntityManager,
+    userId: string,
+    card: NewPaymentCard,
+  ): Promise<void> {
+    const count = await this.paymentCardRepository.countForUser(
+      manager,
+      userId,
+      card.provider,
+    );
+    if (count >= MAX_PAYMENT_CARDS) {
+      throw new BillingException(
+        'CARD_LIMIT_REACHED',
+        `You can save up to ${MAX_PAYMENT_CARDS} cards.`,
+      );
+    }
+
+    if (
+      await this.paymentCardRepository.hasFingerprint(
+        manager,
+        userId,
+        card.fingerprint,
+      )
+    ) {
+      throw new BillingException(
+        'DUPLICATE_CARD',
+        'This card is already saved.',
+        { number: 'This card is already saved.' },
+      );
+    }
+
+    // Only the first card becomes the default (CARD-03 AC 4, 5)
+    await this.paymentCardRepository.insert(
+      manager,
+      new BillingPaymentCard({
+        userId,
+        provider: card.provider,
+        providerToken: card.providerToken,
+        customerId: card.customerId ?? null,
+        fingerprint: card.fingerprint,
+        brand: card.brand,
+        last4: card.last4,
+        expMonth: card.expMonth,
+        expYear: card.expYear,
+        holder: card.holder,
+        isDefault: count === 0,
+      }),
+    );
   }
 
   // Makes the card the caller's only default; the current default is left
@@ -175,6 +273,7 @@ export class PaymentCardService {
       const card = await this.paymentCardRepository.findForUser(
         manager,
         userId,
+        this.gateway.provider,
         cardId,
       );
       if (!card) {
@@ -182,7 +281,12 @@ export class PaymentCardService {
       }
 
       if (!card.isDefault) {
-        await this.paymentCardRepository.moveDefault(manager, userId, cardId);
+        await this.paymentCardRepository.moveDefault(
+          manager,
+          userId,
+          this.gateway.provider,
+          cardId,
+        );
       }
     });
 
@@ -206,6 +310,7 @@ export class PaymentCardService {
       const card = await this.paymentCardRepository.findForUser(
         manager,
         userId,
+        this.gateway.provider,
         cardId,
       );
       if (!card) {
@@ -217,12 +322,14 @@ export class PaymentCardService {
       if (card.isDefault) {
         const [oldest] = await this.paymentCardRepository.listForUser(
           userId,
+          this.gateway.provider,
           manager,
         );
         if (oldest) {
           await this.paymentCardRepository.moveDefault(
             manager,
             userId,
+            this.gateway.provider,
             oldest.id,
           );
         }
@@ -257,13 +364,14 @@ export class PaymentCardService {
     return this.paymentCardRepository.findForUser(
       this.dataSource.manager,
       userId,
+      this.gateway.provider,
       cardId,
     );
   }
 
   // Serializes one user's add / set default / remove, so the card limit and
   // the single default hold under concurrent requests
-  private async inUserLock<T>(
+  async inUserLock<T>(
     userId: string,
     work: (manager: EntityManager) => Promise<T>,
   ): Promise<T> {

@@ -298,6 +298,7 @@ integration/
 5. **Running tests**: `pnpm --filter api test:db:reset` once, then `pnpm --filter api test:e2e`. Jest only picks up specs under `__test__/e2e/` and `__test__/integration/` (`test/jest.e2e.ts`).
 6. **Unit tests**: no folder for them is defined in `.projectStructurerc.json` or matched by `test/jest.e2e.ts` yet. Add both before writing the first one.
 7. **Load tooling**: the oversell check's specs live under `load/__test__/integration/` as native ESM (`.mjs`) and run with `pnpm --filter api test:load` (`test/jest.load.ts`), not `test:e2e`.
+8. **Opt-in sandbox suites**: specs under `__test__/sandbox/` call a real provider's test mode. They run only with `pnpm --filter api test:stripe-sandbox` (`test/jest.stripe-sandbox.ts`), skip with exit 0 when no test-mode key is in the environment, and are never matched by `test/jest.e2e.ts` or CI.
 
 ---
 

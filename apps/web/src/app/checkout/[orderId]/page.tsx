@@ -2,7 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { Header } from "@/components/layouts/header";
 import { paths } from "@/config/paths";
 import { getCheckoutPageData } from "@/features/checkout/api/get-checkout-page-data";
+import { confirmOrderPaymentAction } from "@/features/checkout/api/confirm-order-payment-action";
 import { payOrderAction } from "@/features/checkout/api/pay-order-action";
+import { simulatedBankAction } from "@/features/checkout/api/simulated-bank-action";
 import { CheckoutView } from "@/features/checkout/components/checkout-view";
 
 // No loading.tsx: the page awaits its data so notFound() still answers 404
@@ -35,6 +37,8 @@ export default async function CheckoutOrderPage({
           user={user}
           cards={cards}
           payAction={payOrderAction}
+          bankAction={simulatedBankAction}
+          confirmAction={confirmOrderPaymentAction}
         />
       </main>
     </>

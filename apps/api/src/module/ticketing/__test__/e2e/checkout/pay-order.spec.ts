@@ -1,14 +1,13 @@
 import { randomUUID } from 'crypto';
 import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import {
-  ChargeInput,
+  AuthorizeInput,
   PaymentGateway,
 } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import { PendingCardService } from '@billingModule/core/service/pending-card.service';
 import { CardInput } from '@billingModule/core/util/card-rules';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
 import { NotificationsPublicApiProvider } from '@notificationsModule/integration/provider/public-api.provider';
-import { ConfigService } from '@sharedModules/config/service/config.service';
-import { factory } from '@sharedModules/config/util/config.factory';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -42,6 +41,10 @@ const PAY_ORDER = `
       items {
         seatId
       }
+      paymentAction {
+        provider
+        clientSecret
+      }
     }
   }
 `;
@@ -73,6 +76,7 @@ const VALID_CARD = {
 };
 
 const DECLINED_CARD = { ...VALID_CARD, number: '4000 0000 0000 0002' };
+const CHALLENGE_CARD = { ...VALID_CARD, number: '4000 0027 6000 3184' };
 
 describe('TicketingResolver payOrder (e2e)', () => {
   let app: INestApplication;
@@ -82,10 +86,18 @@ describe('TicketingResolver payOrder (e2e)', () => {
   // Records every charge and delegates to the simulated gateway, so
   // 4000 0000 0000 0002 is still declined. The implementations are set in
   // beforeEach because the Jest config resets mocks between tests.
-  const simulated = new SimulatedPaymentGateway(new ConfigService(factory()));
+  let simulated: SimulatedPaymentGateway;
   const gateway = {
-    charge: jest.fn<ReturnType<PaymentGateway['charge']>, [ChargeInput]>(),
-    refund: jest.fn<Promise<void>, [string]>(),
+    provider: 'simulated' as const,
+    acceptsTypedCards: true,
+    authorize: jest.fn<
+      ReturnType<PaymentGateway['authorize']>,
+      [AuthorizeInput, string]
+    >(),
+    getPayment: jest.fn<ReturnType<PaymentGateway['getPayment']>, [string]>(),
+    capture: jest.fn<Promise<void>, [string, string]>(),
+    cancel: jest.fn<Promise<void>, [string, string]>(),
+    refund: jest.fn<Promise<void>, [string, string]>(),
     tokenize: jest.fn<ReturnType<PaymentGateway['tokenize']>, [CardInput]>(),
     detach: jest.fn<Promise<void>, [string]>(),
   };
@@ -104,6 +116,8 @@ describe('TicketingResolver payOrder (e2e)', () => {
     await testDbClient(Tables.BillingPayment).del();
     await testDbClient(Tables.BillingPaymentCard).del();
     await testDbClient(Tables.BillingCardThrottle).del();
+    await testDbClient(Tables.BillingSimulatedPayment).del();
+    await testDbClient(Tables.BillingPendingCard).del();
     await testDbClient(Tables.NotificationsNotification).del();
   };
 
@@ -122,6 +136,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
     jwtService = module.get(JwtService);
+    simulated = module.get(SimulatedPaymentGateway, { strict: false });
     await testDbClient.batchInsert(Tables.IdentityUser, [
       { id: userId, email, passwordHash: 'x'.repeat(60) },
     ]);
@@ -129,8 +144,13 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
   beforeEach(async () => {
     await deleteRows();
-    gateway.charge.mockImplementation((input) => simulated.charge(input));
-    gateway.refund.mockImplementation(() => simulated.refund());
+    gateway.authorize.mockImplementation((input, key) =>
+      simulated.authorize(input, key),
+    );
+    gateway.getPayment.mockImplementation((id) => simulated.getPayment(id));
+    gateway.capture.mockImplementation((id) => simulated.capture(id));
+    gateway.cancel.mockImplementation((id) => simulated.cancel(id));
+    gateway.refund.mockImplementation((id) => simulated.refund(id));
     gateway.tokenize.mockImplementation((card) => simulated.tokenize(card));
     gateway.detach.mockImplementation(() => simulated.detach());
     sender.send.mockResolvedValue(undefined);
@@ -262,7 +282,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('ORDER_EXPIRED');
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
     });
 
     it('fails a paid order with ORDER_ALREADY_PAID without charging (PAY-42)', async () => {
@@ -275,7 +295,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('ORDER_ALREADY_PAID');
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
     });
 
     it('fails a processing order with PAYMENT_IN_PROGRESS without charging', async () => {
@@ -284,7 +304,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('PAYMENT_IN_PROGRESS');
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
     });
 
     describe('PAY-43: ORDER_NOT_FOUND without charging', () => {
@@ -296,7 +316,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         const body = await payOrder(order.id);
 
         expect(errorOf(body)?.reason).toBe('ORDER_NOT_FOUND');
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
       });
 
       it('for a failed order', async () => {
@@ -305,7 +325,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         const body = await payOrder(order.id);
 
         expect(errorOf(body)?.reason).toBe('ORDER_NOT_FOUND');
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
       });
 
       it("for another user's order", async () => {
@@ -314,7 +334,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         const body = await payOrder(order.id);
 
         expect(errorOf(body)?.reason).toBe('ORDER_NOT_FOUND');
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
         expect((await orderRow(order.id)).status).toBe('pending');
       });
 
@@ -324,7 +344,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         const body = await payOrder(randomUUID());
 
         expect(errorOf(body)?.reason).toBe('ORDER_NOT_FOUND');
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
       });
 
       it('for an order id that is not a UUID', async () => {
@@ -333,7 +353,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         const body = await payOrder('not-a-uuid');
 
         expect(errorOf(body)?.reason).toBe('ORDER_NOT_FOUND');
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
       });
     });
 
@@ -352,7 +372,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         number: 'Enter a valid card number',
         holder: 'Enter the name on the card',
       });
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
       expect((await orderRow(order.id)).status).toBe('pending');
     });
 
@@ -363,7 +383,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
       expect(body.errors[0].extensions.code).toBe('UNAUTHENTICATED');
       expect(body.data).toBeNull();
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
     });
   });
 
@@ -385,7 +405,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         cardBrand: 'visa',
         cardLast4: '4242',
       });
-      expect(gateway.charge).toHaveBeenCalledTimes(1);
+      expect(gateway.authorize).toHaveBeenCalledTimes(1);
     });
 
     it('marks the order paid with paidAt and the payment id (PAY-38)', async () => {
@@ -402,6 +422,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         items: expect.arrayContaining(
           items.map((item) => ({ seatId: item.seatId })),
         ),
+        paymentAction: null,
       });
       const [payment] = await paymentsOf(order.id);
       const row = await orderRow(order.id);
@@ -449,6 +470,53 @@ describe('TicketingResolver payOrder (e2e)', () => {
       ).toHaveLength(0);
     });
 
+    it('authorizes then captures with the idempotency keys of the payment, in that order (GW-02, GW-04)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrder(order.id);
+
+      expect(body.data.payOrder.status).toBe('PAID');
+      const [payment] = await paymentsOf(order.id);
+      expect(payment.status).toBe('succeeded');
+      expect(gateway.authorize).toHaveBeenCalledWith(
+        expect.anything(),
+        `${payment.id}:authorize`,
+      );
+      expect(gateway.capture).toHaveBeenCalledTimes(1);
+      expect(gateway.capture).toHaveBeenCalledWith(
+        payment.providerPaymentId,
+        `${payment.id}:capture`,
+      );
+      expect(gateway.authorize.mock.invocationCallOrder[0]).toBeLessThan(
+        gateway.capture.mock.invocationCallOrder[0],
+      );
+      expect(gateway.refund).not.toHaveBeenCalled();
+    });
+
+    it('answers PAID with one error log holding only the order and payment ids when capture throws 3 times (GW-06)', async () => {
+      const { order } = await insertOrder();
+      gateway.capture.mockRejectedValue(new Error('gateway unavailable'));
+      const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
+
+      const body = await payOrder(order.id);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('PAID');
+      expect(gateway.capture).toHaveBeenCalledTimes(3);
+      const [payment] = await paymentsOf(order.id);
+      expect(payment.status).toBe('authorized');
+      expect((await orderRow(order.id)).status).toBe('paid');
+      expect(
+        await testDbClient(Tables.Ticket).where({ eventId: order.eventId }),
+      ).toHaveLength(2);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
+        orderId: order.id,
+        paymentId: payment.id,
+      });
+      errorSpy.mockRestore();
+    });
+
     it('keeps both seats unavailable once sold (PAY-57)', async () => {
       const { order, items } = await insertOrder();
 
@@ -493,7 +561,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
     it('answers a gateway error with a generic error, leaves the order pending and records no payment (PAY-53)', async () => {
       const { order } = await insertOrder();
-      gateway.charge.mockRejectedValueOnce(new Error('gateway unavailable'));
+      gateway.authorize.mockRejectedValue(new Error('gateway unavailable'));
 
       const body = await payOrder(order.id);
 
@@ -535,12 +603,12 @@ describe('TicketingResolver payOrder (e2e)', () => {
           'CARD_DECLINED',
         );
       }
-      gateway.charge.mockClear();
+      gateway.authorize.mockClear();
 
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('CARD_ATTEMPTS_LIMITED');
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
       expect(await paymentsOf(order.id)).toHaveLength(5);
       expect((await orderRow(order.id)).status).toBe('pending');
 
@@ -653,12 +721,47 @@ describe('TicketingResolver payOrder (e2e)', () => {
         cardBrand: 'mastercard',
         cardLast4: '4444',
       });
-      expect(gateway.charge).toHaveBeenCalledWith(
+      expect(gateway.authorize).toHaveBeenCalledWith(
         expect.objectContaining({
           amountCents: 110700,
           source: { type: 'token', token: savedCard.providerToken },
         }),
+        expect.any(String),
       );
+    });
+
+    it('refuses a PaymentMethod id in simulated mode with INVALID_CARD before any gateway call (GW-38)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        paymentMethodId: 'pm_card_visa',
+      });
+
+      expect(errorOf(body)?.reason).toBe('INVALID_CARD');
+      expect(errorOf(body)?.message).toBe('Choose a payment method.');
+      expect(gateway.authorize).not.toHaveBeenCalled();
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+      expect((await orderRow(order.id)).status).toBe('pending');
+    });
+
+    it('fails a card of another provider with CARD_NOT_FOUND and charges nothing (GW-39)', async () => {
+      const { order } = await insertOrder();
+      const stripeCard = billingPaymentCardFactory.build({
+        userId,
+        provider: 'stripe',
+        providerToken: 'pm_card_visa',
+      });
+      await testDbClient.batchInsert(Tables.BillingPaymentCard, [stripeCard]);
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        savedCardId: stripeCard.id,
+      });
+
+      expect(errorOf(body)?.reason).toBe('CARD_NOT_FOUND');
+      expect(gateway.authorize).not.toHaveBeenCalled();
+      expect(await paymentsOf(order.id)).toHaveLength(0);
     });
 
     it.each([
@@ -685,7 +788,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         const body = await payOrderWith({ orderId: order.id, savedCardId });
 
         expect(errorOf(body)?.reason).toBe('CARD_NOT_FOUND');
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
         expect(await paymentsOf(order.id)).toHaveLength(0);
         expect((await orderRow(order.id)).status).toBe('pending');
 
@@ -730,7 +833,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
 
       expect(errorOf(body)?.reason).toBe('CARD_ATTEMPTS_LIMITED');
-      expect(gateway.charge).not.toHaveBeenCalled();
+      expect(gateway.authorize).not.toHaveBeenCalled();
       expect(await paymentsOf(order.id)).toHaveLength(0);
       expect((await orderRow(order.id)).status).toBe('pending');
 
@@ -761,7 +864,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
         expect(error?.reason).toBe('INVALID_CARD');
         expect(error?.message).toBe('Choose a payment method.');
         expect(error?.fields).toBeUndefined();
-        expect(gateway.charge).not.toHaveBeenCalled();
+        expect(gateway.authorize).not.toHaveBeenCalled();
         expect((await orderRow(order.id)).status).toBe('pending');
       },
     );
@@ -818,7 +921,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
       // A card that tokenizes fine but whose charge is declined, so a save
       // attempted after a decline would actually store it.
-      gateway.charge.mockResolvedValueOnce({
+      gateway.authorize.mockResolvedValueOnce({
         status: 'failed',
         reason: 'card_declined',
       });
@@ -830,8 +933,13 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
 
       expect(errorOf(body)?.reason).toBe('CARD_DECLINED');
-      expect(gateway.tokenize).not.toHaveBeenCalled();
       expect(await myPaymentCards()).toEqual([]);
+      // The card was tokenized before the charge, so the declined payment
+      // drops the held card and detaches its token (GW-50)
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+        [],
+      );
+      expect(gateway.detach).toHaveBeenCalledTimes(1);
     });
 
     it('saves no card when the seats were lost after the charge (CARD-09 AC 4)', async () => {
@@ -845,7 +953,6 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      expect(gateway.tokenize).not.toHaveBeenCalled();
       expect(await myPaymentCards()).toEqual([]);
     });
 
@@ -897,9 +1004,11 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(await myPaymentCards()).toEqual(before);
     });
 
-    it('still pays when saving fails, and logs the failure with the order id only (AC 5)', async () => {
+    it('still pays when saving the held card fails, and logs the failure with the order and payment ids only (AC 5)', async () => {
       const { order } = await insertOrder();
-      gateway.tokenize.mockRejectedValueOnce(new Error('gateway unavailable'));
+      const promote = jest
+        .spyOn(PendingCardService.prototype, 'promote')
+        .mockRejectedValueOnce(new Error('database unavailable'));
       const errorSpy = jest.spyOn(AppLogger.prototype, 'error');
 
       const body = await payOrderWith({
@@ -914,8 +1023,26 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(await myPaymentCards()).toEqual([]);
       expect(errorSpy).toHaveBeenCalledWith(expect.any(String), {
         orderId: order.id,
+        paymentId: (await paymentsOf(order.id))[0].id,
       });
+      promote.mockRestore();
       errorSpy.mockRestore();
+    });
+
+    it('answers a tokenize failure with a generic error and leaves the order pending and unpaid', async () => {
+      const { order } = await insertOrder();
+      gateway.tokenize.mockRejectedValueOnce(new Error('gateway unavailable'));
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: VALID_CARD,
+        saveCard: true,
+      });
+
+      expect(body.errors[0].extensions.code).toBe('INTERNAL_SERVER_ERROR');
+      expect((await orderRow(order.id)).status).not.toBe('paid');
+      expect(await paymentsOf(order.id)).toHaveLength(0);
+      expect(await myPaymentCards()).toEqual([]);
     });
   });
 
@@ -943,7 +1070,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       });
     });
 
-    it('stores no purchase notification when the seats were lost and the charge was refunded', async () => {
+    it('stores no purchase notification when the seats were lost and the authorization was cancelled', async () => {
       const { order, holds } = await insertOrder();
       await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
 
@@ -1051,7 +1178,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
 
     it('stores none when the gateway throws (NOTIF-03 AC 5)', async () => {
       const { order } = await insertOrder();
-      gateway.charge.mockRejectedValueOnce(new Error('gateway unavailable'));
+      gateway.authorize.mockRejectedValue(new Error('gateway unavailable'));
 
       const body = await payOrder(order.id);
 
@@ -1093,18 +1220,79 @@ describe('TicketingResolver payOrder (e2e)', () => {
     });
   });
 
+  describe('a card that needs a 3-D Secure challenge (GW-08, GW-16)', () => {
+    it('pauses the order as REQUIRES_ACTION with the payment action, issuing and capturing nothing', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrder(order.id, CHALLENGE_CARD);
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.payOrder.status).toBe('REQUIRES_ACTION');
+      expect(body.data.payOrder.paymentAction).toEqual({
+        provider: 'simulated',
+        clientSecret: expect.stringMatching(/^sim_secret_/),
+      });
+      const [payment] = await paymentsOf(order.id);
+      expect(payment.status).toBe('requires_action');
+      expect(await paymentsOf(order.id)).toHaveLength(1);
+      const row = await orderRow(order.id);
+      expect(row.status).toBe('requires_action');
+      expect(row.paymentId).toBe(payment.id);
+      expect(gateway.capture).not.toHaveBeenCalled();
+      expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
+      expect(
+        await testDbClient(Tables.SeatHold).where({ userId }),
+      ).toHaveLength(2);
+      expect(sender.send).not.toHaveBeenCalled();
+    });
+
+    it('fails a second payOrder with PAYMENT_IN_PROGRESS without charging', async () => {
+      const { order } = await insertOrder();
+      await payOrder(order.id, CHALLENGE_CARD);
+      gateway.authorize.mockClear();
+
+      const body = await payOrder(order.id);
+
+      expect(errorOf(body)?.reason).toBe('PAYMENT_IN_PROGRESS');
+      expect(gateway.authorize).not.toHaveBeenCalled();
+      expect((await orderRow(order.id)).status).toBe('requires_action');
+    });
+
+    it('does not change the card throttle (GW-17)', async () => {
+      const { order } = await insertOrder();
+
+      await payOrder(order.id, CHALLENGE_CARD);
+
+      expect(await testDbClient(Tables.BillingCardThrottle)).toHaveLength(0);
+    });
+
+    it('saves no card while the challenge is pending, holding it instead (GW-50)', async () => {
+      const { order } = await insertOrder();
+
+      const body = await payOrderWith({
+        orderId: order.id,
+        card: CHALLENGE_CARD,
+        saveCard: true,
+      });
+
+      expect(body.data.payOrder.status).toBe('REQUIRES_ACTION');
+      expect(await testDbClient(Tables.BillingPaymentCard)).toHaveLength(0);
+      expect(await testDbClient(Tables.BillingPendingCard)).toHaveLength(1);
+    });
+  });
+
   describe('concurrent payments (PAY-45)', () => {
     it('charges once when the same order is paid twice at the same time, 5 times over', async () => {
       for (let round = 0; round < 5; round++) {
         const { order } = await insertOrder();
-        gateway.charge.mockClear();
+        gateway.authorize.mockClear();
 
         const bodies = await Promise.all([
           payOrder(order.id),
           payOrder(order.id),
         ]);
 
-        expect(gateway.charge).toHaveBeenCalledTimes(1);
+        expect(gateway.authorize).toHaveBeenCalledTimes(1);
         const payments = await paymentsOf(order.id);
         expect(payments).toHaveLength(1);
         expect(payments[0].status).toBe('succeeded');
@@ -1120,32 +1308,35 @@ describe('TicketingResolver payOrder (e2e)', () => {
     });
   });
 
-  describe('PAY-46: seats lost after the charge are refunded', () => {
-    const expectRefundedAndFailed = async (orderId: string) => {
+  describe('GW-05: seats lost after the authorization cancel it', () => {
+    const expectCancelledAndFailed = async (orderId: string) => {
       const payments = await paymentsOf(orderId);
       expect(payments).toHaveLength(1);
-      expect(payments[0].status).toBe('refunded');
-      expect(payments[0].refundedAt).not.toBeNull();
-      expect(gateway.refund).toHaveBeenCalledTimes(1);
-      expect(gateway.refund).toHaveBeenCalledWith(
+      expect(payments[0].status).toBe('cancelled');
+      expect(payments[0].refundedAt).toBeNull();
+      expect(gateway.cancel).toHaveBeenCalledTimes(1);
+      expect(gateway.cancel).toHaveBeenCalledWith(
         payments[0].providerPaymentId,
+        `${payments[0].id}:cancel`,
       );
+      expect(gateway.capture).not.toHaveBeenCalled();
+      expect(gateway.refund).not.toHaveBeenCalled();
       expect((await orderRow(orderId)).status).toBe('failed');
     };
 
-    it('refunds and fails the order when a hold was deleted after the checkout started', async () => {
+    it('cancels the payment and fails the order when a hold was deleted after the checkout started', async () => {
       const { order, holds } = await insertOrder();
       await testDbClient(Tables.SeatHold).where({ id: holds[0].id }).del();
 
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      await expectRefundedAndFailed(order.id);
+      await expectCancelledAndFailed(order.id);
       expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
       expect(sender.send).not.toHaveBeenCalled();
     });
 
-    it('refunds and fails the order when another user reclaimed a hold after the checkout started', async () => {
+    it('cancels the payment and fails the order when another user reclaimed a hold after the checkout started', async () => {
       const { order, holds } = await insertOrder();
       const otherUserId = randomUUID();
       await testDbClient(Tables.SeatHold)
@@ -1155,7 +1346,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      await expectRefundedAndFailed(order.id);
+      await expectCancelledAndFailed(order.id);
       expect(await testDbClient(Tables.Ticket)).toHaveLength(0);
       const reclaimed = await testDbClient(Tables.SeatHold).where({
         id: holds[0].id,
@@ -1165,7 +1356,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(sender.send).not.toHaveBeenCalled();
     });
 
-    it('refunds and fails the order when a seat already has an issued ticket of another order', async () => {
+    it('cancels the payment and fails the order when a seat already has an issued ticket of another order', async () => {
       const { order, items } = await insertOrder();
       const sold = ticketFactory.build({
         eventId: order.eventId,
@@ -1177,7 +1368,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       const body = await payOrder(order.id);
 
       expect(errorOf(body)?.reason).toBe('SEATS_UNAVAILABLE');
-      await expectRefundedAndFailed(order.id);
+      await expectCancelledAndFailed(order.id);
       const tickets = await testDbClient(Tables.Ticket);
       expect(tickets.map((ticket) => ticket.id)).toEqual([sold.id]);
       expect(sender.send).not.toHaveBeenCalled();
@@ -1210,7 +1401,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       } finally {
         generate.mockRestore();
       }
-      expect(gateway.charge).toHaveBeenCalledTimes(1);
+      expect(gateway.authorize).toHaveBeenCalledTimes(1);
       expect(gateway.refund).not.toHaveBeenCalled();
       const payments = await paymentsOf(order.id);
       expect(payments.map((payment) => payment.status)).toEqual(['succeeded']);
@@ -1222,7 +1413,7 @@ describe('TicketingResolver payOrder (e2e)', () => {
       expect(codes).not.toContain(TAKEN_CODE);
     });
 
-    it('refunds and fails the order with a generic error when every retry collides', async () => {
+    it('cancels the payment and fails the order with a generic error when every retry collides', async () => {
       const { order } = await insertOrder();
       const taken = await insertTicketWithTakenCode();
       const generate = spyOnCodes().mockReturnValue(TAKEN_CODE);
@@ -1235,11 +1426,12 @@ describe('TicketingResolver payOrder (e2e)', () => {
       } finally {
         generate.mockRestore();
       }
-      expect(gateway.charge).toHaveBeenCalledTimes(1);
+      expect(gateway.authorize).toHaveBeenCalledTimes(1);
       const payments = await paymentsOf(order.id);
       expect(payments).toHaveLength(1);
-      expect(payments[0].status).toBe('refunded');
-      expect(gateway.refund).toHaveBeenCalledTimes(1);
+      expect(payments[0].status).toBe('cancelled');
+      expect(gateway.cancel).toHaveBeenCalledTimes(1);
+      expect(gateway.refund).not.toHaveBeenCalled();
       expect((await orderRow(order.id)).status).toBe('failed');
       const tickets = await testDbClient(Tables.Ticket);
       expect(tickets.map((ticket) => ticket.id)).toEqual([taken.id]);

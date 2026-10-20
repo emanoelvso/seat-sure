@@ -15,6 +15,7 @@ import {
   AccountOrdersPage,
 } from './type/account-orders.type';
 import { CheckoutOrder } from './type/checkout-order.type';
+import { ConfirmOrderPaymentInput } from './type/confirm-order-payment-input.type';
 import { FindAccountOrderInput } from './type/find-account-order-input.type';
 import { FindAccountOrdersInput } from './type/find-account-orders-input.type';
 import { FindCheckoutOrderInput } from './type/find-checkout-order-input.type';
@@ -73,15 +74,31 @@ export class TicketingResolver {
   @UseGuards(AuthGuard)
   @Mutation(() => CheckoutOrder)
   async payOrder(
-    @Args('input') { orderId, card, savedCardId, saveCard }: PayOrderInput,
+    @Args('input')
+    { orderId, card, savedCardId, paymentMethodId, saveCard }: PayOrderInput,
   ): Promise<CheckoutOrder> {
     const userId = this.clsService.get<string>('userId');
     return this.admissionLimiter.run(() =>
       this.orderPaymentService.pay({
         userId,
         orderId,
-        source: toChargeSource(card, savedCardId),
+        source: toChargeSource(card, savedCardId, paymentMethodId),
         saveCard: saveCard ?? false,
+        now: new Date(),
+      }),
+    );
+  }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => CheckoutOrder)
+  async confirmOrderPayment(
+    @Args('input') { orderId }: ConfirmOrderPaymentInput,
+  ): Promise<CheckoutOrder> {
+    const userId = this.clsService.get<string>('userId');
+    return this.admissionLimiter.run(() =>
+      this.orderPaymentService.confirm({
+        userId,
+        orderId,
         now: new Date(),
       }),
     );

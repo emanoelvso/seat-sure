@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import { billingPaymentFactory } from '@billingModule/__test__/factory/billing-payment.factory';
+import { PendingCardService } from '@billingModule/core/service/pending-card.service';
+import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
 import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import { BillingModule } from '@billingModule/billing.module';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
@@ -12,6 +14,7 @@ import {
 } from '@sharedModules/integration/interface/billing-integration.interface';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DataSource } from 'typeorm';
 import { initializeTransactionalContext } from 'typeorm-transactional';
 
@@ -25,6 +28,11 @@ const VALID_CARD = {
 const DECLINED_CARD = { ...VALID_CARD, number: '4000 0000 0000 0002' };
 
 // Narrows an outcome that recorded a payment
+const UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const ISO_TIMESTAMP_PATTERN =
+  /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g;
+
 const recorded = (outcome: ChargeOutcome) => {
   if (
     outcome.status === 'card_not_found' ||
@@ -64,7 +72,7 @@ describe('BillingPublicApiProvider (integration)', () => {
     await closeModule(module);
   });
 
-  it('charges 26000 USD with a Visa card and records a succeeded payment (PAY-37)', async () => {
+  it('charges 26000 USD with a Visa card and records an authorized payment (PAY-37)', async () => {
     const userId = randomUUID();
     const orderId = randomUUID();
 
@@ -78,7 +86,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       }),
     );
 
-    expect(outcome.status).toBe('succeeded');
+    expect(outcome.status).toBe('authorized');
     expect(outcome.paymentId).toBeTruthy();
 
     const row = await testDbClient(Tables.BillingPayment)
@@ -91,7 +99,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       currency: 'USD',
       cardBrand: 'visa',
       cardLast4: '4242',
-      status: 'succeeded',
+      status: 'authorized',
     });
     expect(row.providerPaymentId).toMatch(/^sim_/);
   });
@@ -124,8 +132,8 @@ describe('BillingPublicApiProvider (integration)', () => {
   it('rejects and leaves no row when the gateway throws', async () => {
     const gateway = module.get<PaymentGateway>(PaymentGateway);
     const chargeSpy = jest
-      .spyOn(gateway, 'charge')
-      .mockRejectedValueOnce(new Error('gateway unavailable'));
+      .spyOn(gateway, 'authorize')
+      .mockRejectedValue(new Error('gateway unavailable'));
 
     await expect(
       billingApi.charge({
@@ -145,7 +153,7 @@ describe('BillingPublicApiProvider (integration)', () => {
 
   it('rejects an invalid card without calling the gateway and without a row (PAY-44)', async () => {
     const gateway = module.get<PaymentGateway>(PaymentGateway);
-    const chargeSpy = jest.spyOn(gateway, 'charge');
+    const chargeSpy = jest.spyOn(gateway, 'authorize');
 
     await expect(
       billingApi.charge({
@@ -188,6 +196,30 @@ describe('BillingPublicApiProvider (integration)', () => {
     expect(row.refundedAt).not.toBeNull();
   });
 
+  it('refunds at the gateway with the payment refund idempotency key (GW-02)', async () => {
+    const outcome = recorded(
+      await billingApi.charge({
+        userId: randomUUID(),
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card: VALID_CARD },
+      }),
+    );
+    const gateway = module.get<PaymentGateway>(PaymentGateway);
+    const refundSpy = jest.spyOn(gateway, 'refund');
+
+    await billingApi.refund(outcome.paymentId);
+
+    expect(refundSpy).toHaveBeenCalledTimes(1);
+    expect(refundSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      `${outcome.paymentId}:refund`,
+    );
+
+    refundSpy.mockRestore();
+  });
+
   // PAY-47, CARDABUSE-05. Deterministic by construction: the ids and the
   // gateway's token, fingerprint and payment id are fixed and contain no
   // digit, and only text columns are scanned (a uuid, timestamp or number
@@ -207,8 +239,6 @@ describe('BillingPublicApiProvider (integration)', () => {
       Tables.BillingCardThrottle,
     ];
     const TEXT_TYPES = ['character varying', 'character', 'text'];
-    const UUID_PATTERN =
-      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
     // Every stored text value of the user's rows, with where it lives
     const textValues = async () => {
@@ -272,10 +302,11 @@ describe('BillingPublicApiProvider (integration)', () => {
         token: TOKEN,
         fingerprint: FINGERPRINT,
       });
-      jest.spyOn(gateway, 'charge').mockResolvedValue({
-        status: 'succeeded',
+      jest.spyOn(gateway, 'authorize').mockResolvedValue({
+        status: 'authorized',
         providerPaymentId: PROVIDER_PAYMENT_ID,
       });
+      jest.spyOn(gateway, 'capture').mockResolvedValue(undefined);
     });
 
     afterEach(async () => {
@@ -372,7 +403,7 @@ describe('BillingPublicApiProvider (integration)', () => {
 
     it("charges the saved card's token and records its brand and last 4 (AC 8, 11)", async () => {
       const gateway = module.get<PaymentGateway>(PaymentGateway);
-      const chargeSpy = jest.spyOn(gateway, 'charge');
+      const chargeSpy = jest.spyOn(gateway, 'authorize');
       const savedCard = billingPaymentCardFactory.build({
         brand: 'mastercard',
         last4: '4444',
@@ -381,19 +412,22 @@ describe('BillingPublicApiProvider (integration)', () => {
 
       const outcome = await chargeSaved(savedCard.userId, savedCard.id);
 
-      expect(outcome.status).toBe('succeeded');
-      expect(chargeSpy).toHaveBeenCalledWith({
-        amountCents: 26000,
-        currency: 'USD',
-        source: { type: 'token', token: savedCard.providerToken },
-      });
+      expect(outcome.status).toBe('authorized');
+      expect(chargeSpy).toHaveBeenCalledWith(
+        {
+          amountCents: 26000,
+          currency: 'USD',
+          source: { type: 'token', token: savedCard.providerToken },
+        },
+        expect.any(String),
+      );
       const row = await testDbClient(Tables.BillingPayment)
         .where('id', recorded(outcome).paymentId)
         .first();
       expect(row).toMatchObject({
         userId: savedCard.userId,
         amountCents: 26000,
-        status: 'succeeded',
+        status: 'authorized',
         cardBrand: 'mastercard',
         cardLast4: '4444',
       });
@@ -408,7 +442,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       'returns card_not_found for %s, with no payment row and no gateway call (AC 9)',
       async (_, pickCardId) => {
         const gateway = module.get<PaymentGateway>(PaymentGateway);
-        const chargeSpy = jest.spyOn(gateway, 'charge');
+        const chargeSpy = jest.spyOn(gateway, 'authorize');
         const foreignCard = billingPaymentCardFactory.build();
         await testDbClient.batchInsert(Tables.BillingPaymentCard, [
           foreignCard,
@@ -428,7 +462,7 @@ describe('BillingPublicApiProvider (integration)', () => {
 
     it('records a failed card_expired payment for an expired card without calling the gateway', async () => {
       const gateway = module.get<PaymentGateway>(PaymentGateway);
-      const chargeSpy = jest.spyOn(gateway, 'charge');
+      const chargeSpy = jest.spyOn(gateway, 'authorize');
       const savedCard = billingPaymentCardFactory.build({
         expMonth: 1,
         expYear: 2020,
@@ -543,7 +577,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       const declined = declinedCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
       await lockOut(userId, declined.id);
-      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'authorize');
 
       const outcome = await chargeSaved(userId, declined.id);
 
@@ -607,7 +641,7 @@ describe('BillingPublicApiProvider (integration)', () => {
     it('blocks the 6th declined typed charge with no gateway call and no payment row (TYPEDTHROTTLE-01 AC 1, 2)', async () => {
       const userId = randomUUID();
       await declineTyped(userId, 5);
-      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'authorize');
 
       expect(await chargeTyped(userId, VALID_CARD)).toEqual({
         status: 'card_attempts_limited',
@@ -629,11 +663,11 @@ describe('BillingPublicApiProvider (integration)', () => {
       await declineTyped(userId, 4);
       expect(await failedCount(userId)).toBe(4);
 
-      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('authorized');
       expect(await failedCount(userId)).toBe(0);
 
       await declineTyped(userId, 4);
-      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('authorized');
     });
 
     it('checks the lock before the card rules (assumption: lock first)', async () => {
@@ -652,7 +686,7 @@ describe('BillingPublicApiProvider (integration)', () => {
         .where({ userId })
         .update({ lockedUntil: new Date(Date.now() - 1000) });
 
-      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('succeeded');
+      expect((await chargeTyped(userId, VALID_CARD)).status).toBe('authorized');
     });
 
     it('does not count a typed card rejected by the card rules (TYPEDTHROTTLE-01 AC 6)', async () => {
@@ -670,7 +704,7 @@ describe('BillingPublicApiProvider (integration)', () => {
     it('does not count an unexpected gateway error on a typed card (TYPEDTHROTTLE-01 AC 7)', async () => {
       const userId = randomUUID();
       jest
-        .spyOn(module.get(PaymentGateway), 'charge')
+        .spyOn(module.get(PaymentGateway), 'authorize')
         .mockRejectedValue(new Error('gateway down'));
 
       await expect(chargeTyped(userId, VALID_CARD)).rejects.toThrow(
@@ -685,7 +719,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       const declined = declinedCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [declined]);
       await lockOut(userId, declined.id);
-      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'charge');
+      const chargeSpy = jest.spyOn(module.get(PaymentGateway), 'authorize');
 
       expect(await chargeTyped(userId, VALID_CARD)).toEqual({
         status: 'card_attempts_limited',
@@ -703,13 +737,13 @@ describe('BillingPublicApiProvider (integration)', () => {
       }
       expect(await failedCount(userId)).toBe(4);
 
-      expect((await chargeSaved(userId, ok.id)).status).toBe('succeeded');
+      expect((await chargeSaved(userId, ok.id)).status).toBe('authorized');
       expect(await failedCount(userId)).toBe(0);
 
       for (let i = 0; i < 4; i += 1) {
         await chargeSaved(userId, declined.id);
       }
-      expect((await chargeSaved(userId, ok.id)).status).toBe('succeeded');
+      expect((await chargeSaved(userId, ok.id)).status).toBe('authorized');
     });
 
     it('charges again once the lock has ended (AC 4)', async () => {
@@ -722,7 +756,7 @@ describe('BillingPublicApiProvider (integration)', () => {
         .where({ userId })
         .update({ lockedUntil: new Date(Date.now() - 1000) });
 
-      expect((await chargeSaved(userId, ok.id)).status).toBe('succeeded');
+      expect((await chargeSaved(userId, ok.id)).status).toBe('authorized');
     });
 
     it("keeps each user's counter separate (AC 9)", async () => {
@@ -736,7 +770,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       await lockOut(blocked, declined.id);
 
       expect((await chargeSaved(other.userId, other.id)).status).toBe(
-        'succeeded',
+        'authorized',
       );
     });
 
@@ -745,7 +779,7 @@ describe('BillingPublicApiProvider (integration)', () => {
       const ok = okCard(userId);
       await testDbClient.batchInsert(Tables.BillingPaymentCard, [ok]);
       jest
-        .spyOn(module.get(PaymentGateway), 'charge')
+        .spyOn(module.get(PaymentGateway), 'authorize')
         .mockRejectedValue(new Error('gateway down'));
 
       await expect(chargeSaved(userId, ok.id)).rejects.toThrow('gateway down');
@@ -825,6 +859,623 @@ describe('BillingPublicApiProvider (integration)', () => {
       await expect(
         billingApi.findPaymentCard('not-a-uuid'),
       ).resolves.toBeNull();
+    });
+  });
+
+  describe('authorize with idempotency keys (GW-02, GW-17, GW-49, GW-50)', () => {
+    const CHALLENGE_CARD = { ...VALID_CARD, number: '4000 0027 6000 3184' };
+    const CVV = '907';
+
+    const charge = (
+      userId: string,
+      card: typeof VALID_CARD,
+      saveCard?: boolean,
+    ) =>
+      billingApi.charge({
+        userId,
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card: { ...card, cvv: CVV } },
+        saveCard,
+      });
+
+    const throttleRow = (userId: string) =>
+      testDbClient(Tables.BillingCardThrottle).where({ userId }).first();
+
+    afterEach(async () => {
+      jest.restoreAllMocks();
+      await testDbClient(Tables.BillingCardThrottle).del();
+      await testDbClient(Tables.BillingPendingCard).del();
+      await testDbClient(Tables.BillingSimulatedPayment).del();
+    });
+
+    it('authorizes with the key <paymentId>:authorize (GW-02)', async () => {
+      const authorize = jest.spyOn(
+        module.get<PaymentGateway>(PaymentGateway),
+        'authorize',
+      );
+
+      const outcome = recorded(await charge(randomUUID(), VALID_CARD));
+
+      expect(authorize).toHaveBeenCalledTimes(1);
+      expect(authorize).toHaveBeenCalledWith(
+        expect.anything(),
+        `${outcome.paymentId}:authorize`,
+      );
+    });
+
+    it('retries once with the same key when the gateway throws, and records the second answer (GW-49)', async () => {
+      const gateway = module.get<PaymentGateway>(PaymentGateway);
+      const real = gateway.authorize.bind(gateway);
+      const authorize = jest
+        .spyOn(gateway, 'authorize')
+        .mockRejectedValueOnce(new Error('connection reset'))
+        .mockImplementation(real);
+
+      const outcome = recorded(await charge(randomUUID(), VALID_CARD));
+
+      expect(outcome.status).toBe('authorized');
+      expect(authorize).toHaveBeenCalledTimes(2);
+      expect(authorize.mock.calls[1][1]).toBe(authorize.mock.calls[0][1]);
+    });
+
+    it('throws after the second failure, with the same key twice and no row (GW-49)', async () => {
+      const authorize = jest
+        .spyOn(module.get<PaymentGateway>(PaymentGateway), 'authorize')
+        .mockRejectedValue(new Error('connection reset'));
+
+      await expect(charge(randomUUID(), VALID_CARD)).rejects.toThrow(
+        'connection reset',
+      );
+
+      expect(authorize).toHaveBeenCalledTimes(2);
+      expect(authorize.mock.calls[1][1]).toBe(authorize.mock.calls[0][1]);
+      expect(await testDbClient(Tables.BillingPayment).select()).toEqual([]);
+    });
+
+    it('records an authorized payment for 4242 and clears the throttle (GW-17)', async () => {
+      const userId = randomUUID();
+      await charge(userId, DECLINED_CARD);
+      expect(Number((await throttleRow(userId)).failedCount)).toBe(1);
+
+      const outcome = recorded(await charge(userId, VALID_CARD));
+
+      expect(
+        await testDbClient(Tables.BillingPayment)
+          .where('id', outcome.paymentId)
+          .first(),
+      ).toMatchObject({ status: 'authorized', provider: 'simulated' });
+      expect(await throttleRow(userId)).toBeUndefined();
+    });
+
+    it('records a requires_action payment for 3184 and returns the action (GW-19)', async () => {
+      const outcome = await charge(randomUUID(), CHALLENGE_CARD);
+
+      expect(outcome).toEqual({
+        status: 'requires_action',
+        paymentId: expect.any(String),
+        action: {
+          provider: 'simulated',
+          clientSecret: expect.stringMatching(/^sim_secret_/),
+        },
+      });
+      const row = await testDbClient(Tables.BillingPayment)
+        .where('id', recorded(outcome).paymentId)
+        .first();
+      expect(row).toMatchObject({
+        status: 'requires_action',
+        cardLast4: '3184',
+        providerPaymentId: expect.stringMatching(/^sim_/),
+        failureReason: null,
+      });
+    });
+
+    it('leaves the throttle unchanged on requires_action (GW-17)', async () => {
+      const userId = randomUUID();
+      await charge(userId, DECLINED_CARD);
+
+      await charge(userId, CHALLENGE_CARD);
+
+      expect(Number((await throttleRow(userId)).failedCount)).toBe(1);
+    });
+
+    it('records a failed payment for 0002 and counts one failure (GW-17)', async () => {
+      const userId = randomUUID();
+
+      const outcome = recorded(await charge(userId, DECLINED_CARD));
+
+      expect(outcome.status).toBe('failed');
+      expect(
+        await testDbClient(Tables.BillingPayment)
+          .where('id', outcome.paymentId)
+          .first(),
+      ).toMatchObject({ status: 'failed', failureReason: 'card_declined' });
+      expect(Number((await throttleRow(userId)).failedCount)).toBe(1);
+    });
+
+    it('holds a pending card for the payment when saveCard is set, without saving it (GW-50)', async () => {
+      const userId = randomUUID();
+
+      const outcome = recorded(await charge(userId, VALID_CARD, true));
+
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual([
+        expect.objectContaining({
+          paymentId: outcome.paymentId,
+          userId,
+          brand: 'visa',
+          last4: '4242',
+          holder: 'Jane Doe',
+        }),
+      ]);
+      expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual(
+        [],
+      );
+    });
+
+    it('authorizes by the token of the card to save', async () => {
+      const authorize = jest.spyOn(
+        module.get<PaymentGateway>(PaymentGateway),
+        'authorize',
+      );
+
+      await charge(randomUUID(), VALID_CARD, true);
+
+      expect(authorize.mock.calls[0][0].source).toEqual({
+        type: 'token',
+        token: expect.stringMatching(/^sim_pm_/),
+      });
+    });
+
+    it('holds no card when saveCard is not set', async () => {
+      await charge(randomUUID(), VALID_CARD);
+
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+        [],
+      );
+    });
+
+    it('records a failed payment when the card to save is declined at tokenize, and holds nothing', async () => {
+      const userId = randomUUID();
+      const authorize = jest.spyOn(
+        module.get<PaymentGateway>(PaymentGateway),
+        'authorize',
+      );
+
+      const outcome = recorded(await charge(userId, DECLINED_CARD, true));
+
+      expect(outcome.status).toBe('failed');
+      expect(authorize).not.toHaveBeenCalled();
+      expect(Number((await throttleRow(userId)).failedCount)).toBe(1);
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+        [],
+      );
+    });
+
+    it('drops the held card when the authorization is declined', async () => {
+      const detach = jest.spyOn(
+        module.get<PaymentGateway>(PaymentGateway),
+        'detach',
+      );
+
+      const outcome = recorded(
+        await charge(
+          randomUUID(),
+          { ...VALID_CARD, number: '4000 0000 0000 0341' },
+          true,
+        ),
+      );
+
+      expect(outcome.status).toBe('failed');
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+        [],
+      );
+      expect(detach).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the held card when the gateway throws twice', async () => {
+      jest
+        .spyOn(module.get<PaymentGateway>(PaymentGateway), 'authorize')
+        .mockRejectedValue(new Error('connection reset'));
+
+      await expect(charge(randomUUID(), VALID_CARD, true)).rejects.toThrow();
+
+      expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+        [],
+      );
+    });
+
+    it('stores and logs no card number, CVV, token or client secret (GW-07)', async () => {
+      const userId = randomUUID();
+      const logged: unknown[] = [];
+      for (const method of ['log', 'error', 'warn'] as const) {
+        jest
+          .spyOn(AppLogger.prototype, method)
+          .mockImplementation((...args: unknown[]) => {
+            logged.push(args);
+          });
+      }
+
+      const challenge = await charge(userId, CHALLENGE_CARD);
+      await charge(userId, VALID_CARD, true);
+      await charge(userId, DECLINED_CARD);
+      const clientSecret =
+        recorded(challenge).status === 'requires_action'
+          ? (challenge as { action: { clientSecret: string } }).action
+              .clientSecret
+          : '';
+      expect(clientSecret).not.toBe('');
+      // Short fixed secrets are scanned in text only: a uuid, timestamp or
+      // number cannot hold card text, but its digits can contain the CVV by
+      // chance. The client secret embeds a uuid itself, so it is matched
+      // whole against the raw output.
+      const secrets = [
+        CVV,
+        '4242424242424242',
+        '4000002760003184',
+        '4000000000000002',
+        'sim_pm_',
+      ];
+
+      const rows = await testDbClient(Tables.BillingPayment).where({ userId });
+      const columns: Array<{ column_name: string }> = await testDbClient(
+        'information_schema.columns',
+      )
+        .select('column_name')
+        .where({ table_schema: 'public', table_name: Tables.BillingPayment })
+        .whereIn('data_type', ['character varying', 'character', 'text']);
+      const storedText = rows
+        .flatMap((row: Record<string, unknown>) =>
+          columns.map(({ column_name }) => row[column_name]),
+        )
+        .filter((value) => value !== null && value !== undefined)
+        .map(String)
+        .join('\n');
+      const loggedText = JSON.stringify(logged)
+        .replace(UUID_PATTERN, '')
+        .replace(ISO_TIMESTAMP_PATTERN, '');
+      for (const secret of secrets) {
+        expect(storedText).not.toContain(secret);
+        expect(loggedText).not.toContain(secret);
+      }
+      expect(JSON.stringify(rows)).not.toContain(clientSecret);
+      expect(JSON.stringify(logged)).not.toContain(clientSecret);
+    });
+  });
+
+  describe('settle, capture and cancel (GW-04, GW-06, GW-10, GW-17)', () => {
+    const CHALLENGE_CARD = { ...VALID_CARD, number: '4000 0027 6000 3184' };
+
+    const gatewayOf = () => module.get<PaymentGateway>(PaymentGateway);
+    const bank = () => module.get(SimulatedPaymentGateway);
+
+    const charge = (
+      userId: string,
+      card: typeof VALID_CARD,
+      saveCard = false,
+    ) =>
+      billingApi.charge({
+        userId,
+        orderId: randomUUID(),
+        amountCents: 26000,
+        currency: 'USD',
+        source: { type: 'card', card },
+        saveCard,
+      });
+
+    // A payment waiting for its 3-D Secure challenge
+    const challenged = async (userId: string, saveCard = false) => {
+      const outcome = await charge(userId, CHALLENGE_CARD, saveCard);
+      if (outcome.status !== 'requires_action') {
+        throw new Error('expected a challenge');
+      }
+      return outcome;
+    };
+
+    const paymentRow = (paymentId: string) =>
+      testDbClient(Tables.BillingPayment).where('id', paymentId).first();
+    const throttleRow = (userId: string) =>
+      testDbClient(Tables.BillingCardThrottle).where({ userId }).first();
+
+    afterEach(async () => {
+      jest.restoreAllMocks();
+      await testDbClient(Tables.BillingCardThrottle).del();
+      await testDbClient(Tables.BillingPendingCard).del();
+      await testDbClient(Tables.BillingPaymentCard).del();
+      await testDbClient(Tables.BillingSimulatedPayment).del();
+    });
+
+    describe('capture', () => {
+      it('marks the payment succeeded and captures it at the gateway with the key <paymentId>:capture (GW-04)', async () => {
+        const authorized = recorded(await charge(randomUUID(), VALID_CARD));
+        const capture = jest.spyOn(gatewayOf(), 'capture');
+
+        await billingApi.capture(authorized.paymentId);
+
+        expect(capture).toHaveBeenCalledTimes(1);
+        expect(capture).toHaveBeenCalledWith(
+          expect.stringMatching(/^sim_/),
+          `${authorized.paymentId}:capture`,
+        );
+        expect(await paymentRow(authorized.paymentId)).toMatchObject({
+          status: 'succeeded',
+        });
+      });
+
+      it('promotes the card held for the payment (GW-50)', async () => {
+        const userId = randomUUID();
+        const authorized = recorded(await charge(userId, VALID_CARD, true));
+        expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual(
+          [],
+        );
+
+        await billingApi.capture(authorized.paymentId);
+
+        expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual([
+          expect.objectContaining({ userId, last4: '4242', isDefault: true }),
+        ]);
+        expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+          [],
+        );
+      });
+
+      it('retries a failing capture with the same key: two throws then a success is 3 calls', async () => {
+        const authorized = recorded(await charge(randomUUID(), VALID_CARD));
+        const gateway = gatewayOf();
+        const real = gateway.capture.bind(gateway);
+        const capture = jest
+          .spyOn(gateway, 'capture')
+          .mockRejectedValueOnce(new Error('timeout'))
+          .mockRejectedValueOnce(new Error('timeout'))
+          .mockImplementation(real);
+
+        await billingApi.capture(authorized.paymentId);
+
+        expect(capture).toHaveBeenCalledTimes(3);
+        expect(new Set(capture.mock.calls.map(([, key]) => key))).toEqual(
+          new Set([`${authorized.paymentId}:capture`]),
+        );
+        expect(await paymentRow(authorized.paymentId)).toMatchObject({
+          status: 'succeeded',
+        });
+      });
+
+      it('throws after 3 failed attempts and leaves the payment authorized', async () => {
+        const authorized = recorded(
+          await charge(randomUUID(), VALID_CARD, true),
+        );
+        const capture = jest
+          .spyOn(gatewayOf(), 'capture')
+          .mockRejectedValue(new Error('timeout'));
+
+        await expect(billingApi.capture(authorized.paymentId)).rejects.toThrow(
+          'timeout',
+        );
+
+        expect(capture).toHaveBeenCalledTimes(3);
+        expect(await paymentRow(authorized.paymentId)).toMatchObject({
+          status: 'authorized',
+        });
+        expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual(
+          [],
+        );
+      });
+
+      it('keeps a captured payment succeeded when its card cannot be saved, and logs the order and payment ids only', async () => {
+        const authorized = recorded(
+          await charge(randomUUID(), VALID_CARD, true),
+        );
+        jest
+          .spyOn(PendingCardService.prototype, 'promote')
+          .mockRejectedValue(new Error('database unavailable'));
+        const error = jest
+          .spyOn(AppLogger.prototype, 'error')
+          .mockImplementation(() => undefined);
+
+        await expect(
+          billingApi.capture(authorized.paymentId),
+        ).resolves.toBeUndefined();
+
+        expect(await paymentRow(authorized.paymentId)).toMatchObject({
+          status: 'succeeded',
+        });
+        expect(error).toHaveBeenCalledWith(expect.any(String), {
+          orderId: (await paymentRow(authorized.paymentId)).orderId,
+          paymentId: authorized.paymentId,
+        });
+      });
+
+      it('does nothing for a payment that is not authorized or is unknown', async () => {
+        const declined = recorded(await charge(randomUUID(), DECLINED_CARD));
+        const capture = jest.spyOn(gatewayOf(), 'capture');
+
+        await billingApi.capture(declined.paymentId);
+        await billingApi.capture(randomUUID());
+
+        expect(capture).not.toHaveBeenCalled();
+        expect(await paymentRow(declined.paymentId)).toMatchObject({
+          status: 'failed',
+        });
+      });
+
+      it('does not capture twice', async () => {
+        const authorized = recorded(await charge(randomUUID(), VALID_CARD));
+        await billingApi.capture(authorized.paymentId);
+        const capture = jest.spyOn(gatewayOf(), 'capture');
+
+        await billingApi.capture(authorized.paymentId);
+
+        expect(capture).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('settle', () => {
+      it('records an approved challenge as authorized and clears the throttle (GW-17)', async () => {
+        const userId = randomUUID();
+        await charge(userId, DECLINED_CARD);
+        const outcome = await challenged(userId);
+        await bank().approve(outcome.action.clientSecret);
+
+        const settled = await billingApi.settle(outcome.paymentId);
+
+        expect(settled).toEqual({ status: 'authorized' });
+        expect(await paymentRow(outcome.paymentId)).toMatchObject({
+          status: 'authorized',
+          failureReason: null,
+        });
+        expect(await throttleRow(userId)).toBeUndefined();
+      });
+
+      it('records a failed challenge as failed with authentication_failed, counts one failure and drops the held card (GW-10, GW-17)', async () => {
+        const userId = randomUUID();
+        const outcome = await challenged(userId, true);
+        expect(
+          await testDbClient(Tables.BillingPendingCard).select(),
+        ).toHaveLength(1);
+        await bank().fail(outcome.action.clientSecret);
+
+        const settled = await billingApi.settle(outcome.paymentId);
+
+        expect(settled).toEqual({ status: 'failed' });
+        expect(await paymentRow(outcome.paymentId)).toMatchObject({
+          status: 'failed',
+          failureReason: 'authentication_failed',
+        });
+        expect(Number((await throttleRow(userId)).failedCount)).toBe(1);
+        expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+          [],
+        );
+      });
+
+      it('reports a challenge still pending with its action and changes nothing (GW-11)', async () => {
+        const userId = randomUUID();
+        const outcome = await challenged(userId, true);
+
+        const settled = await billingApi.settle(outcome.paymentId);
+
+        expect(settled).toEqual({
+          status: 'requires_action',
+          action: outcome.action,
+        });
+        expect(await paymentRow(outcome.paymentId)).toMatchObject({
+          status: 'requires_action',
+        });
+        expect(await throttleRow(userId)).toBeUndefined();
+        expect(
+          await testDbClient(Tables.BillingPendingCard).select(),
+        ).toHaveLength(1);
+      });
+
+      it('answers an already authorized payment without asking the gateway', async () => {
+        const authorized = recorded(await charge(randomUUID(), VALID_CARD));
+        const getPayment = jest.spyOn(gatewayOf(), 'getPayment');
+
+        expect(await billingApi.settle(authorized.paymentId)).toEqual({
+          status: 'authorized',
+        });
+        expect(getPayment).not.toHaveBeenCalled();
+      });
+
+      it('throws for an unknown payment', async () => {
+        await expect(billingApi.settle(randomUUID())).rejects.toThrow();
+      });
+    });
+
+    describe('cancel', () => {
+      it('cancels an authorized payment at the gateway with the key <paymentId>:cancel and drops the held card', async () => {
+        const authorized = recorded(
+          await charge(randomUUID(), VALID_CARD, true),
+        );
+        const cancel = jest.spyOn(gatewayOf(), 'cancel');
+
+        await billingApi.cancel(authorized.paymentId);
+
+        expect(cancel).toHaveBeenCalledWith(
+          expect.stringMatching(/^sim_/),
+          `${authorized.paymentId}:cancel`,
+        );
+        expect(await paymentRow(authorized.paymentId)).toMatchObject({
+          status: 'cancelled',
+        });
+        expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+          [],
+        );
+        expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual(
+          [],
+        );
+      });
+
+      it('cancels a payment that still awaits its challenge', async () => {
+        const outcome = await challenged(randomUUID());
+
+        await billingApi.cancel(outcome.paymentId);
+
+        expect(await paymentRow(outcome.paymentId)).toMatchObject({
+          status: 'cancelled',
+        });
+        expect(
+          await billingApi.findPaymentAction(outcome.paymentId),
+        ).toBeNull();
+      });
+
+      it('does nothing for a captured, failed or unknown payment', async () => {
+        const captured = recorded(await charge(randomUUID(), VALID_CARD));
+        await billingApi.capture(captured.paymentId);
+        const declined = recorded(await charge(randomUUID(), DECLINED_CARD));
+        const cancel = jest.spyOn(gatewayOf(), 'cancel');
+
+        await billingApi.cancel(captured.paymentId);
+        await billingApi.cancel(declined.paymentId);
+        await billingApi.cancel(randomUUID());
+
+        expect(cancel).not.toHaveBeenCalled();
+        expect(await paymentRow(captured.paymentId)).toMatchObject({
+          status: 'succeeded',
+        });
+      });
+    });
+
+    describe('findPaymentAction', () => {
+      it('returns the action while the payment awaits its challenge', async () => {
+        const outcome = await challenged(randomUUID());
+
+        expect(await billingApi.findPaymentAction(outcome.paymentId)).toEqual(
+          outcome.action,
+        );
+      });
+
+      it('returns null once the challenge is settled', async () => {
+        const approved = await challenged(randomUUID());
+        await bank().approve(approved.action.clientSecret);
+        await billingApi.settle(approved.paymentId);
+        const failed = await challenged(randomUUID());
+        await bank().fail(failed.action.clientSecret);
+        await billingApi.settle(failed.paymentId);
+
+        expect(
+          await billingApi.findPaymentAction(approved.paymentId),
+        ).toBeNull();
+        expect(await billingApi.findPaymentAction(failed.paymentId)).toBeNull();
+      });
+
+      it('returns null when the bank answered but the payment is not settled yet', async () => {
+        const outcome = await challenged(randomUUID());
+        await bank().approve(outcome.action.clientSecret);
+
+        expect(
+          await billingApi.findPaymentAction(outcome.paymentId),
+        ).toBeNull();
+      });
+
+      it('returns null for an authorized, unknown or malformed payment id', async () => {
+        const authorized = recorded(await charge(randomUUID(), VALID_CARD));
+
+        expect(
+          await billingApi.findPaymentAction(authorized.paymentId),
+        ).toBeNull();
+        expect(await billingApi.findPaymentAction(randomUUID())).toBeNull();
+        expect(await billingApi.findPaymentAction('not-a-uuid')).toBeNull();
+      });
     });
   });
 });

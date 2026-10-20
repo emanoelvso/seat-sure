@@ -163,6 +163,10 @@
           ]
         },
         {
+          "name": "sandbox",
+          "children": [{ "name": "{kebab-case}.spec.ts" }]
+        },
+        {
           "name": "factory",
           "children": [
             {

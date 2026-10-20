@@ -7,6 +7,9 @@ import { addTransactionalDataSource } from 'typeorm-transactional';
 import { dataSourceOptionsFactory } from './typeorm-datasource.factory';
 import { BillingPaymentRepository } from './repository/billing-payment.repository';
 import { BillingPaymentCardRepository } from './repository/billing-payment-card.repository';
+import { BillingSimulatedPaymentRepository } from './repository/billing-simulated-payment.repository';
+import { BillingPendingCardRepository } from './repository/billing-pending-card.repository';
+import { BillingCustomerRepository } from './repository/billing-customer.repository';
 import { CardThrottleRepository } from './repository/card-throttle.repository';
 
 @Module({
@@ -36,11 +39,17 @@ import { CardThrottleRepository } from './repository/card-throttle.repository';
     BillingPaymentRepository,
     BillingPaymentCardRepository,
     CardThrottleRepository,
+    BillingSimulatedPaymentRepository,
+    BillingPendingCardRepository,
+    BillingCustomerRepository,
   ],
   exports: [
     BillingPaymentRepository,
     BillingPaymentCardRepository,
     CardThrottleRepository,
+    BillingSimulatedPaymentRepository,
+    BillingPendingCardRepository,
+    BillingCustomerRepository,
   ],
 })
 export class BillingPersistenceModule {}

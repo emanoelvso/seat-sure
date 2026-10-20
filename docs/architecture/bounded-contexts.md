@@ -113,18 +113,20 @@ One glossary per context, key terms only. The same term can mean something diffe
 - **user**: the buyer: whoever holds seats, places the order, and owns the resulting tickets. A plain reference to User Profile.
 - **seat**: availability for one event, not a position: free, held, or sold. The same seat (Catalog's `seat_id`) means something different at each stage of the purchase.
 - **seat hold**: a temporary claim on one seat for one event, released automatically once it expires ([ADR-015](../adrs/015-seat-holds-owned-by-ticketing.md)).
-- **order**: a purchase intent, from cart to paid, failed, cancelled, or refunded.
+- **order**: a purchase intent, from cart to paid, failed, or cancelled. It can pause in `requires_action` while the buyer completes a 3-D Secure challenge, and the pause ends on `confirmOrderPayment` or a checkout reload ([ADR-024](../adrs/024-charges-authorized-then-captured-with-3-d-secure.md)).
 - **ticket**: the artifact issued after payment, identified by its code, checked at the door.
 
 ### 5. Billing
 
 - **user**: the account being charged. A plain reference to User Profile.
 - **order**: not owned here. A plain reference to Ticketing's order being paid.
-- **payment method**: a stored way to charge a user, through a provider. Only cards exist today.
+- **payment method**: a stored way to charge a user, through a provider (`simulated` or `stripe`). Only cards exist today.
 - **payment card**: a card saved for a user. Billing keeps the gateway token and display data (brand, last 4, expiry, holder), never the number or CVV ([ADR-020](../adrs/020-saved-cards-as-gateway-tokens.md)).
 - **card attempt lock**: a 15-minute block on adding cards and on saved-card and typed-card charges for a user with 5 failed card attempts in 15 minutes ([ADR-021](../adrs/021-card-operations-throttled-per-user-in-billing.md)).
-- **payment**: one charge attempt against an order, with a status independent of the order's own status.
-- **refund**: money returned against a completed payment.
+- **pending card**: a card the buyer asked to save while paying. Billing holds it until the payment is captured, then saves it, and drops it if the payment fails or is cancelled.
+- **payment**: one charge attempt against an order, with a status independent of the order's own status. A charge is authorized first and captured only after the tickets are issued; a seat lost after authorization cancels it without a refund.
+- **3-D Secure challenge**: the extra bank verification a payment can require (`requires_action`). The simulated gateway fakes it with a test bank dialog; Stripe runs the real one in the page.
+- **refund**: money returned against a captured payment. The gateway port keeps it; no purchase flow calls it since seat loss now cancels the authorization.
 
 ### 6. Social Proof
 
@@ -268,7 +270,7 @@ orders                             -- purchase intent / cart
   user_id (ref User Profile, no FK)
   event_id (ref Catalog, no FK)
   event_name, event_starts_at      -- replicated from Catalog, snapshot at order creation
-  status (pending|paid|failed|cancelled|refunded)
+  status (pending|processing|requires_action|paid|failed|cancelled)
   subtotal_cents, fee_cents, total_cents, currency
   payment_id (ref Billing, no FK, nullable)
   created_at, paid_at
@@ -307,16 +309,29 @@ tickets                            -- issued after payment
 payment_cards                      -- BillingPaymentCard
   id
   user_id (ref User Profile, no FK)
-  provider                         -- 'simulated' today
+  provider                         -- 'simulated' or 'stripe'; only the active provider's cards are listed or chargeable
   provider_token                   -- never returned or logged
   fingerprint                      -- HMAC of the number, unique per user, never returned
   brand, last4, exp_month, exp_year, holder
-  is_default                       -- at most one per user (partial unique index)
+  is_default                       -- at most one per user and provider (partial unique index)
   created_at, updated_at           -- hard delete, no deleted_at
 
 card_throttles                     -- BillingCardThrottle
   id, user_id (unique, ref User Profile, no FK)
   failed_count, window_started_at, locked_until
+
+pending_cards                      -- BillingPendingCard: a card to save, held until its payment is captured
+  id, payment_id (unique), user_id (ref User Profile, no FK)
+  provider, provider_token        -- never returned or logged
+  customer_id, fingerprint, brand, last4, exp_month, exp_year, holder
+
+customers                          -- BillingCustomer: the gateway customer of a user
+  id, user_id (ref User Profile, no FK), provider, provider_customer_id
+  unique (user_id, provider)
+
+simulated_payments                 -- BillingSimulatedPayment: state of the simulated gateway
+  id, idempotency_key (unique), status, client_secret (unique, nullable)
+  amount_cents, currency          -- keeps idempotency keys and 3-D Secure challenges across restarts
 
 payments
   id
@@ -324,7 +339,8 @@ payments
   order_id (ref Ticketing, no FK)
   provider, provider_payment_id
   amount_cents, currency
-  status (requires_action|processing|succeeded|failed|refunded)
+  status (requires_action|authorized|succeeded|failed|cancelled|refunded)
+  failure_reason                   -- e.g. card_declined, authentication_failed
   card_brand, card_last4           -- snapshot; survives the card being removed
   created_at, updated_at
 

@@ -28,8 +28,9 @@ export class CardInput {
   cvv: string;
 }
 
-// Exactly one of `card` (a typed card) and `savedCardId` (one of the
-// caller's saved cards); OrderPaymentService rejects anything else.
+// Exactly one of `card` (a typed card), `savedCardId` (one of the caller's
+// saved cards) and `paymentMethodId`; OrderPaymentService rejects anything
+// else.
 @InputType()
 export class PayOrderInput {
   @IsString()
@@ -47,7 +48,13 @@ export class PayOrderInput {
   @Field(() => ID, { nullable: true })
   savedCardId?: string | null;
 
-  // Save the typed card once the order is paid (CARD-09)
+  // A PaymentMethod id made by Stripe.js (Stripe mode only, GW-38)
+  @IsOptional()
+  @IsString()
+  @Field(() => String, { nullable: true })
+  paymentMethodId?: string | null;
+
+  // Save the card once the order is paid (CARD-09)
   @IsOptional()
   @IsBoolean()
   @Field({ defaultValue: false })

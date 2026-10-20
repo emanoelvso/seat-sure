@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
+import { BillingApi } from '@sharedModules/integration/interface/billing-integration.interface';
 import { CatalogApi } from '@sharedModules/integration/interface/catalog-integration.interface';
 import { OrderStatus } from '@ticketingModule/core/enum/order-status.enum';
 import { TicketingException } from '@ticketingModule/core/exception/ticketing.exception';
@@ -30,8 +31,9 @@ const seatsUnavailable = () =>
   );
 
 // Maps a stored order to what the buyer sees. `processing` is internal and
-// reads as pending, and a pending or processing order past its expiry reads
-// as expired (PAY-62). `secondsLeft` uses the API clock (AD-025).
+// reads as pending, and an open order past its expiry reads as expired
+// (PAY-62). A requires_action order keeps its own status until it expires
+// (GW-16). `secondsLeft` uses the API clock (AD-025).
 export const toCheckoutOrderModel = (
   order: Order,
   items: OrderItem[],
@@ -39,12 +41,15 @@ export const toCheckoutOrderModel = (
 ): CheckoutOrderModel => {
   const open =
     order.status === OrderStatus.PENDING ||
-    order.status === OrderStatus.PROCESSING;
+    order.status === OrderStatus.PROCESSING ||
+    order.status === OrderStatus.REQUIRES_ACTION;
   const status = !open
     ? (order.status.toUpperCase() as CheckoutOrderStatus)
     : order.expiresAt.getTime() < now.getTime()
       ? CheckoutOrderStatus.EXPIRED
-      : CheckoutOrderStatus.PENDING;
+      : order.status === OrderStatus.REQUIRES_ACTION
+        ? CheckoutOrderStatus.REQUIRES_ACTION
+        : CheckoutOrderStatus.PENDING;
   const [firstItem] = items;
 
   return {
@@ -52,7 +57,8 @@ export const toCheckoutOrderModel = (
     status,
     expiresAt: order.expiresAt,
     secondsLeft:
-      status === CheckoutOrderStatus.PENDING
+      status === CheckoutOrderStatus.PENDING ||
+      status === CheckoutOrderStatus.REQUIRES_ACTION
         ? Math.max(
             0,
             Math.floor((order.expiresAt.getTime() - now.getTime()) / 1000),
@@ -92,6 +98,8 @@ export class CheckoutService {
     private readonly dataSource: DataSource,
     @Inject(CatalogApi)
     private readonly catalogApi: CatalogApi,
+    @Inject(BillingApi)
+    private readonly billingApi: BillingApi,
     private readonly orderRepository: OrderRepository,
     private readonly seatHoldRepository: SeatHoldRepository,
     private readonly ticketRepository: TicketRepository,
@@ -255,6 +263,23 @@ export class CheckoutService {
       relations: { items: true },
     });
 
-    return order ? toCheckoutOrderModel(order, order.items, now) : null;
+    if (!order) {
+      return null;
+    }
+
+    // A paused order carries the challenge its owner must finish. Billing
+    // reads it from the gateway on demand and Ticketing never stores it
+    // (GW-30, GW-32).
+    const model = toCheckoutOrderModel(order, order.items, now);
+    if (model.status !== CheckoutOrderStatus.REQUIRES_ACTION) {
+      return model;
+    }
+
+    return {
+      ...model,
+      paymentAction: order.paymentId
+        ? await this.billingApi.findPaymentAction(order.paymentId)
+        : null,
+    };
   }
 }

@@ -285,6 +285,40 @@ describe('TicketingResolver findAccountOrders (e2e)', () => {
     });
   });
 
+  it('lists a requires_action order as pending until it expires (GW-16)', async () => {
+    const pausedUserId = randomUUID();
+    const live = await insertOrder({
+      owner: pausedUserId,
+      status: OrderStatus.REQUIRES_ACTION,
+      age: 60_000,
+      totalCents: 12000,
+      seats: 2,
+      eventName: 'Paused',
+    });
+    await insertOrder({
+      owner: pausedUserId,
+      status: OrderStatus.REQUIRES_ACTION,
+      age: 120_000,
+      totalCents: 13000,
+      seats: 1,
+      expiresIn: -1_000,
+      eventName: 'Paused and expired',
+    });
+
+    const body = await findAccountOrders(
+      { page: 1, pageSize: 20 },
+      tokenFor(pausedUserId),
+    );
+
+    expect(body.errors).toBeUndefined();
+    expect(body.data.findAccountOrders).toEqual({
+      items: [summaryOf(live, 'PENDING', 2)],
+      counts: { all: 1, pending: 1, cancelled: 0, completed: 0 },
+      page: 1,
+      totalPages: 1,
+    });
+  });
+
   describe('input validation', () => {
     it.each([
       ['page 0', { page: 0, pageSize: 4 }],

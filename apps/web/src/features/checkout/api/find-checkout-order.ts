@@ -4,8 +4,9 @@ import type {
   FindCheckoutOrderQueryVariables,
 } from "@/types/__generated__/graphql";
 
-// Reloads a pending/paid order for its owner (PAY-22, PAY-23). Selects
-// every CheckoutOrder field the checkout pages need.
+// Reloads a pending/paid order for its owner (PAY-22, PAY-23). A paused order
+// also carries the challenge to resume (GW-30). Selects every CheckoutOrder
+// field the checkout pages need.
 export const FIND_CHECKOUT_ORDER: TypedDocumentNode<
   FindCheckoutOrderQuery,
   FindCheckoutOrderQueryVariables
@@ -42,6 +43,10 @@ export const FIND_CHECKOUT_ORDER: TypedDocumentNode<
         seatId
         row
         number
+      }
+      paymentAction {
+        provider
+        clientSecret
       }
     }
   }

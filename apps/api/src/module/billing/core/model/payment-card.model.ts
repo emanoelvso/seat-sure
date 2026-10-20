@@ -13,6 +13,19 @@ export interface PaymentCardModel {
   expired: boolean;
 }
 
+// What is stored of a card to save: the token and display data only (AD-026)
+export type NewPaymentCard = Pick<
+  BillingPaymentCard,
+  | 'provider'
+  | 'providerToken'
+  | 'fingerprint'
+  | 'brand'
+  | 'last4'
+  | 'expMonth'
+  | 'expYear'
+  | 'holder'
+> & { customerId?: string | null };
+
 // Expired once its expiry month is before the current UTC month; the expiry
 // month itself still counts as valid (CARD-01 AC 6)
 export const isCardExpired = (

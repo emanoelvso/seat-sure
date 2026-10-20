@@ -1,7 +1,7 @@
 # ADR-020: Saved Cards as Gateway Tokens
 
 - **Date**: 2026-10-07
-- **Status**: Accepted
+- **Status**: Accepted, amended 2026-10-19 (charges are authorized, then captured; a card can pause on 3-D Secure)
 - **Deciders**: emanoelvso
 - **Tags**: api, billing, payments, security, backend
 - **Links**:
@@ -9,6 +9,7 @@
   - [ADR-012: Money as Integer Minor Units with Currency](./012-money-as-integer-minor-units-with-currency.md)
   - [ADR-018: Business Errors as Unprocessable Entity with a Reason Code](./018-business-errors-as-unprocessable-entity-with-a-reason-code.md)
   - [ADR-021: Card Operations Throttled per User in Billing](./021-card-operations-throttled-per-user-in-billing.md)
+  - [ADR-024: Charges Authorized, Then Captured After Issue, with 3-D Secure](./024-charges-authorized-then-captured-with-3-d-secure.md)
 
 ## Context
 
@@ -37,7 +38,7 @@ Checkout charged a typed card and forgot it. Users now save cards on `/account/p
 
 - Rotating `BILLING_FINGERPRINT_SECRET` changes every fingerprint, so duplicate checks stop matching older rows until they are re-keyed.
 - Detach after commit can leave an orphan token at the gateway if the process dies in between. The simulated gateway hides this; a real one needs a reconciliation job.
-- The simulated gateway decides outcomes from test card numbers (`4000 0000 0000 0002` declines at tokenize, `4000 0000 0000 0341` saves, and every charge on it declines, typed or by saved token). Those rules are fixtures, not product behaviour.
+- The simulated gateway decides outcomes from test card numbers (`4000 0000 0000 0002` declines at tokenize, `4000 0000 0000 0341` saves, and every charge on it declines, typed or by saved token). Those rules are fixtures, not product behaviour. The card `4000 0027 6000 3184` is a third fixture: the charge pauses on a simulated 3-D Secure challenge ([ADR-024](./024-charges-authorized-then-captured-with-3-d-secure.md)), and a card to save is held as a pending card until that payment is captured.
 
 ### Trade-offs
 

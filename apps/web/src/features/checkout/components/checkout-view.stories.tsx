@@ -1,13 +1,16 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState, type ComponentProps } from "react";
 import { getRouter } from "@storybook/nextjs-vite/navigation.mock";
-import { expect, fn, within } from "storybook/test";
+import { expect, fn, waitFor, within } from "storybook/test";
 import { vi } from "vitest";
 import type { CheckoutPaymentCard } from "@/features/checkout/api/find-checkout-payment-cards";
+import type { ConfirmOrderPaymentResult } from "@/features/checkout/api/confirm-order-payment-action";
+import type { SimulatedBankResult } from "@/features/checkout/api/simulated-bank-action";
 import type {
   PayOrderActionInput,
   PayOrderState,
 } from "@/features/checkout/api/pay-order-action";
+import { createFakeStripe } from "@/components/stripe/fake-stripe";
 import { zonedIso } from "@/testing/dates";
 import { CheckoutView } from "./checkout-view";
 
@@ -15,6 +18,13 @@ type PayAction = (
   state: PayOrderState,
   input: PayOrderActionInput,
 ) => Promise<PayOrderState>;
+
+type BankAction = (
+  clientSecret: string,
+  outcome: "approve" | "fail",
+) => Promise<SimulatedBankResult>;
+
+type ConfirmAction = (orderId: string) => Promise<ConfirmOrderPaymentResult>;
 
 const order = {
   id: "order-81",
@@ -48,7 +58,10 @@ const meta: Meta<typeof CheckoutView> = {
   tags: ["autodocs"],
   component: CheckoutView,
   parameters: { nextjs: { appDirectory: true } },
-  beforeEach: () => { getRouter().refresh.mockReset(); },
+  beforeEach: () => {
+    getRouter().refresh.mockReset();
+    getRouter().push.mockReset();
+  },
   args: {
     order,
     user: {
@@ -57,6 +70,8 @@ const meta: Meta<typeof CheckoutView> = {
       email: "negar.khosravi@example.com",
     },
     payAction: fn<PayAction>(async () => ({})),
+    bankAction: fn<BankAction>(async () => ({ ok: true })),
+    confirmAction: fn<ConfirmAction>(async () => ({ paid: true })),
   },
 } satisfies Meta<typeof CheckoutView>;
 
@@ -715,5 +730,305 @@ export const SimulatorPaymentInstructions: Story = {
     await expect(notice).toBeVisible();
     await expect(notice).toHaveTextContent("Demo only. Do not enter real card details.");
     await expect(notice).toHaveTextContent("4242 4242 4242 4242");
+  },
+};
+
+const challenge = { provider: "simulated" as const, clientSecret: "sim_secret_abc" };
+
+// Pays with the 3-D Secure card: the stubbed payAction pauses the order, so
+// the challenge dialog opens over the Review step (GW-24).
+async function startChallenge(
+  args: { payAction: PayAction },
+  canvas: Canvas,
+  userEvent: UserEvent,
+) {
+  vi.mocked(args.payAction).mockResolvedValueOnce({ requiresAction: challenge });
+  await goToReview(canvas, userEvent);
+  await userEvent.click(canvas.getByRole("button", { name: "Pay" }));
+  return await canvas.findByRole("dialog", { name: "Verify your payment" });
+}
+
+// GW-24: a paused payment opens the "Verify your payment" modal and the
+// countdown keeps running behind it.
+export const ChallengeOpens: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    const dialog = await startChallenge(args, canvas, userEvent);
+
+    await expect(dialog).toBeVisible();
+    await expect(canvas.getByRole("timer")).toBeVisible();
+    await expect(args.bankAction).not.toHaveBeenCalled();
+    await expect(args.confirmAction).not.toHaveBeenCalled();
+  },
+};
+
+// GW-25, GW-26: Approve posts the outcome to the bank with the client secret,
+// then confirms the order, then shows the success page.
+export const ChallengeApproved: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    await startChallenge(args, canvas, userEvent);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() => expect(getRouter().push).toHaveBeenCalledWith(
+      "/checkout/order-81/success",
+    ));
+    await expect(args.bankAction).toHaveBeenCalledWith("sim_secret_abc", "approve");
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+    await expect(
+      vi.mocked(args.bankAction).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(args.confirmAction).mock.invocationCallOrder[0]);
+  },
+};
+
+// GW-25, GW-27: a failed challenge closes the dialog, shows the bank message
+// on Review and enables Pay again.
+export const ChallengeFailed: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.confirmAction).mockResolvedValueOnce({
+      reason: "AUTHENTICATION_FAILED",
+    });
+    await startChallenge(args, canvas, userEvent);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Fail" }));
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "We couldn't verify this payment with your bank. Try again or use another card.",
+    );
+    await expect(args.bankAction).toHaveBeenCalledWith("sim_secret_abc", "fail");
+    await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
+    await expect(currentStep(canvas)).toBe("Review");
+    await expect(canvas.getByRole("button", { name: "Pay" })).toBeEnabled();
+    await expect(getRouter().push).not.toHaveBeenCalled();
+  },
+};
+
+// GW-28: an order that expired during the challenge shows the time-out dialog
+// and closes the challenge.
+export const ChallengeExpired: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.confirmAction).mockResolvedValueOnce({ reason: "ORDER_EXPIRED" });
+    await startChallenge(args, canvas, userEvent);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Approve" }));
+
+    await expect(
+      await canvas.findByRole("dialog", { name: "Your time ran out" }),
+    ).toBeVisible();
+    await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
+    await expect(getRouter().push).not.toHaveBeenCalled();
+  },
+};
+
+// GW-29: seats lost after the approval show the existing seats-taken message.
+export const ChallengeSeatsTaken: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.confirmAction).mockResolvedValueOnce({
+      reason: "SEATS_UNAVAILABLE",
+    });
+    await startChallenge(args, canvas, userEvent);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Approve" }));
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Your seats were just taken. You haven't been charged.",
+    );
+    await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
+    await expect(canvas.getByRole("link", { name: "Choose seats" })).toBeVisible();
+  },
+};
+
+// GW-11: a bank that hasn't answered yet keeps the challenge open.
+export const ChallengeStillPending: Story = {
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.confirmAction).mockResolvedValueOnce({
+      requiresAction: challenge,
+    });
+    await startChallenge(args, canvas, userEvent);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() => expect(args.confirmAction).toHaveBeenCalledTimes(1));
+    await expect(
+      await canvas.findByRole("button", { name: "Approve" }),
+    ).toBeEnabled();
+    await expect(canvas.getByRole("dialog", { name: "Verify your payment" })).toBeVisible();
+    await expect(getRouter().push).not.toHaveBeenCalled();
+  },
+};
+
+// GW-28: the countdown runs out while the challenge is open: the time-out
+// dialog shows and the challenge closes.
+export const ChallengeTimerRunsOut: Story = {
+  args: { order: { ...order, secondsLeft: 6 } },
+  play: async ({ args, canvas, userEvent }) => {
+    await startChallenge(args, canvas, userEvent);
+
+    await expect(
+      await canvas.findByRole(
+        "dialog",
+        { name: "Your time ran out" },
+        { timeout: 8000 },
+      ),
+    ).toBeVisible();
+    await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
+  },
+};
+
+const pausedOrder = {
+  ...order,
+  status: "REQUIRES_ACTION" as const,
+  paymentAction: challenge,
+};
+
+// GW-30: a paused order opens on the resume panel, not on the Tickets step.
+export const ResumePanel: Story = {
+  args: { order: pausedOrder },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Finish verifying your payment" }),
+    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Continue" })).toBeEnabled();
+    await expect(canvas.queryByRole("button", { name: "Confirm" })).toBeNull();
+    await expect(canvas.queryByRole("dialog", { name: "Verify your payment" })).toBeNull();
+    await expect(canvas.getByRole("timer")).toBeVisible();
+  },
+};
+
+// GW-31: Continue reopens the challenge, and approving it ends on the
+// success page.
+export const ResumeChallenge: Story = {
+  args: { order: pausedOrder },
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+    await expect(
+      await canvas.findByRole("dialog", { name: "Verify your payment" }),
+    ).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() =>
+      expect(getRouter().push).toHaveBeenCalledWith("/checkout/order-81/success"),
+    );
+    await expect(args.bankAction).toHaveBeenCalledWith("sim_secret_abc", "approve");
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+  },
+};
+
+// GW-31: a resumed challenge that fails sends the buyer back to Payment with
+// the bank message, since the typed card is gone after a reload.
+export const ResumeChallengeFailed: Story = {
+  args: { order: pausedOrder },
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.confirmAction).mockResolvedValueOnce({
+      reason: "AUTHENTICATION_FAILED",
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+
+    await userEvent.click(await canvas.findByRole("button", { name: "Fail" }));
+
+    await waitFor(() => expect(currentStep(canvas)).toBe("Payment"));
+    await expect(canvas.queryByRole("heading", { name: "Finish verifying your payment" })).toBeNull();
+    await expect(canvas.getByLabelText("Card number")).toBeVisible();
+  },
+};
+
+// A paused order whose payment needs no challenge any more is settled by
+// Continue alone.
+export const ResumeWithoutAction: Story = {
+  args: { order: { ...pausedOrder, paymentAction: null } },
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() =>
+      expect(getRouter().push).toHaveBeenCalledWith("/checkout/order-81/success"),
+    );
+    await expect(args.bankAction).not.toHaveBeenCalled();
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+  },
+};
+
+const fakeStripe = createFakeStripe({ paymentMethodId: "pm_fake_123" });
+
+// GW-41: in Stripe mode the card is typed into Elements and "Pay" sends only
+// the PaymentMethod id, never a card.
+export const PayWithStripeElements: Story = {
+  args: { stripe: fakeStripe.stripe },
+  play: async ({ args, canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+    await userEvent.type(
+      await canvas.findByRole("textbox", { name: "Card number" }),
+      "4242424242424242",
+    );
+    await userEvent.type(canvas.getByRole("textbox", { name: "Card holder" }), "Negar Khosravi");
+    await userEvent.type(canvas.getByRole("textbox", { name: "Expiry" }), "0830");
+    await userEvent.type(canvas.getByRole("textbox", { name: "CVC" }), "123");
+    await userEvent.click(canvas.getByRole("button", { name: "Review order" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Pay" }));
+
+    await expect(args.payAction).toHaveBeenCalledTimes(1);
+    await expect(vi.mocked(args.payAction).mock.calls[0][1]).toEqual({
+      orderId: "order-81",
+      paymentMethodId: "pm_fake_123",
+    });
+  },
+};
+
+const stripeChallengeStripe = createFakeStripe({ paymentMethodId: "pm_fake_123" });
+
+// GW-43: a Stripe payment that needs 3-D Secure hands the client secret to
+// Stripe.js, never to the simulated bank, then confirms the order.
+export const StripeChallengeConfirms: Story = {
+  args: { stripe: stripeChallengeStripe.stripe },
+  play: async ({ args, canvas, userEvent }) => {
+    vi.mocked(args.payAction).mockResolvedValueOnce({
+      requiresAction: { provider: "stripe", clientSecret: "pi_secret_1" },
+    });
+    await goToPayment(canvas, userEvent);
+    await userEvent.type(
+      await canvas.findByRole("textbox", { name: "Card number" }),
+      "4242424242424242",
+    );
+    await userEvent.type(canvas.getByRole("textbox", { name: "Card holder" }), "Negar Khosravi");
+    await userEvent.type(canvas.getByRole("textbox", { name: "Expiry" }), "0830");
+    await userEvent.type(canvas.getByRole("textbox", { name: "CVC" }), "123");
+    await userEvent.click(canvas.getByRole("button", { name: "Review order" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Pay" }));
+
+    await waitFor(() =>
+      expect(stripeChallengeStripe.handleNextAction).toHaveBeenCalledWith({
+        clientSecret: "pi_secret_1",
+      }),
+    );
+    await waitFor(() =>
+      expect(getRouter().push).toHaveBeenCalledWith("/checkout/order-81/success"),
+    );
+    await expect(args.confirmAction).toHaveBeenCalledWith("order-81");
+    await expect(args.bankAction).not.toHaveBeenCalled();
+  },
+};
+
+// GW-42: a publishable key that is not a pk_test_ key (a live key here) never
+// loads Stripe.js; Payment shows the notice and no card field.
+export const LiveKeyShowsUnavailable: Story = {
+  beforeEach: () => {
+    const previous = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_live_not_allowed";
+    return () => {
+      if (previous === undefined) {
+        delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = previous;
+      }
+    };
+  },
+  play: async ({ canvas, userEvent }) => {
+    await goToPayment(canvas, userEvent);
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Payments are unavailable right now.",
+    );
+    await expect(canvas.queryByRole("textbox", { name: "Card number" })).toBeNull();
+    await expect(canvas.queryByRole("textbox", { name: "CVC" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Review order" })).toBeNull();
   },
 };

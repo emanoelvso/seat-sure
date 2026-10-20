@@ -52,6 +52,38 @@ const FIND_CHECKOUT_ORDER = `
   }
 `;
 
+const FIND_CHECKOUT_ORDER_ACTION = `
+  query FindCheckoutOrder($input: FindCheckoutOrderInput!) {
+    findCheckoutOrder(input: $input) {
+      id
+      status
+      secondsLeft
+      paymentAction {
+        provider
+        clientSecret
+      }
+    }
+  }
+`;
+
+const PAY_ORDER = `
+  mutation PayOrder($input: PayOrderInput!) {
+    payOrder(input: $input) {
+      status
+      paymentAction {
+        clientSecret
+      }
+    }
+  }
+`;
+
+const CARD = {
+  number: '4242 4242 4242 4242',
+  holder: 'Jane Doe',
+  expiry: '06/30',
+  cvv: '123',
+};
+
 describe('TicketingResolver findCheckoutOrder (e2e)', () => {
   let app: INestApplication;
   let module: TestingModule;
@@ -62,6 +94,10 @@ describe('TicketingResolver findCheckoutOrder (e2e)', () => {
   const deleteRows = async () => {
     await testDbClient(Tables.OrderItem).del();
     await testDbClient(Tables.Order).del();
+    await testDbClient(Tables.BillingPayment).del();
+    await testDbClient(Tables.BillingSimulatedPayment).del();
+    await testDbClient(Tables.BillingPendingCard).del();
+    await testDbClient(Tables.BillingCardThrottle).del();
   };
 
   beforeAll(async () => {
@@ -284,6 +320,100 @@ describe('TicketingResolver findCheckoutOrder (e2e)', () => {
           secondsLeft: 0,
         });
       }
+    });
+  });
+
+  describe('GW-30, GW-32: the payment action of a paused order', () => {
+    const find = async (orderId: string, token?: string) => {
+      const call = request(app.getHttpServer()).post('/graphql');
+      if (token) {
+        call.set('Authorization', `Bearer ${token}`);
+      }
+      return (
+        await call
+          .send({
+            query: FIND_CHECKOUT_ORDER_ACTION,
+            variables: { input: { orderId } },
+          })
+          .expect(200)
+      ).body;
+    };
+
+    // Pays a pending order with the 3-D Secure card, which pauses it
+    const pause = async (orderId: string) => {
+      const body = await request(app.getHttpServer())
+        .post('/graphql')
+        .set('Authorization', `Bearer ${tokenFor(userId)}`)
+        .send({
+          query: PAY_ORDER,
+          variables: {
+            input: {
+              orderId,
+              card: { ...CARD, number: '4000 0027 6000 3184' },
+            },
+          },
+        })
+        .expect(200);
+      expect(body.body.data.payOrder.status).toBe('REQUIRES_ACTION');
+      return body.body.data.payOrder.paymentAction.clientSecret as string;
+    };
+
+    it('returns the status REQUIRES_ACTION and the payment action to the owner', async () => {
+      const { order } = await insertOrder({ expiresAt: fromNow(5 * 60_000) });
+      const clientSecret = await pause(order.id);
+
+      const body = await find(order.id, tokenFor(userId));
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.findCheckoutOrder).toMatchObject({
+        id: order.id,
+        status: 'REQUIRES_ACTION',
+        paymentAction: { provider: 'simulated', clientSecret },
+      });
+      expect(body.data.findCheckoutOrder.secondsLeft).toBeGreaterThan(0);
+    });
+
+    it('returns null to another user, so the client secret never leaks', async () => {
+      const { order } = await insertOrder({ expiresAt: fromNow(5 * 60_000) });
+      await pause(order.id);
+
+      const body = await find(order.id, tokenFor(randomUUID()));
+
+      expect(body.errors).toBeUndefined();
+      expect(body.data.findCheckoutOrder).toBeNull();
+    });
+
+    it('returns no payment action for a pending or a paid order', async () => {
+      const { order: pending } = await insertOrder({
+        expiresAt: fromNow(5 * 60_000),
+      });
+      const { order: paid } = await insertOrder({
+        status: OrderStatus.PAID,
+        paymentId: randomUUID(),
+        expiresAt: fromNow(5 * 60_000),
+      });
+
+      for (const order of [pending, paid]) {
+        const body = await find(order.id, tokenFor(userId));
+
+        expect(body.errors).toBeUndefined();
+        expect(body.data.findCheckoutOrder.paymentAction).toBeNull();
+      }
+    });
+
+    it('returns no payment action once the paused order expired', async () => {
+      const { order } = await insertOrder({ expiresAt: fromNow(5 * 60_000) });
+      await pause(order.id);
+      await testDbClient(Tables.Order)
+        .where({ id: order.id })
+        .update({ expiresAt: fromNow(-1_000) });
+
+      const body = await find(order.id, tokenFor(userId));
+
+      expect(body.data.findCheckoutOrder).toMatchObject({
+        status: 'EXPIRED',
+        paymentAction: null,
+      });
     });
   });
 

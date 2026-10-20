@@ -4,6 +4,7 @@ import {
   BillingApi,
   BillingCardInput,
   ChargeSource,
+  PaymentAction,
 } from '@sharedModules/integration/interface/billing-integration.interface';
 import { IdentityApi } from '@sharedModules/integration/interface/identity-integration.interface';
 import { NotificationsApi } from '@sharedModules/integration/interface/notifications-integration.interface';
@@ -32,17 +33,24 @@ const seatsUnavailable = () =>
     'Some of your seats were just taken. Pick your seats again.',
   );
 
-// The charge source of a payOrder input: exactly one of a typed card and a
-// saved card id. The web maps this failure to its generic message.
+// The charge source of a payOrder input: exactly one of a typed card, a saved
+// card id and a PaymentMethod id. The web maps this failure to its generic
+// message.
 export const toChargeSource = (
   card: BillingCardInput | null | undefined,
   savedCardId: string | null | undefined,
+  paymentMethodId?: string | null,
 ): ChargeSource => {
-  if (card && savedCardId == null) {
-    return { type: 'card', card };
-  }
-  if (!card && savedCardId != null) {
-    return { type: 'savedCard', savedCardId };
+  const given = [card, savedCardId, paymentMethodId].filter(
+    (value) => value != null,
+  );
+  if (given.length === 1) {
+    if (card) return { type: 'card', card };
+    if (savedCardId != null) return { type: 'savedCard', savedCardId };
+    return {
+      type: 'paymentMethod',
+      paymentMethodId: paymentMethodId as string,
+    };
   }
   throw new TicketingException('INVALID_CARD', 'Choose a payment method.');
 };
@@ -90,7 +98,10 @@ function assertPayable(order: Order | null, now: Date): asserts order is Order {
       'Your time to pay for this order ran out.',
     );
   }
-  if (order.status === OrderStatus.PROCESSING) {
+  if (
+    order.status === OrderStatus.PROCESSING ||
+    order.status === OrderStatus.REQUIRES_ACTION
+  ) {
     throw paymentInProgress();
   }
 }
@@ -141,6 +152,11 @@ export class OrderPaymentService {
     const order = await findOrder();
     assertPayable(order, now);
 
+    // The active gateway takes only one kind of new card (GW-38)
+    if (!(await this.billingApi.acceptsSource(source))) {
+      throw new TicketingException('INVALID_CARD', 'Choose a payment method.');
+    }
+
     // A typed card only: a saved card passed the rules when it was saved.
     // Only the invalid fields, so the client marks exactly those (PAY-44).
     if (source.type === 'card') {
@@ -166,37 +182,105 @@ export class OrderPaymentService {
       throw paymentInProgress();
     }
 
-    const paid = await this.chargeAndIssue(order, source, now);
-
-    // Only once the tickets are issued, and only a typed card (CARD-09)
-    if (saveCard && source.type === 'card') {
-      await this.saveCard(order, source.card, now);
-    }
-
-    return paid;
+    return this.chargeAndIssue(order, source, saveCard, now);
   }
 
-  // The order is paid whatever happens here, so a failure is only logged,
-  // with the order id and never the card (CARD-09 AC 5)
-  private async saveCard(
-    order: Order,
-    card: BillingCardInput,
-    now: Date,
-  ): Promise<void> {
+  // Settles a paused order once the buyer is back from the challenge (GW-09
+  // to GW-15). The owner's own order only; anything not paused or paid reads
+  // as not found. `now` is the API clock (AD-025).
+  async confirm({
+    userId,
+    orderId,
+    now,
+  }: {
+    userId: string;
+    orderId: string;
+    now: Date;
+  }): Promise<CheckoutOrderModel> {
+    if (!isUUID(orderId)) {
+      throw orderNotFound();
+    }
+
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId, userId },
+      relations: { items: true },
+    });
+    if (!order) {
+      throw orderNotFound();
+    }
+    // Already paid: nothing left to settle, so the gateway isn't called (GW-13)
+    if (order.status === OrderStatus.PAID) {
+      return toCheckoutOrderModel(order, order.items, now);
+    }
+    if (order.status === OrderStatus.PROCESSING) {
+      throw paymentInProgress();
+    }
+    if (order.status !== OrderStatus.REQUIRES_ACTION || !order.paymentId) {
+      throw orderNotFound();
+    }
+    const paymentId = order.paymentId;
+
+    // One caller settles; the other waits behind it (GW-14)
+    if (!(await this.orderRepository.claimConfirm(order.id))) {
+      throw paymentInProgress();
+    }
+
+    // The time to pay ran out during the challenge: nothing was captured, so
+    // the authorization is cancelled and the order reads as expired (GW-12)
+    if (order.expiresAt.getTime() < now.getTime()) {
+      await this.cancelPayment(order, paymentId);
+      await this.orderRepository.releasePayment(order.id);
+      throw new TicketingException(
+        'ORDER_EXPIRED',
+        'Your time to pay for this order ran out.',
+      );
+    }
+
+    let settled: Awaited<ReturnType<BillingApi['settle']>>;
     try {
-      await this.billingApi.saveCard(order.userId, card, now);
-    } catch {
-      this.logger.error("Couldn't save the card of a paid order", {
-        orderId: order.id,
-      });
+      settled = await this.billingApi.settle(paymentId);
+    } catch (error) {
+      // Nothing was decided: the order waits for the challenge again
+      await this.orderRepository.markRequiresAction(order.id, paymentId);
+      throw error;
+    }
+
+    switch (settled.status) {
+      case 'authorized':
+        return this.issueAndCapture(order, paymentId, now);
+      case 'failed':
+        await this.orderRepository.releasePayment(order.id);
+        await this.notify(order, 'payment_unsuccessful', () =>
+          this.notificationsApi.notifyPaymentUnsuccessful({
+            userId: order.userId,
+            paymentId,
+            eventName: order.eventName,
+            now,
+          }),
+        );
+        throw new TicketingException(
+          'AUTHENTICATION_FAILED',
+          "We couldn't verify this payment with your bank. Try again or use another card.",
+        );
+      case 'requires_action':
+        await this.orderRepository.markRequiresAction(order.id, paymentId);
+        order.status = OrderStatus.REQUIRES_ACTION;
+        return this.toPausedModel(order, now, settled.action);
+      default: {
+        const unhandled: never = settled;
+        throw new Error(`Unhandled settle outcome: ${String(unhandled)}`);
+      }
     }
   }
 
-  // Charges the order total, then turns the payment into tickets. A charge
-  // that fails leaves the order pending so the buyer can retry (PAY-40).
+  // Authorizes the order total, then turns the payment into tickets and
+  // captures it. A charge that fails leaves the order pending so the buyer can
+  // retry (PAY-40). One that needs a 3-D Secure challenge pauses the order
+  // until the buyer confirms it (GW-08).
   private async chargeAndIssue(
     order: Order,
     source: ChargeSource,
+    saveCard: boolean,
     now: Date,
   ): Promise<CheckoutOrderModel> {
     let charge: Awaited<ReturnType<BillingApi['charge']>>;
@@ -207,6 +291,8 @@ export class OrderPaymentService {
         amountCents: order.totalCents,
         currency: order.currency,
         source,
+        // Only a new card can be saved (CARD-09)
+        saveCard: saveCard && source.type !== 'savedCard',
       });
     } catch {
       await this.orderRepository.releasePayment(order.id);
@@ -214,8 +300,16 @@ export class OrderPaymentService {
     }
 
     switch (charge.status) {
-      case 'succeeded':
+      case 'authorized':
         break;
+      case 'requires_action':
+        await this.orderRepository.markRequiresAction(
+          order.id,
+          charge.paymentId,
+        );
+        order.status = OrderStatus.REQUIRES_ACTION;
+        order.paymentId = charge.paymentId;
+        return this.toPausedModel(order, now, charge.action);
       case 'failed':
         await this.orderRepository.releasePayment(order.id);
         await this.notify(order, 'payment_unsuccessful', () =>
@@ -252,23 +346,34 @@ export class OrderPaymentService {
       }
     }
 
+    return this.issueAndCapture(order, charge.paymentId, now);
+  }
+
+  // Issues the tickets of an authorized payment, then captures it. Billing has
+  // no shared transaction with Ticketing, so a seat lost after the
+  // authorization is compensated by cancelling it: nothing was captured, so
+  // nothing is refunded (AD-030, GW-05).
+  private async issueAndCapture(
+    order: Order,
+    paymentId: string,
+    now: Date,
+  ): Promise<CheckoutOrderModel> {
     let codes: string[];
     try {
-      codes = await this.issueWithFreshCodes(order, charge.paymentId, now);
+      codes = await this.issueWithFreshCodes(order, paymentId, now);
     } catch (error) {
       const seatLost = this.isSeatConflict(error);
       if (!seatLost && !this.isCodeCollision(error)) {
         throw error;
       }
-      // Billing has no shared transaction with Ticketing, so the charge is
-      // compensated by a refund (AD-022, PAY-46).
-      await this.billingApi.refund(charge.paymentId);
       await this.orderRepository.markFailed(order.id);
+      await this.cancelPayment(order, paymentId);
       if (!seatLost) {
         throw new Error("We couldn't issue your tickets.");
       }
       throw seatsUnavailable();
     }
+    await this.capture(order, paymentId);
     await this.sendTickets(order, codes);
     await this.notify(order, 'purchase_confirmed', () =>
       this.notificationsApi.notifyPurchaseConfirmed({
@@ -280,9 +385,48 @@ export class OrderPaymentService {
     );
     order.status = OrderStatus.PAID;
     order.paidAt = now;
-    order.paymentId = charge.paymentId;
+    order.paymentId = paymentId;
 
     return toCheckoutOrderModel(order, order.items, now);
+  }
+
+  // A paused order with the challenge the buyer must complete
+  private toPausedModel(
+    order: Order,
+    now: Date,
+    paymentAction: PaymentAction,
+  ): CheckoutOrderModel {
+    return {
+      ...toCheckoutOrderModel(order, order.items, now),
+      paymentAction,
+    };
+  }
+
+  // The order is already failed, so a cancellation that fails is only logged,
+  // with the order id and payment id: an uncaptured authorization lapses at the
+  // provider on its own
+  private async cancelPayment(order: Order, paymentId: string): Promise<void> {
+    try {
+      await this.billingApi.cancel(paymentId);
+    } catch {
+      this.logger.error("Couldn't cancel the payment of a failed order", {
+        orderId: order.id,
+        paymentId,
+      });
+    }
+  }
+
+  // The order is paid whatever happens here, so a failure is only logged,
+  // with the order id and payment id and never the card
+  private async capture(order: Order, paymentId: string): Promise<void> {
+    try {
+      await this.billingApi.capture(paymentId);
+    } catch {
+      this.logger.error("Couldn't capture the payment of a paid order", {
+        orderId: order.id,
+        paymentId,
+      });
+    }
   }
 
   // A seat lost between the start and the issuance: a missing or foreign hold,

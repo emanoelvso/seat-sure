@@ -8,17 +8,16 @@ C4Context
 
   Person(buyer, "Ticket buyer", "Browses events, picks seats, pays, and manages the account")
   System(seatSure, "Seat Sure", "Ticketing platform: event catalog, seat selection and holds, checkout, orders")
-  System_Ext(gateway, "Payment gateway (planned)", "Real card processor. Only a simulated gateway exists today", $tags="planned")
+  System_Ext(gateway, "Payment gateway", "Stripe in test mode, or the built-in simulated gateway (default)")
 
   Rel(buyer, seatSure, "Buys tickets")
-  Rel(seatSure, gateway, "Tokenizes, charges, and detaches cards (planned)", $tags="planned")
+  Rel(seatSure, gateway, "Tokenizes, authorizes, captures, cancels, and detaches cards")
 
-  UpdateElementStyle(gateway, $bgColor="grey", $borderColor="grey")
-  UpdateRelStyle(seatSure, gateway, $textColor="grey", $lineColor="grey")
 ```
 
 ## Sources
 
-- The billing module defines the `PaymentGateway` port and wires `SimulatedPaymentGateway` (`apps/api/src/module/billing/billing.module.ts`). No real provider adapter exists, so the external gateway is `planned`.
+- The billing module defines the `PaymentGateway` port and picks its adapter from `BILLING_GATEWAY` (`apps/api/src/module/billing/billing.module.ts`): `SimulatedPaymentGateway` by default, or `StripePaymentGateway` in Stripe test mode. Live keys are rejected at startup, and the hosted demo stays on the simulated gateway.
+- Charges are authorized, then captured after the tickets are issued, and can pause on 3-D Secure: [ADR-024](../../adrs/024-charges-authorized-then-captured-with-3-d-secure.md).
 - Saved cards are gateway tokens: [ADR-020](../../adrs/020-saved-cards-as-gateway-tokens.md).
 - Next level: [container diagram](./container.md).

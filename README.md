@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/emanoelvso/seat-sure/actions/workflows/ci.yml/badge.svg)](https://github.com/emanoelvso/seat-sure/actions/workflows/ci.yml)
 
-Seat Sure is an event ticketing app where buyers pick exact seats on a venue map and pay through a simulated checkout. It is a portfolio project: a NestJS GraphQL API organised as a modular monolith, a Next.js web app, and a real-database test suite. Its main engineering problem is selling the same seat to two people at once, and it comes with load-test evidence for how it behaves under a flash sale.
+Seat Sure is an event ticketing app where buyers pick exact seats on a venue map and pay through a simulated checkout or, optionally, Stripe in test mode. It is a portfolio project: a NestJS GraphQL API organised as a modular monolith, a Next.js web app, and a real-database test suite. Its main engineering problem is selling the same seat to two people at once, and it comes with load-test evidence for how it behaves under a flash sale.
 
 ![Seat picker: choose two adjacent VIP seats and review the price](docs/images/seat-picker.png)
 
@@ -14,7 +14,7 @@ Seat Sure is an event ticketing app where buyers pick exact seats on a venue map
 - **No oversell.** Seats are claimed through short-lived holds owned by Ticketing ([ADR-015](docs/adrs/015-seat-holds-owned-by-ticketing.md)). Every load run, including 2,000 concurrent buyers on 500 seats, passed the oversell check, and 200 buyers racing for one seat produce exactly one winner.
 - **Modular monolith with isolated state.** Six bounded contexts (identity, user profile, catalog, ticketing, billing, notifications), each with its own database and migrations, talking through public APIs ([ADR-006](docs/adrs/006-modular-monolith-with-state-isolation-per-bounded-context.md)).
 - **Tests against real infrastructure.** API tests run GraphQL requests against PostgreSQL; web components are exercised in a real browser through Storybook ([ADR-010](docs/adrs/010-testing-strategy-real-database-e2e-and-storybook-browser-tests.md)).
-- **Payments handled as tokens.** Saved cards are gateway tokens, card numbers and CVVs are never stored, and failed card attempts are throttled per user ([ADR-020](docs/adrs/020-saved-cards-as-gateway-tokens.md), [ADR-021](docs/adrs/021-card-operations-throttled-per-user-in-billing.md)).
+- **Payments handled as tokens.** Charges are authorized first and captured after the tickets are issued, with 3-D Secure supported ([ADR-024](docs/adrs/024-charges-authorized-then-captured-with-3-d-secure.md)). Saved cards are gateway tokens, card numbers and CVVs are never stored, and failed card attempts are throttled per user ([ADR-020](docs/adrs/020-saved-cards-as-gateway-tokens.md), [ADR-021](docs/adrs/021-card-operations-throttled-per-user-in-billing.md)).
 - **Money as integer minor units**, never floats ([ADR-012](docs/adrs/012-money-as-integer-minor-units-with-currency.md)).
 - **Sessions in httpOnly cookies** with short-lived JWT access tokens and rotating refresh tokens ([ADR-016](docs/adrs/016-sessions-as-jwt-access-and-rotating-refresh-tokens-in-httponly-cookies.md)).
 
@@ -36,7 +36,7 @@ flowchart LR
     NOT[Notifications]
   end
   API --> DB[("PostgreSQL<br/>one database per context")]
-  BIL -. "tokenize / charge" .-> GW["Payment gateway<br/>(simulated)"]
+  BIL -. "tokenize / authorize / capture" .-> GW["Payment gateway<br/>(simulated or Stripe test mode)"]
 ```
 
 The C4 context, container, component and deployment diagrams are in [`docs/architecture/c4/`](docs/architecture/c4/README.md), and the bounded contexts and data model in [`docs/architecture/bounded-contexts.md`](docs/architecture/bounded-contexts.md). Redis appears in some earlier documents as a planned component; nothing in the running system uses it. [`docs/architecture/architecture.mmd`](docs/architecture/architecture.mmd) is an older microservices target, not the current system.

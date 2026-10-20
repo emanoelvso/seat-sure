@@ -1,7 +1,11 @@
-// What the buyer sees of an order. `processing` is reported as PENDING, and a
-// pending or processing order past its expiry as EXPIRED.
+import { PaymentAction } from '@sharedModules/integration/interface/billing-integration.interface';
+
+// What the buyer sees of an order. `processing` is reported as PENDING, and an
+// open order past its expiry as EXPIRED. REQUIRES_ACTION is a payment waiting
+// on the buyer's 3-D Secure challenge.
 export enum CheckoutOrderStatus {
   PENDING = 'PENDING',
+  REQUIRES_ACTION = 'REQUIRES_ACTION',
   PAID = 'PAID',
   FAILED = 'FAILED',
   CANCELLED = 'CANCELLED',
@@ -33,7 +37,7 @@ export interface CheckoutOrderModel {
   id: string;
   status: CheckoutOrderStatus;
   expiresAt: Date;
-  // API clock, 0 unless pending
+  // API clock, 0 unless pending or awaiting a challenge
   secondsLeft: number;
   quantity: number;
   currency: string;
@@ -47,4 +51,7 @@ export interface CheckoutOrderModel {
   event: CheckoutEventModel;
   ticketType: CheckoutTicketTypeModel;
   items: CheckoutOrderItemModel[];
+  // The 3-D Secure challenge a REQUIRES_ACTION order awaits. Never stored by
+  // Ticketing: Billing reads it from the gateway on demand (GW-32).
+  paymentAction?: PaymentAction | null;
 }

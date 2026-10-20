@@ -15,6 +15,11 @@ export const env = {
     if (!apiUrl) throw new Error("Missing NEXT_PUBLIC_API_URL");
     return apiUrl;
   },
+  // Public by design: Stripe.js needs it in the browser. Only a pk_test_ key
+  // turns Stripe on (see stripeMode); unset keeps the typed card form.
+  get stripePublishableKey(): string | undefined {
+    return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || undefined;
+  },
   get timeZone(): string {
     return process.env.NEXT_PUBLIC_TIME_ZONE ?? "UTC";
   },

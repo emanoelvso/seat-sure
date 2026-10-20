@@ -74,7 +74,7 @@ describe('Demo card restrictions (REL-22)', () => {
   });
 
   it('rejects non-test cards before direct charge and stores no payment', async () => {
-    const spy = jest.spyOn(gateway, 'charge');
+    const spy = jest.spyOn(gateway, 'authorize');
     await expect(charge(OTHER)).rejects.toMatchObject({
       reason: 'INVALID_CARD',
       fields: { number: MESSAGE },
@@ -105,15 +105,26 @@ describe('Demo card restrictions (REL-22)', () => {
     expect(await testDbClient(Tables.BillingPaymentCard).select()).toEqual([]);
   });
 
+  it('accepts the documented 3-D Secure card 4000002760003184 (GW-23)', async () => {
+    const challenge = { ...SUCCESS, number: '4000 0027 6000 3184' };
+
+    expect(await api.validateCard(challenge, new Date())).toEqual({
+      number: '',
+      holder: '',
+      expiry: '',
+      cvv: '',
+    });
+  });
+
   it('charges the documented success card and records its exact safe summary', async () => {
     const outcome = await charge(SUCCESS);
-    expect(outcome.status).toBe('succeeded');
+    expect(outcome.status).toBe('authorized');
     expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
       userId,
       amountCents: 26000,
       currency: 'USD',
       cardLast4: '4242',
-      status: 'succeeded',
+      status: 'authorized',
     });
   });
 
@@ -139,13 +150,13 @@ describe('Demo card restrictions (REL-22)', () => {
       currency: 'USD',
       source: { type: 'savedCard', savedCardId: saved[0].id },
     });
-    expect(outcome.status).toBe('succeeded');
+    expect(outcome.status).toBe('authorized');
     expect(await testDbClient(Tables.BillingPaymentCard).select()).toHaveLength(
       1,
     );
     expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
       userId,
-      status: 'succeeded',
+      status: 'authorized',
       cardLast4: '4242',
     });
   });
@@ -181,10 +192,10 @@ describe('Demo card restrictions (REL-22)', () => {
 
   it('preserves ordinary Mastercard behavior outside demo mode on both paths', async () => {
     config.set('demo', { ...config.get('demo'), enabled: false });
-    expect((await charge(OTHER)).status).toBe('succeeded');
+    expect((await charge(OTHER)).status).toBe('authorized');
     expect((await cards.add(userId, OTHER, new Date()))[0].last4).toBe('4444');
     expect(await testDbClient(Tables.BillingPayment).first()).toMatchObject({
-      status: 'succeeded',
+      status: 'authorized',
       cardLast4: '4444',
     });
     expect(await testDbClient(Tables.BillingPaymentCard).first()).toMatchObject(

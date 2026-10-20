@@ -26,6 +26,8 @@ Configuration is read from environment variables and validated at startup with a
 | `REDIS_HOST`, `REDIS_PORT` | Required by the schema. Redis is not used by the running system |
 | `JWT_SECRET` | Signs access tokens; at least 32 characters |
 | `BILLING_FINGERPRINT_SECRET` | HMAC key for card fingerprints; at least 32 characters |
+| `BILLING_GATEWAY` | `simulated` (default) or `stripe`. See [Payments](#payments) |
+| `STRIPE_SECRET_KEY` | Stripe test-mode secret key (`sk_test_` or `rk_test_`). Required when `BILLING_GATEWAY=stripe`; a live key is rejected at startup |
 | `AUTH_CODE_SENDER` | `log` (prints one-time codes to the console; rejected in production) or `disabled` (demo mode only) |
 | `CORS_ORIGIN` | Allowed web origin; defaults to `http://localhost:3000` |
 | `APP_TIME_ZONE` | IANA time zone, default `UTC` |
@@ -35,6 +37,15 @@ Configuration is read from environment variables and validated at startup with a
 | `DEMO_MODE`, `DEMO_MAX_REQUESTS`, `DEMO_WINDOW_MS`, `DEMO_MAX_BUCKETS` | Demo mode and its rate limit, see [Demo mode](#demo-mode) |
 
 In production the two secrets must be at least 32 characters and must not be a single repeated character or contain placeholder words such as `change-me`, `example`, `default` or `test-secret`.
+
+## Payments
+
+Charges are authorized, then captured after the tickets are issued, and a charge can pause on 3-D Secure ([ADR-024](../../docs/adrs/024-charges-authorized-then-captured-with-3-d-secure.md)). `BILLING_GATEWAY` picks who handles the money:
+
+- `simulated` (default): no network. `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines, `4000 0000 0000 0341` saves but declines every charge, and `4000 0027 6000 3184` asks for 3-D Secure (a "Test bank" dialog with Approve and Fail).
+- `stripe`: Stripe test mode. Set `STRIPE_SECRET_KEY` to your test key and the web app's `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (see [the web README](../web/README.md#configuration)). Stripe's test cards work: `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` declines and `4000 0027 6000 3184` asks for 3-D Secure.
+
+`pnpm test:stripe-sandbox` is an opt-in smoke test against Stripe's test mode. Run it with `STRIPE_SECRET_KEY=sk_test_... pnpm test:stripe-sandbox`; without a test key it skips and succeeds. `pnpm test`, `pnpm test:e2e` and CI never call Stripe.
 
 ## Run it
 

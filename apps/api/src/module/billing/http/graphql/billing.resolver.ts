@@ -3,6 +3,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import { AuthGuard } from '@sharedModules/auth/guard/auth.guard';
 import { ClsService } from 'nestjs-cls';
+import { AddPaymentMethodInput } from './type/add-payment-method-input.type';
 import { AddPaymentCardInput } from './type/add-payment-card-input.type';
 import { PaymentCardIdInput } from './type/payment-card-id-input.type';
 import { PaymentCard } from './type/payment-card.type';
@@ -33,6 +34,19 @@ export class BillingResolver {
     return this.paymentCardService.add(
       this.clsService.get<string>('userId'),
       input,
+      new Date(),
+    );
+  }
+
+  // Stripe mode: saves a PaymentMethod made in the browser (GW-37)
+  @UseGuards(AuthGuard)
+  @Mutation(() => [PaymentCard])
+  async addPaymentMethod(
+    @Args('input') input: AddPaymentMethodInput,
+  ): Promise<PaymentCard[]> {
+    return this.paymentCardService.addPaymentMethod(
+      this.clsService.get<string>('userId'),
+      input.paymentMethodId,
       new Date(),
     );
   }

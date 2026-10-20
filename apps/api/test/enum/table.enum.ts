@@ -21,5 +21,8 @@ export enum Tables {
   BillingPayment = 'BillingPayment',
   BillingPaymentCard = 'BillingPaymentCard',
   BillingCardThrottle = 'BillingCardThrottle',
+  BillingSimulatedPayment = 'BillingSimulatedPayment',
+  BillingPendingCard = 'BillingPendingCard',
+  BillingCustomer = 'BillingCustomer',
   NotificationsNotification = 'NotificationsNotification',
 }

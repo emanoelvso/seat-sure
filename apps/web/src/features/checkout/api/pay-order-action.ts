@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { NO_SESSION, withAccessToken } from "@/features/auth/api/with-access-token";
 import { GraphQLRequestError, graphqlServerFetch } from "@/lib/graphql-server";
 import { PAY_ORDER } from "@/features/checkout/api/pay-order";
+import {
+  toPaymentAction,
+  type PaymentAction,
+} from "@/features/checkout/api/payment-action";
 import { cardSchema } from "@/utils/card-schema";
 import { paths } from "@/config/paths";
 
@@ -14,6 +18,7 @@ type PayOrderReason =
   | "INVALID_CARD"
   | "CARD_NOT_FOUND"
   | "CARD_ATTEMPTS_LIMITED"
+  | "AUTHENTICATION_FAILED"
   | "GENERIC";
 
 // The reasons the API can pass straight through as-is (PAY-50, PAY-51,
@@ -24,11 +29,14 @@ const PASSTHROUGH_REASONS = new Set<string>([
   "ORDER_EXPIRED",
   "CARD_NOT_FOUND",
   "CARD_ATTEMPTS_LIMITED",
+  "AUTHENTICATION_FAILED",
 ]);
 
 export interface PayOrderState {
   reason?: PayOrderReason;
   fields?: Record<string, string>;
+  // The order paused on a 3-D Secure challenge the buyer must finish (GW-08)
+  requiresAction?: PaymentAction;
 }
 
 // A typed card (optionally saved after the payment, CARD-09) or a saved
@@ -44,13 +52,18 @@ export type PayOrderActionInput =
       };
       saveCard?: boolean;
     }
-  | { orderId: string; savedCardId: string };
+  | { orderId: string; savedCardId: string }
+  // A card Stripe.js already tokenized in the browser (GW-41): the number and
+  // CVV never reach the server, only the PaymentMethod id.
+  | { orderId: string; paymentMethodId: string; saveCard?: boolean };
 
 // PAY-36, PAY-48, PAY-50..53, PAY-61: client validation first (no API
 // call on an invalid card), then withAccessToken(PAY_ORDER). The returned
 // state never carries the card's number, CVV or expiry (PAY-36) - only the
-// reason and, for INVALID_CARD, the field error messages. A saved card has
-// nothing to validate here: the API checks it belongs to the caller.
+// reason and, for INVALID_CARD, the field error messages. A charge that needs
+// 3-D Secure returns the action to complete instead of navigating (GW-08). A
+// saved card has nothing to validate here: the API checks it belongs to the
+// caller.
 export async function payOrderAction(
   _prevState: PayOrderState,
   input: PayOrderActionInput,
@@ -58,6 +71,11 @@ export async function payOrderAction(
   let source;
   if ("savedCardId" in input) {
     source = { savedCardId: input.savedCardId };
+  } else if ("paymentMethodId" in input) {
+    source = {
+      paymentMethodId: input.paymentMethodId,
+      saveCard: input.saveCard,
+    };
   } else {
     const parsed = cardSchema.safeParse(input.card);
     if (!parsed.success) {
@@ -97,6 +115,14 @@ export async function payOrderAction(
 
   if (result === NO_SESSION) {
     redirect(paths.login.getHref(paths.checkout.getHref(input.orderId)));
+  }
+
+  // The bank asks for a challenge: the order waits, nothing is paid yet
+  if (
+    result.payOrder.status === "REQUIRES_ACTION" &&
+    result.payOrder.paymentAction
+  ) {
+    return { requiresAction: toPaymentAction(result.payOrder.paymentAction) };
   }
 
   redirect(paths.checkoutSuccess.getHref(result.payOrder.id));

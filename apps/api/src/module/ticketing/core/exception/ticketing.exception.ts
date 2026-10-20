@@ -11,6 +11,7 @@ export type TicketingExceptionReason =
   | 'CARD_DECLINED'
   | 'CARD_NOT_FOUND'
   | 'CARD_ATTEMPTS_LIMITED'
+  | 'AUTHENTICATION_FAILED'
   | 'INVALID_PAGE';
 
 // A business failure returned to the client as a reason (AD-018), the same

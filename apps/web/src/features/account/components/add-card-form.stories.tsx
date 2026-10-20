@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useRef } from "react";
 import { expect, fn, waitFor } from "storybook/test";
+import { createFakeStripe } from "@/components/stripe/fake-stripe";
 import { AddCardForm, type AddCardFormHandle } from "./add-card-form";
 
 type AddCardAction = React.ComponentProps<typeof AddCardForm>["action"];
@@ -218,12 +219,21 @@ export const ShowsFormErrorAndKeepsValues: Story = {
   },
 };
 
-const pendingAction = fn(() => new Promise<AddPaymentCardState>(() => {}));
+// Settled when the story ends: React queues later transitions behind one that
+// never finishes, which would stall the stories that run after this one.
+let settlePending: () => void = () => {};
+const pendingAction = fn(
+  () =>
+    new Promise<AddPaymentCardState>((resolve) => {
+      settlePending = () => resolve({ status: "idle", fieldErrors: {} });
+    }),
+);
 
 // CARD-05 AC 14: while the save is in flight the button reads "Saving…" and
 // is disabled.
 export const DisablesWhilePending: Story = {
   args: { action: pendingAction },
+  beforeEach: () => () => settlePending(),
   play: async ({ canvas, userEvent }) => {
     await fillCard(canvas, userEvent);
     await userEvent.click(canvas.getByRole("button", { name: "Save card" }));
@@ -267,3 +277,80 @@ export const ResetClearsAndFocuses: Story = {
     await expect(canvas.getByLabelText("CVC/CVV")).toHaveValue("");
   },
 };
+
+const fakeStripe = createFakeStripe({ paymentMethodId: "pm_fake_123" });
+const stripeAction = fn<
+  (state: AddPaymentCardState, paymentMethodId: string) => Promise<AddPaymentCardState>
+>(async () => ({ status: "saved", cards: [SAVED_CARD] }));
+
+// GW-41: with Stripe Elements the card is typed into Elements, the action gets
+// only the PaymentMethod id, the list comes back through onSaved and the form
+// clears.
+export const SavesWithStripeElements: Story = {
+  args: { stripe: fakeStripe.stripe, stripeAction },
+  beforeEach: () => {
+    stripeAction.mockClear();
+  },
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.type(
+      await canvas.findByRole("textbox", { name: "Card number" }),
+      "4242424242424242",
+    );
+    await userEvent.type(canvas.getByRole("textbox", { name: "Name on card" }), "Sara Lee");
+    await userEvent.type(canvas.getByRole("textbox", { name: "Expiry" }), "1239");
+    await userEvent.type(canvas.getByRole("textbox", { name: "CVC" }), "123");
+    await userEvent.click(canvas.getByRole("button", { name: "Save card" }));
+
+    await waitFor(() => expect(stripeAction).toHaveBeenCalledTimes(1));
+    await expect(stripeAction.mock.calls[0][1]).toBe("pm_fake_123");
+    await waitFor(() => expect(args.onSaved).toHaveBeenCalledWith([SAVED_CARD]));
+    await waitFor(() =>
+      expect(canvas.getByRole("textbox", { name: "Name on card" })).toHaveValue(""),
+    );
+    await expect(action).not.toHaveBeenCalled();
+  },
+};
+
+// GW-44: an incomplete Stripe field stops the save before the action runs.
+export const StripeIncompleteFieldBlocksSave: Story = {
+  args: { stripe: fakeStripe.stripe, stripeAction },
+  beforeEach: () => {
+    stripeAction.mockClear();
+  },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByRole("textbox", { name: "Card number" });
+    await userEvent.click(canvas.getByRole("button", { name: "Save card" }));
+
+    await expect(
+      await canvas.findByText("Your card number is incomplete."),
+    ).toBeVisible();
+    await expect(stripeAction).not.toHaveBeenCalled();
+  },
+};
+
+// GW-42: a publishable key that is not a pk_test_ key (a live key here) never
+// loads Stripe.js; the form shows the notice and no card field.
+export const LiveKeyShowsUnavailable: Story = {
+  beforeEach: () => {
+    const previous = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_live_not_allowed";
+    return () => {
+      if (previous === undefined) {
+        delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = previous;
+      }
+    };
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Payments are unavailable right now.",
+    );
+    await expect(canvas.queryByRole("textbox", { name: "Card number" })).toBeNull();
+    await expect(canvas.queryByRole("textbox", { name: "CVC" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Save card" })).toBeNull();
+  },
+};
+
+// GW-45: with no publishable key the typed form above is what renders (see
+// Default).

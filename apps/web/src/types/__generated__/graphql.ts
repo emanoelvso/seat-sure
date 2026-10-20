@@ -26,6 +26,10 @@ export type AddPaymentCardInput = {
   number: string;
 };
 
+export type AddPaymentMethodInput = {
+  paymentMethodId: string;
+};
+
 export type CardInput = {
   cvv: string;
   expiry: string;
@@ -38,7 +42,12 @@ export type CheckoutOrderStatus =
   | 'EXPIRED'
   | 'FAILED'
   | 'PAID'
-  | 'PENDING';
+  | 'PENDING'
+  | 'REQUIRES_ACTION';
+
+export type ConfirmOrderPaymentInput = {
+  orderId: string;
+};
 
 export type ConfirmPasswordResetCodeInput = {
   code: string;
@@ -130,6 +139,7 @@ export type NotificationsTab =
 export type PayOrderInput = {
   card?: CardInput | null | undefined;
   orderId: string;
+  paymentMethodId?: string | null | undefined;
   saveCard?: boolean;
   savedCardId?: string | number | null | undefined;
 };
@@ -215,6 +225,13 @@ export type AddPaymentCardMutationVariables = Exact<{
 
 
 export type AddPaymentCardMutation = { addPaymentCard: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
+
+export type AddPaymentMethodMutationVariables = Exact<{
+  input: AddPaymentMethodInput;
+}>;
+
+
+export type AddPaymentMethodMutation = { addPaymentMethod: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
 
 export type FindAccountOrderQueryVariables = Exact<{
   input: FindAccountOrderInput;
@@ -365,12 +382,19 @@ export type VerifyEmailMutationVariables = Exact<{
 
 export type VerifyEmailMutation = { verifyEmail: { __typename: 'SessionTokens', accessToken: string, refreshToken: string | null, expiresAt: string, persistent: boolean } };
 
+export type ConfirmOrderPaymentMutationVariables = Exact<{
+  input: ConfirmOrderPaymentInput;
+}>;
+
+
+export type ConfirmOrderPaymentMutation = { confirmOrderPayment: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, paymentAction: { __typename: 'PaymentAction', provider: string, clientSecret: string } | null } };
+
 export type FindCheckoutOrderQueryVariables = Exact<{
   input: FindCheckoutOrderInput;
 }>;
 
 
-export type FindCheckoutOrderQuery = { findCheckoutOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }> } | null };
+export type FindCheckoutOrderQuery = { findCheckoutOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }>, paymentAction: { __typename: 'PaymentAction', provider: string, clientSecret: string } | null } | null };
 
 export type CheckoutPaymentCardsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -382,7 +406,7 @@ export type PayOrderMutationVariables = Exact<{
 }>;
 
 
-export type PayOrderMutation = { payOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }> } };
+export type PayOrderMutation = { payOrder: { __typename: 'CheckoutOrder', id: string, status: CheckoutOrderStatus, expiresAt: string, secondsLeft: number, quantity: number, currency: string, subtotalCents: number, serviceFeeCents: number, taxCents: number, totalCents: number, unitPriceCents: number, unitServiceFeeCents: number, unitTaxCents: number, event: { __typename: 'CheckoutEvent', id: string, name: string, coverImage: string, venue: string, city: string, country: string, startAt: string }, ticketType: { __typename: 'CheckoutTicketType', id: string, name: string }, items: Array<{ __typename: 'CheckoutOrderItem', seatId: string, row: string, number: string }>, paymentAction: { __typename: 'PaymentAction', provider: string, clientSecret: string } | null } };
 
 export type StartCheckoutMutationVariables = Exact<{
   input: StartCheckoutInput;

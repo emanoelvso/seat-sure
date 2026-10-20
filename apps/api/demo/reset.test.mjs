@@ -47,6 +47,9 @@ test('successful reset clears visitor state and restores catalog inventory', asy
   await db.client.query(`INSERT INTO "TicketingOrderItem" (id,"orderId","seatId","seatRow","seatNumber","unitPriceCents","serviceFeeCents","taxCents") VALUES ($1,$2,'d3000000-0000-4000-8000-000000000100','A','01',4500,300,0)`, [item,order]);
   await db.client.query(`INSERT INTO "TicketingTicket" (id,"eventId","userId",code,status,"orderItemId") VALUES ('d4000000-0000-4000-8000-000000000004',$1,$2,'demo-ticket','issued',$3)`,[ids.event,visitor,item]);
   await db.client.query(`INSERT INTO "BillingPaymentCard" (id,"userId",provider,"providerToken",fingerprint,brand,last4,"expMonth","expYear",holder,"isDefault") VALUES ('d4000000-0000-4000-8000-000000000005',$1,'simulator','fixture-token',repeat('a',64),'visa','4242',12,2099,'Demo Visitor',true)`,[visitor]);
+  await db.client.query(`INSERT INTO "BillingSimulatedPayment" (id,"idempotencyKey",status,"clientSecret","amountCents",currency) VALUES ('d4000000-0000-4000-8000-000000000006','fixture:authorize','requires_action','sim_secret_fixture',4800,'USD')`);
+  await db.client.query(`INSERT INTO "BillingPendingCard" (id,"paymentId","userId",provider,"providerToken",fingerprint,brand,last4,"expMonth","expYear",holder) VALUES ('d4000000-0000-4000-8000-000000000007','d4000000-0000-4000-8000-000000000008',$1,'simulated','fixture-token',repeat('b',64),'visa','4242',12,2099,'Demo Visitor')`,[visitor]);
+  await db.client.query(`INSERT INTO "BillingCustomer" (id,"userId",provider,"providerCustomerId") VALUES ('d4000000-0000-4000-8000-000000000009',$1,'stripe','cus_fixture')`,[visitor]);
   assert.equal((await db.client.query('SELECT count(*)::int n FROM "TicketingTicket"')).rows[0].n, 1);
   assert.equal((await db.client.query('SELECT count(*)::int n FROM "BillingPaymentCard"')).rows[0].n, 1);
 
