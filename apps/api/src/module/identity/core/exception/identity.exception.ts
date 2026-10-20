@@ -11,7 +11,9 @@ export type IdentityExceptionReason =
   | 'CODE_EXPIRED'
   | 'CODE_ATTEMPTS_EXCEEDED'
   | 'RESEND_TOO_SOON'
-  | 'RESET_GRANT_INVALID';
+  | 'RESET_GRANT_INVALID'
+  | 'DELETION_NOT_CONFIRMED'
+  | 'ACCOUNT_HAS_ACTIVE_ORDERS';
 
 export class IdentityException extends UnprocessableEntityException {
   readonly reason: IdentityExceptionReason;
