@@ -102,4 +102,14 @@ export class NotificationRepository extends DefaultTypeOrmRepository<Notificatio
       )
       .execute();
   }
+
+  // A true DELETE of every notification the user has, read or not
+  async deleteAllForUser(userId: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(NotificationsNotification)
+      .where('"userId" = :userId', { userId })
+      .execute();
+  }
 }
