@@ -141,8 +141,24 @@ export class PaymentCardService {
       );
     } catch (error) {
       // Nothing was stored, so the gateway must not keep the method either
-      await this.gateway.detach(attached.token);
+      await this.detachAfterFailedSave(userId, attached.token);
       throw error;
+    }
+  }
+
+  // Best effort: the caller rethrows the insert's error, which a failing
+  // detach must not hide. The log names the user only, never the token; the
+  // reconciliation command detaches what is left (CLN-01).
+  private async detachAfterFailedSave(
+    userId: string,
+    token: string,
+  ): Promise<void> {
+    try {
+      await this.gateway.detach(token);
+    } catch {
+      this.logger.error("Couldn't clean up a card token after a failed save", {
+        userId,
+      });
     }
   }
 
@@ -199,7 +215,7 @@ export class PaymentCardService {
       );
     } catch (error) {
       // Nothing was stored, so the gateway must not keep the token either
-      await this.gateway.detach(tokenized.token);
+      await this.detachAfterFailedSave(userId, tokenized.token);
       throw error;
     }
   }
