@@ -11,7 +11,7 @@ C4Context
   System_Ext(gateway, "Payment gateway", "Stripe in test mode, or the built-in simulated gateway (default)")
 
   Rel(buyer, seatSure, "Buys tickets")
-  Rel(seatSure, gateway, "Tokenizes, authorizes, captures, cancels, and detaches cards")
+  Rel(seatSure, gateway, "Tokenizes, authorizes, captures, cancels, and detaches cards, and deletes customers")
 
 ```
 
@@ -20,4 +20,5 @@ C4Context
 - The billing module defines the `PaymentGateway` port and picks its adapter from `BILLING_GATEWAY` (`apps/api/src/module/billing/billing.module.ts`): `SimulatedPaymentGateway` by default, or `StripePaymentGateway` in Stripe test mode. Live keys are rejected at startup, and the hosted demo stays on the simulated gateway.
 - Charges are authorized, then captured after the tickets are issued, and can pause on 3-D Secure: [ADR-024](../../adrs/024-charges-authorized-then-captured-with-3-d-secure.md).
 - Saved cards are gateway tokens: [ADR-020](../../adrs/020-saved-cards-as-gateway-tokens.md).
+- Deleting an account deletes the Stripe customer, and a maintenance command detaches orphan payment methods: [ADR-025](../../adrs/025-account-deletion-and-gateway-token-reconciliation.md).
 - Next level: [container diagram](./container.md).
