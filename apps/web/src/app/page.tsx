@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { EventShowcase } from "@/components/event-showcase";
+import { AccountDeletedNotice } from "@/features/account/components/account-deleted-notice";
 import { FeedbacksCarousel } from "@/features/testimonials/components/feedbacks-carousel";
 import { Footer } from "@/components/layouts/footer";
 import { Header } from "@/components/layouts/header";
@@ -20,6 +22,9 @@ export default async function Home() {
     <>
       <Header />
       <main className="flex flex-col items-center">
+        <Suspense fallback={null}>
+          <AccountDeletedNotice />
+        </Suspense>
         <section aria-label="Hero" className="flex flex-col items-center">
           <h1 className="font-bold text-7xl max-w-3xl text-center mb-8">
             What <span className="text-tint-400">Concert</span> would you like
