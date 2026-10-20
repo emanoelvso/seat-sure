@@ -4,6 +4,7 @@ import { UserProfileApi } from '@sharedModules/integration/interface/user-profil
 import { UserProfilePersistenceModule } from '@userProfileModule/persistence/user-profile-persistence.module';
 import { UserProfileResolver } from './http/graphql/user-profile.resolver';
 import { UserProfileService } from './core/service/user-profile.service';
+import { UserProfileAccountEraser } from './integration/provider/account-eraser.provider';
 import { UserProfilePublicApiProvider } from './integration/provider/public-api.provider';
 
 @Module({
@@ -11,6 +12,7 @@ import { UserProfilePublicApiProvider } from './integration/provider/public-api.
   providers: [
     UserProfileResolver,
     UserProfileService,
+    UserProfileAccountEraser,
     { provide: UserProfileApi, useClass: UserProfilePublicApiProvider },
   ],
   exports: [UserProfileApi],
