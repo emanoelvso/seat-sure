@@ -47,6 +47,25 @@ Charges are authorized, then captured after the tickets are issued, and a charge
 
 `pnpm test:stripe-sandbox` is an opt-in smoke test against Stripe's test mode. Run it with `STRIPE_SECRET_KEY=sk_test_... pnpm test:stripe-sandbox`; without a test key it skips and succeeds. `pnpm test`, `pnpm test:e2e` and CI never call Stripe.
 
+## Maintenance command
+
+`deleteMyAccount` erases the user's data in every module and, with Stripe, deletes the Stripe customer ([ADR-025](../../docs/adrs/025-account-deletion-and-gateway-token-reconciliation.md)). If a step fails, the account is already unusable (sign-in and tokens are refused) and the deletion stays pending. One command finishes it and also cleans up Stripe:
+
+```bash
+pnpm build
+pnpm maintenance        # runs dist/maintenance.main.js; from the repository root: pnpm --filter api maintenance
+pnpm maintenance:dev    # the same without a build (nest start --entryFile maintenance.main)
+```
+
+It needs the same variables as the server (`DATABASE_URL`, `BILLING_GATEWAY`, and `STRIPE_SECRET_KEY` for Stripe) and does two jobs in order:
+
+1. **Finishes pending account deletions.** It re-runs every erasure step of each pending deletion and removes the identity row once all steps pass.
+2. **Detaches orphan Stripe payment methods.** For every customer Billing knows, it lists the card payment methods attached at Stripe and detaches each one that has no saved-card or pending-card row and was created more than 24 hours earlier. The 24 hours leave room for a card that is being added. With `BILLING_GATEWAY=simulated` it makes no gateway call and reports zero counts.
+
+A failure in one job does not skip the other. A failure for one Stripe customer does not skip the next one. The command logs the counts of both jobs when it finishes (counts only; it never logs a token, payment-method id or Stripe customer id) and exits `0` when nothing failed or `1` when any step failed, so a scheduler can alert on the exit code.
+
+Run it as often as you like; every step is idempotent and overlapping runs are safe. No scheduler is configured: the Render free plan has no cron jobs, so run it by hand or from any scheduler you already have (for example a daily job).
+
 ## Run it
 
 ```bash
