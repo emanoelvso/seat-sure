@@ -59,6 +59,10 @@ export type DateRange = {
   to?: string | null | undefined;
 };
 
+export type DeleteMyAccountInput = {
+  confirmation: string;
+};
+
 export type EventType =
   | 'CONCERT'
   | 'FESTIVAL'
@@ -232,6 +236,13 @@ export type AddPaymentMethodMutationVariables = Exact<{
 
 
 export type AddPaymentMethodMutation = { addPaymentMethod: Array<{ __typename: 'PaymentCard', id: string, brand: string, last4: string, expMonth: number, expYear: number, holder: string, isDefault: boolean, expired: boolean }> };
+
+export type DeleteMyAccountMutationVariables = Exact<{
+  input: DeleteMyAccountInput;
+}>;
+
+
+export type DeleteMyAccountMutation = { deleteMyAccount: boolean };
 
 export type FindAccountOrderQueryVariables = Exact<{
   input: FindAccountOrderInput;

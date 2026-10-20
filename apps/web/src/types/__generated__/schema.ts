@@ -211,6 +211,10 @@ export type DateRange = {
   to?: InputMaybe<Scalars['DateTime']['input']>;
 };
 
+export type DeleteMyAccountInput = {
+  confirmation: Scalars['String']['input'];
+};
+
 export type Event = {
   __typename: 'Event';
   category: Scalars['String']['output'];
@@ -370,6 +374,7 @@ export type Mutation = {
   confirmOrderPayment: CheckoutOrder;
   confirmPasswordResetCode: PasswordResetGrant;
   createEvent: Event;
+  deleteMyAccount: Scalars['Boolean']['output'];
   demoSignIn: SessionTokens;
   logIn: LogInResult;
   markAllNotificationsRead: NotificationCounts;
@@ -411,6 +416,11 @@ export type MutationConfirmPasswordResetCodeArgs = {
 
 export type MutationCreateEventArgs = {
   EventInput: EventInput;
+};
+
+
+export type MutationDeleteMyAccountArgs = {
+  input: DeleteMyAccountInput;
 };
 
 
