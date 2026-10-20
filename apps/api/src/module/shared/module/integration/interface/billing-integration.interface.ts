@@ -55,6 +55,17 @@ export interface BillingPaymentCard {
   last4: string;
 }
 
+// What one run of the gateway token reconciliation did. Counts only: no
+// token, payment-method id or customer id.
+export interface TokenReconciliationSummary {
+  customersScanned: number;
+  methodsScanned: number;
+  orphansDetached: number;
+  recentSkipped: number;
+  missingCustomers: number;
+  failures: number;
+}
+
 export interface BillingApi {
   validateCard(
     card: BillingCardInput,

@@ -45,6 +45,12 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
     return cards.map((card) => card.providerToken);
   }
 
+  async tokenExists(token: string): Promise<boolean> {
+    return this.datasource.manager.exists(BillingPaymentCard, {
+      where: { providerToken: token },
+    });
+  }
+
   async hardDeleteAllForUser(
     manager: EntityManager,
     userId: string,

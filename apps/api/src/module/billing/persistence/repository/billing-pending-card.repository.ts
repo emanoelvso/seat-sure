@@ -38,6 +38,12 @@ export class BillingPendingCardRepository extends DefaultTypeOrmRepository<Billi
     return held.map((card) => card.providerToken);
   }
 
+  async tokenExists(token: string): Promise<boolean> {
+    return this.datasource.manager.exists(BillingPendingCard, {
+      where: { providerToken: token },
+    });
+  }
+
   async hardDeleteAllForUser(
     manager: EntityManager,
     userId: string,
