@@ -146,4 +146,34 @@ suite('Stripe sandbox (opt-in, test mode)', () => {
       (await stripe.paymentMethods.retrieve(method.id)).customer,
     ).toBeNull();
   });
+
+  it('lists a customer methods, detaches twice and deletes the customer', async () => {
+    const userId = randomUUID();
+    const method = await stripe.paymentMethods.create({
+      type: 'card',
+      card: { token: 'tok_visa' },
+    });
+    const attached = await gateway.attachPaymentMethod(method.id, userId);
+    if (attached.status !== 'succeeded') {
+      throw new Error('expected the attach to succeed');
+    }
+    created.push(attached.customerId);
+
+    const listed = await gateway.listCustomerPaymentMethods(
+      attached.customerId,
+    );
+    expect(listed.status).toBe('found');
+    if (listed.status === 'found') {
+      expect(listed.methods.map((m) => m.token)).toEqual([method.id]);
+      expect(listed.methods[0].createdAt).toBeInstanceOf(Date);
+    }
+
+    await gateway.detach(method.id);
+    await expect(gateway.detach(method.id)).resolves.toBeUndefined();
+
+    await gateway.deleteCustomer(attached.customerId);
+    await expect(
+      gateway.deleteCustomer(attached.customerId),
+    ).resolves.toBeUndefined();
+  });
 });

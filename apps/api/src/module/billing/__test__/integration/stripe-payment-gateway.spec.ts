@@ -22,9 +22,29 @@ const stub = () => ({
   paymentMethods: {
     detach: jest.fn().mockResolvedValue({}),
     attach: jest.fn(),
+    retrieve: jest.fn(),
   },
-  customers: { create: jest.fn() },
+  customers: {
+    create: jest.fn(),
+    del: jest.fn(),
+    listPaymentMethods: jest.fn(),
+  },
 });
+
+const invalidRequest = (code?: string) =>
+  new Stripe.errors.StripeInvalidRequestError({
+    type: 'invalid_request_error',
+    message: 'invalid',
+    code,
+  });
+
+// Stripe's auto-pagination: one async iterable over every page's items
+const pages = (...pages: object[][]) =>
+  (async function* () {
+    for (const page of pages) {
+      yield* page;
+    }
+  })();
 
 const INPUT = {
   amountCents: 26000,
@@ -373,6 +393,139 @@ describe('StripePaymentGateway (integration, stub client)', () => {
       await gateway.detach('pm_1');
 
       expect(client.paymentMethods.detach).toHaveBeenCalledWith('pm_1');
+    });
+  });
+
+  describe('detach idempotency (ERASE-03, REC-03)', () => {
+    it('resolves when Stripe reports the method as missing', async () => {
+      client.paymentMethods.detach.mockRejectedValue(
+        invalidRequest('resource_missing'),
+      );
+
+      await expect(gateway.detach('pm_1')).resolves.toBeUndefined();
+      expect(client.paymentMethods.retrieve).not.toHaveBeenCalled();
+    });
+
+    it('resolves when an invalid-request error comes with a method that has no customer', async () => {
+      client.paymentMethods.detach.mockRejectedValue(invalidRequest());
+      client.paymentMethods.retrieve.mockResolvedValue({
+        id: 'pm_1',
+        customer: null,
+      });
+
+      await expect(gateway.detach('pm_1')).resolves.toBeUndefined();
+      expect(client.paymentMethods.retrieve).toHaveBeenCalledWith('pm_1');
+    });
+
+    it('resolves when the retrieve after an invalid-request error finds the method missing', async () => {
+      client.paymentMethods.detach.mockRejectedValue(invalidRequest());
+      client.paymentMethods.retrieve.mockRejectedValue(
+        invalidRequest('resource_missing'),
+      );
+
+      await expect(gateway.detach('pm_1')).resolves.toBeUndefined();
+    });
+
+    it('rethrows the original error when the method is still attached to a customer', async () => {
+      const original = invalidRequest();
+      client.paymentMethods.detach.mockRejectedValue(original);
+      client.paymentMethods.retrieve.mockResolvedValue({
+        id: 'pm_1',
+        customer: 'cus_1',
+      });
+
+      await expect(gateway.detach('pm_1')).rejects.toBe(original);
+    });
+
+    it('rethrows an error that is not an invalid request without retrieving', async () => {
+      const original = new Stripe.errors.StripeConnectionError({
+        type: 'api_error',
+        message: 'down',
+      });
+      client.paymentMethods.detach.mockRejectedValue(original);
+
+      await expect(gateway.detach('pm_1')).rejects.toBe(original);
+      expect(client.paymentMethods.retrieve).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listCustomerPaymentMethods (REC-01)', () => {
+    it('lists the customer card methods across every page and maps created seconds to a Date', async () => {
+      client.customers.listPaymentMethods.mockReturnValue(
+        pages(
+          [
+            { id: 'pm_1', created: 1_700_000_000 },
+            { id: 'pm_2', created: 1_700_000_100 },
+          ],
+          [{ id: 'pm_3', created: 1_700_000_200 }],
+        ),
+      );
+
+      await expect(
+        gateway.listCustomerPaymentMethods('cus_1'),
+      ).resolves.toEqual({
+        status: 'found',
+        methods: [
+          { token: 'pm_1', createdAt: new Date(1_700_000_000_000) },
+          { token: 'pm_2', createdAt: new Date(1_700_000_100_000) },
+          { token: 'pm_3', createdAt: new Date(1_700_000_200_000) },
+        ],
+      });
+      expect(client.customers.listPaymentMethods).toHaveBeenCalledWith(
+        'cus_1',
+        { type: 'card', limit: 100 },
+      );
+    });
+
+    it('reports a customer Stripe no longer has as missing', async () => {
+      client.customers.listPaymentMethods.mockImplementation(() => {
+        throw invalidRequest('resource_missing');
+      });
+
+      await expect(
+        gateway.listCustomerPaymentMethods('cus_1'),
+      ).resolves.toEqual({ status: 'missing' });
+    });
+
+    it('rethrows any other list error', async () => {
+      const original = new Stripe.errors.StripeRateLimitError({
+        type: 'rate_limit_error',
+        message: 'slow',
+      });
+      client.customers.listPaymentMethods.mockImplementation(() => {
+        throw original;
+      });
+
+      await expect(gateway.listCustomerPaymentMethods('cus_1')).rejects.toBe(
+        original,
+      );
+    });
+  });
+
+  describe('deleteCustomer (ERASE-03)', () => {
+    it('deletes the customer at Stripe', async () => {
+      client.customers.del.mockResolvedValue({ id: 'cus_1', deleted: true });
+
+      await expect(gateway.deleteCustomer('cus_1')).resolves.toBeUndefined();
+      expect(client.customers.del).toHaveBeenCalledWith('cus_1');
+    });
+
+    it('treats a customer already gone as deleted', async () => {
+      client.customers.del.mockRejectedValue(
+        invalidRequest('resource_missing'),
+      );
+
+      await expect(gateway.deleteCustomer('cus_1')).resolves.toBeUndefined();
+    });
+
+    it('rethrows any other delete error', async () => {
+      const original = new Stripe.errors.StripeConnectionError({
+        type: 'api_error',
+        message: 'down',
+      });
+      client.customers.del.mockRejectedValue(original);
+
+      await expect(gateway.deleteCustomer('cus_1')).rejects.toBe(original);
     });
   });
 });

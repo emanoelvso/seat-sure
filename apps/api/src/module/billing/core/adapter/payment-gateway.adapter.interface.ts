@@ -48,6 +48,16 @@ export type AttachResult =
     }
   | { status: 'failed'; reason: 'card_declined' };
 
+// A card method attached to a customer, with when Stripe made it
+export interface CustomerPaymentMethod {
+  token: string;
+  createdAt: Date;
+}
+
+// `missing`: the gateway no longer knows the customer
+export type CustomerPaymentMethods =
+  { status: 'found'; methods: CustomerPaymentMethod[] } | { status: 'missing' };
+
 // Every money-moving call carries an idempotency key, so a retry never moves
 // money twice (GW-02)
 export interface PaymentGateway {
@@ -62,7 +72,14 @@ export interface PaymentGateway {
   describePaymentMethod(
     paymentMethodId: string,
   ): Promise<{ brand: string; last4: string }>;
+  // Resolves when the method is already detached or no longer exists
   detach(token: string): Promise<void>;
+  // Every card method attached to the customer, following pagination
+  listCustomerPaymentMethods(
+    customerId: string,
+  ): Promise<CustomerPaymentMethods>;
+  // Deleting it detaches all its methods. Resolves when it is already gone.
+  deleteCustomer(customerId: string): Promise<void>;
   authorize(input: AuthorizeInput, key: string): Promise<AuthorizeResult>;
   getPayment(providerPaymentId: string): Promise<GatewayPayment>;
   capture(providerPaymentId: string, key: string): Promise<void>;

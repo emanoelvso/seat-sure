@@ -444,4 +444,14 @@ describe('SimulatedPaymentGateway (integration)', () => {
   it('resolves detach', async () => {
     await expect(gateway.detach('sim_pm_x')).resolves.toBeUndefined();
   });
+
+  it('lists a customer as found with no payment methods (REC-05)', async () => {
+    await expect(
+      gateway.listCustomerPaymentMethods('sim_cus_x'),
+    ).resolves.toEqual({ status: 'found', methods: [] });
+  });
+
+  it('resolves deleteCustomer (ERASE-03)', async () => {
+    await expect(gateway.deleteCustomer('sim_cus_x')).resolves.toBeUndefined();
+  });
 });

@@ -5,6 +5,7 @@ import {
   AttachResult,
   AuthorizeInput,
   AuthorizeResult,
+  CustomerPaymentMethods,
   GatewayPayment,
   PaymentGateway,
   TokenizeResult,
@@ -86,6 +87,15 @@ export class SimulatedPaymentGateway implements PaymentGateway {
   }
 
   async detach(): Promise<void> {
+    return;
+  }
+
+  // Simulated tokens are not real objects, so there is nothing to reconcile
+  async listCustomerPaymentMethods(): Promise<CustomerPaymentMethods> {
+    return { status: 'found', methods: [] };
+  }
+
+  async deleteCustomer(): Promise<void> {
     return;
   }
 
