@@ -86,6 +86,8 @@ export interface BillingApi {
   findPaymentAction(paymentId: string): Promise<PaymentAction | null>;
   refund(paymentId: string): Promise<void>;
   findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
+  // Detaches the gateway payment methods no card row points to (REC-01..05)
+  reconcileGatewayTokens(now: Date): Promise<TokenReconciliationSummary>;
 }
 
 export const BillingApi = Symbol('BillingApi');

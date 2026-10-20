@@ -1509,4 +1509,19 @@ describe('BillingPublicApiProvider (integration)', () => {
       });
     });
   });
+
+  describe('reconcileGatewayTokens (REC-04, REC-05)', () => {
+    it('returns the zero summary through BillingApi with the simulated gateway', async () => {
+      await expect(
+        billingApi.reconcileGatewayTokens(new Date()),
+      ).resolves.toEqual({
+        customersScanned: 0,
+        methodsScanned: 0,
+        orphansDetached: 0,
+        recentSkipped: 0,
+        missingCustomers: 0,
+        failures: 0,
+      });
+    });
+  });
 });
