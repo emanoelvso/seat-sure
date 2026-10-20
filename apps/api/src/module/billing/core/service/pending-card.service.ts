@@ -5,6 +5,7 @@ import { NewPaymentCard } from '@billingModule/core/model/payment-card.model';
 import { PaymentCardService } from '@billingModule/core/service/payment-card.service';
 import { BillingPendingCard } from '@billingModule/persistence/entity/billing-pending-card.entity';
 import { BillingPendingCardRepository } from '@billingModule/persistence/repository/billing-pending-card.repository';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 
 // A save the card can't take any more: the payment is unaffected (CARD-09)
 const REFUSALS: BillingException['reason'][] = [
@@ -20,6 +21,7 @@ export class PendingCardService {
     private readonly pendingCardRepository: BillingPendingCardRepository,
     private readonly paymentCardService: PaymentCardService,
     @Inject(PaymentGateway) private readonly gateway: PaymentGateway,
+    private readonly logger: AppLogger,
   ) {}
 
   async hold(
@@ -83,8 +85,17 @@ export class PendingCardService {
     }
   }
 
+  // Best effort at the gateway: the row is gone whatever it says, and the
+  // reconciliation command detaches what is left. The log names the payment
+  // only, never the token (CLN-02).
   private async drop(pending: BillingPendingCard): Promise<void> {
     await this.pendingCardRepository.hardDelete(pending.id);
-    await this.gateway.detach(pending.providerToken);
+    try {
+      await this.gateway.detach(pending.providerToken);
+    } catch {
+      this.logger.error("Couldn't detach a dropped pending card", {
+        paymentId: pending.paymentId,
+      });
+    }
   }
 }
