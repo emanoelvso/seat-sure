@@ -33,4 +33,14 @@ export class PasswordResetGrantRepository extends DefaultTypeOrmRepository<Ident
 
     return (result.affected ?? 0) > 0;
   }
+
+  // A true DELETE of every one of the user's password-reset grants, for account erasure
+  async deleteAllForUser(userId: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(IdentityPasswordResetGrant)
+      .where('"userId" = :userId', { userId })
+      .execute();
+  }
 }

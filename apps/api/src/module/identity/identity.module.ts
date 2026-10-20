@@ -4,6 +4,8 @@ import { ConfigService } from '@sharedModules/config/service/config.service';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DisabledCodeSender } from '@identityModule/integration/provider/disabled-code-sender.provider';
 import { Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
+import { AccountErasureService } from '@identityModule/core/service/account-erasure.service';
 import { CodeSender } from '@identityModule/core/adapter/code-sender.adapter.interface';
 import { SecurityAlertSender } from '@identityModule/core/adapter/security-alert-sender.adapter.interface';
 import { AuthenticationService } from '@identityModule/core/service/authentication.service';
@@ -26,6 +28,7 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
 @Module({
   imports: [
     IdentityPersistenceModule,
+    DiscoveryModule,
     UserProfileModule,
     NotificationsModule,
     LoggerModule,
@@ -50,6 +53,7 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     LoginThrottleService,
     AuthenticationService,
     PasswordResetService,
+    AccountErasureService,
     IdentityResolver,
   ],
   exports: [IdentityApi],
