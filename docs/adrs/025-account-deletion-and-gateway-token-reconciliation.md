@@ -46,7 +46,7 @@ Each module owns its own datasource (ADR-006), so a deletion cannot be one trans
 - `AuthGuard` now does one primary-key lookup on a tiny table for every authenticated request, a small cost on checkout under load. The k6 scripts are unchanged.
 - Reconciliation makes one Stripe request per customer plus its pages, sequentially. That is fine for a test-mode portfolio and would need batching with many customers.
 - Stripe does not document what listing the methods of a deleted customer returns. The adapter handles both `resource_missing` and an empty list. An opt-in sandbox test covers it and runs only with the owner's keys.
-- With the simulated gateway active and leftover `stripe` customer rows, erasure deletes the rows and does not delete the Stripe customers.
+- With the simulated gateway active and leftover `stripe` customer rows, erasure keeps those rows and fails, so the deletion stays pending until the Stripe gateway is active again and can delete the customers.
 - Seeded tickets can have no order item, so the event time is unknown. They count as upcoming (conservative); only tests create them.
 - **Follow-ups, not done here.** The shared persistence module registers named datasources, so `app.close()` throws `UnknownElementException` on shutdown (`@nestjs/typeorm` looks up the default DataSource). The maintenance entry point destroys its datasources itself; fixing the module would let it use `app.close()`. The `maintenance:dev` script is `nest start --entryFile maintenance.main` rather than `tsx`, because esbuild emits no decorator metadata and Nest then reports undefined dependencies. Stripe authorizations that go stale stay out of scope (ADR-024).
 

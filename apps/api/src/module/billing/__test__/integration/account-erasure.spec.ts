@@ -3,7 +3,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { BillingModule } from '@billingModule/billing.module';
 import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
-import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import {
+  GatewayProvider,
+  PaymentGateway,
+} from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { BillingAccountErasureService } from '@billingModule/core/service/account-erasure.service';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { Tables } from '@testInfra/enum/table.enum';
@@ -17,6 +20,7 @@ describe('BillingAccountErasureService (integration)', () => {
   let detach: jest.SpyInstance;
   let deleteCustomer: jest.SpyInstance;
   let logged: unknown[][];
+  let activeProvider: GatewayProvider;
 
   const userId = randomUUID();
   const otherUserId = randomUUID();
@@ -79,6 +83,9 @@ describe('BillingAccountErasureService (integration)', () => {
     const gateway = module.get<PaymentGateway>(PaymentGateway);
     detach = jest.spyOn(gateway, 'detach');
     deleteCustomer = jest.spyOn(gateway, 'deleteCustomer');
+    // The seeded customers belong to Stripe, so the active gateway is Stripe
+    activeProvider = (gateway as { provider: GatewayProvider }).provider;
+    (gateway as { provider: GatewayProvider }).provider = 'stripe';
     logged = [];
     for (const method of ['log', 'error', 'warn'] as const) {
       jest
@@ -90,6 +97,11 @@ describe('BillingAccountErasureService (integration)', () => {
   });
 
   afterEach(() => {
+    (
+      module.get<PaymentGateway>(PaymentGateway) as {
+        provider: GatewayProvider;
+      }
+    ).provider = activeProvider;
     jest.restoreAllMocks();
   });
 
@@ -250,5 +262,24 @@ describe('BillingAccountErasureService (integration)', () => {
       customer.providerCustomerId,
     );
     expect(await rowsOf(Tables.BillingCustomer, userId)).toEqual([]);
+  });
+  it("keeps a customer row the active gateway doesn't own, never asks the gateway to delete it, and rejects so the erasure stays pending (ERASE-03 AC 9)", async () => {
+    const { customer } = await seedUser(userId);
+    (
+      module.get<PaymentGateway>(PaymentGateway) as {
+        provider: GatewayProvider;
+      }
+    ).provider = 'simulated';
+
+    await expect(service.erase(userId)).rejects.toThrow();
+
+    expect(deleteCustomer).not.toHaveBeenCalled();
+    expect(await rowsOf(Tables.BillingCustomer, userId)).toEqual([
+      expect.objectContaining({
+        providerCustomerId: customer.providerCustomerId,
+      }),
+    ]);
+    expect(logged[0][1]).toEqual({ userId, step: 'customer-delete' });
+    expect(JSON.stringify(logged)).not.toContain(customer.providerCustomerId);
   });
 });

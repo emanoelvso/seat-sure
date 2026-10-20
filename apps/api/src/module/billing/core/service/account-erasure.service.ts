@@ -64,6 +64,11 @@ export class BillingAccountErasureService {
       userId,
     )) {
       try {
+        // Only the gateway that owns the customer can delete it. Another
+        // provider's customer stays, so the erasure stays pending (ERASE-03 AC 9)
+        if (customer.provider !== this.gateway.provider) {
+          throw new Error('The active gateway does not own this customer');
+        }
         await this.gateway.deleteCustomer(customer.providerCustomerId);
         await this.customerRepository.hardDelete(customer.id);
       } catch {
