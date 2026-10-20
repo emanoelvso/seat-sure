@@ -196,6 +196,10 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+input DeleteMyAccountInput {
+  confirmation: String!
+}
+
 type Event {
   category: String!
   city: String!
@@ -347,6 +351,7 @@ type Mutation {
   confirmOrderPayment(input: ConfirmOrderPaymentInput!): CheckoutOrder!
   confirmPasswordResetCode(input: ConfirmPasswordResetCodeInput!): PasswordResetGrant!
   createEvent(EventInput: EventInput!): Event!
+  deleteMyAccount(input: DeleteMyAccountInput!): Boolean!
   demoSignIn: SessionTokens!
   logIn(input: LogInInput!): LogInResult!
   markAllNotificationsRead: NotificationCounts!
