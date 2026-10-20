@@ -33,6 +33,25 @@ export class BillingPaymentCardRepository extends DefaultTypeOrmRepository<Billi
     await manager.delete(BillingPaymentCard, { id });
   }
 
+  // The tokens of every card the user has, whatever the provider
+  async listTokensForUser(
+    userId: string,
+    manager: EntityManager = this.datasource.manager,
+  ): Promise<string[]> {
+    const cards = await manager.find(BillingPaymentCard, {
+      where: { userId },
+      select: { providerToken: true },
+    });
+    return cards.map((card) => card.providerToken);
+  }
+
+  async hardDeleteAllForUser(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<void> {
+    await manager.delete(BillingPaymentCard, { userId });
+  }
+
   async countForUser(
     manager: EntityManager,
     userId: string,

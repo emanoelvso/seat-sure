@@ -22,6 +22,19 @@ export class BillingCustomerRepository extends DefaultTypeOrmRepository<BillingC
     return this.findOne({ where: { userId, provider } });
   }
 
+  // Every customer of the user, whatever the provider
+  async findAllForUser(userId: string): Promise<BillingCustomer[]> {
+    return this.datasource.manager.find(BillingCustomer, {
+      where: { userId },
+    });
+  }
+
+  // A real DELETE, not DefaultEntity's soft delete: the row must really be
+  // gone once its gateway customer is
+  async hardDelete(id: string): Promise<void> {
+    await this.datasource.manager.delete(BillingCustomer, { id });
+  }
+
   // Inserts the customer, or returns the one a concurrent call inserted first
   async insertOnce(customer: BillingCustomer): Promise<BillingCustomer> {
     try {

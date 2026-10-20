@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
+import { BillingAccountErasureService } from '@billingModule/core/service/account-erasure.service';
 import { BillingService } from '@billingModule/core/service/billing.service';
 import { CardThrottleService } from '@billingModule/core/service/card-throttle.service';
 import { PendingCardService } from '@billingModule/core/service/pending-card.service';
@@ -41,6 +42,7 @@ import { BillingApi } from '@sharedModules/integration/interface/billing-integra
     },
     BillingService,
     PaymentCardService,
+    BillingAccountErasureService,
     PendingCardService,
     CardThrottleService,
     BillingResolver,
