@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DefaultTypeOrmRepository } from '@sharedModules/persistence/typeorm/repository/default-typeorm.repository';
 import { TicketStatus } from '@ticketingModule/core/enum/ticket-status.enum';
+import { OrderItem } from '@ticketingModule/persistence/entity/order-item.entity';
+import { Order } from '@ticketingModule/persistence/entity/order.entity';
 import { Ticket } from '@ticketingModule/persistence/entity/ticket.entity';
 import { DataSource, EntityManager } from 'typeorm';
 
@@ -53,5 +55,20 @@ export class TicketRepository extends DefaultTypeOrmRepository<Ticket> {
 
   async issue(manager: EntityManager, tickets: Ticket[]): Promise<void> {
     await manager.insert(Ticket, tickets);
+  }
+
+  // An issued ticket for an event that starts after `now`. A ticket with no
+  // order item can't tell when its event starts, so it counts as upcoming.
+  async hasUpcomingIssued(userId: string, now: Date): Promise<boolean> {
+    return this.entityManager
+      .createQueryBuilder(Ticket, 'ticket')
+      .leftJoin(OrderItem, 'item', 'item.id = ticket.orderItemId')
+      .leftJoin(Order, 'o', 'o.id = item.orderId')
+      .where('ticket.userId = :userId', { userId })
+      .andWhere('ticket.status = :issued', { issued: TicketStatus.ISSUED })
+      .andWhere('(ticket.orderItemId IS NULL OR o.eventStartAt > :now)', {
+        now,
+      })
+      .getExists();
   }
 }
