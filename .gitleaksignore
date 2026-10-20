@@ -3,3 +3,7 @@
 6fb2fae39c471d3748f019986fb39928fb5e72cf:apps/api/.env.test:generic-api-key:15
 # Historical apps/api/README.md CircleCI badge parameter copied from the official nestjs/typescript-starter README (exact URL match); not a secret.
 60cb76eb2e58c2faed7a9b772e9d31b6711708ad:apps/api/README.md:generic-api-key:5
+# Billing config spec fixtures (feat/payment-gateway-3ds): placeholder values such as 'rk_test_abc123' and 'sk_live_abc123' that exercise the Stripe key check; not real keys.
+728deb970d8108938e12931f7c011df29971ea5b:apps/api/src/module/shared/module/config/__test__/integration/billing-config.spec.ts:generic-api-key:79
+728deb970d8108938e12931f7c011df29971ea5b:apps/api/src/module/shared/module/config/__test__/integration/billing-config.spec.ts:generic-api-key:93
+728deb970d8108938e12931f7c011df29971ea5b:apps/api/src/module/shared/module/config/__test__/integration/billing-config.spec.ts:generic-api-key:100
