@@ -13,6 +13,7 @@ import {
 } from '@billingModule/integration/provider/stripe-client.provider';
 import { paymentGatewayFactory } from '@billingModule/integration/provider/payment-gateway.provider';
 import { SimulatedPaymentGateway } from '@billingModule/integration/provider/simulated-payment-gateway.provider';
+import { BillingAccountEraser } from '@billingModule/integration/provider/account-eraser.provider';
 import { BillingPublicApiProvider } from '@billingModule/integration/provider/public-api.provider';
 import { BillingCustomerRepository } from '@billingModule/persistence/repository/billing-customer.repository';
 import { BillingPersistenceModule } from '@billingModule/persistence/billing-persistence.module';
@@ -43,6 +44,7 @@ import { BillingApi } from '@sharedModules/integration/interface/billing-integra
     BillingService,
     PaymentCardService,
     BillingAccountErasureService,
+    BillingAccountEraser,
     PendingCardService,
     CardThrottleService,
     BillingResolver,
