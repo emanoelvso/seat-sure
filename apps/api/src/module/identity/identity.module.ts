@@ -5,6 +5,7 @@ import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DisabledCodeSender } from '@identityModule/integration/provider/disabled-code-sender.provider';
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
+import { FinishAccountDeletionsUseCase } from '@identityModule/core/use-case/finish-account-deletions.use-case';
 import { DeleteAccountUseCase } from '@identityModule/core/use-case/delete-account.use-case';
 import { AccountErasureService } from '@identityModule/core/service/account-erasure.service';
 import { CodeSender } from '@identityModule/core/adapter/code-sender.adapter.interface';
@@ -56,6 +57,7 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     PasswordResetService,
     AccountErasureService,
     DeleteAccountUseCase,
+    FinishAccountDeletionsUseCase,
     IdentityResolver,
   ],
   exports: [IdentityApi],
