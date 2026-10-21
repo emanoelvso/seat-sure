@@ -4,6 +4,10 @@ import { ConfigService } from '@sharedModules/config/service/config.service';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { DisabledCodeSender } from '@identityModule/integration/provider/disabled-code-sender.provider';
 import { Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
+import { FinishAccountDeletionsUseCase } from '@identityModule/core/use-case/finish-account-deletions.use-case';
+import { DeleteAccountUseCase } from '@identityModule/core/use-case/delete-account.use-case';
+import { AccountErasureService } from '@identityModule/core/service/account-erasure.service';
 import { CodeSender } from '@identityModule/core/adapter/code-sender.adapter.interface';
 import { SecurityAlertSender } from '@identityModule/core/adapter/security-alert-sender.adapter.interface';
 import { AuthenticationService } from '@identityModule/core/service/authentication.service';
@@ -13,6 +17,7 @@ import { RegistrationService } from '@identityModule/core/service/registration.s
 import { SessionService } from '@identityModule/core/service/session.service';
 import { VerificationCodeService } from '@identityModule/core/service/verification-code.service';
 import { IdentityResolver } from '@identityModule/http/graphql/identity.resolver';
+import { IdentityAccountStatusModule } from '@identityModule/identity-account-status.module';
 import { IdentityPersistenceModule } from '@identityModule/persistence/identity-persistence.module';
 import { LogCodeSender } from '@identityModule/integration/provider/log-code-sender.provider';
 import { LogSecurityAlertSender } from '@identityModule/integration/provider/log-security-alert-sender.provider';
@@ -26,6 +31,8 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
 @Module({
   imports: [
     IdentityPersistenceModule,
+    IdentityAccountStatusModule,
+    DiscoveryModule,
     UserProfileModule,
     NotificationsModule,
     LoggerModule,
@@ -50,6 +57,9 @@ import { UserProfileModule } from '@userProfileModule/user-profile.module';
     LoginThrottleService,
     AuthenticationService,
     PasswordResetService,
+    AccountErasureService,
+    DeleteAccountUseCase,
+    FinishAccountDeletionsUseCase,
     IdentityResolver,
   ],
   exports: [IdentityApi],

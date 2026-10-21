@@ -25,4 +25,29 @@ export class BillingPendingCardRepository extends DefaultTypeOrmRepository<Billi
   ): Promise<void> {
     await manager.delete(BillingPendingCard, { id });
   }
+
+  // The tokens of every card held for the user, whatever the provider
+  async listTokensForUser(
+    userId: string,
+    manager: EntityManager = this.datasource.manager,
+  ): Promise<string[]> {
+    const held = await manager.find(BillingPendingCard, {
+      where: { userId },
+      select: { providerToken: true },
+    });
+    return held.map((card) => card.providerToken);
+  }
+
+  async tokenExists(token: string): Promise<boolean> {
+    return this.datasource.manager.exists(BillingPendingCard, {
+      where: { providerToken: token },
+    });
+  }
+
+  async hardDeleteAllForUser(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<void> {
+    await manager.delete(BillingPendingCard, { userId });
+  }
 }

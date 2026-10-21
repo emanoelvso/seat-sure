@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { billingPaymentCardFactory } from '@billingModule/__test__/factory/billing-payment-card.factory';
 import { BillingModule } from '@billingModule/billing.module';
@@ -257,6 +258,40 @@ describe('BillingResolver addPaymentCard (e2e)', () => {
       // The rejected add must not leave its token at the gateway
       expect(detach).toHaveBeenCalledTimes(1);
       expect(detach).toHaveBeenCalledWith(await issuedToken(tokenize));
+    });
+
+    it('still answers DUPLICATE_CARD when the cleanup detach throws (CLN-01)', async () => {
+      await addPaymentCard(VISA, tokenFor(userId));
+      jest.spyOn(gateway, 'detach').mockImplementation(() => {
+        throw new Error('gateway down');
+      });
+      jest
+        .spyOn(AppLogger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      const body = await addPaymentCard(VISA, tokenFor(userId));
+
+      expect(errorOf(body)?.reason).toBe('DUPLICATE_CARD');
+      expect(await storedRows()).toHaveLength(1);
+    });
+
+    it('logs the user id and no token when the cleanup detach throws (CLN-01)', async () => {
+      await addPaymentCard(VISA, tokenFor(userId));
+      const tokenize = jest.spyOn(gateway, 'tokenize');
+      jest.spyOn(gateway, 'detach').mockImplementation(() => {
+        throw new Error('gateway down');
+      });
+      const errorSpy = jest
+        .spyOn(AppLogger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      await addPaymentCard(VISA, tokenFor(userId));
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][1]).toEqual({ userId });
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(
+        (await issuedToken(tokenize)) as string,
+      );
     });
 
     it('allows the same number for another user', async () => {

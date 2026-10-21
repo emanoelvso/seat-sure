@@ -100,6 +100,7 @@ describe('LogIn (e2e)', () => {
 
   beforeEach(async () => {
     fakeCodeSender.reset();
+    await testDbClient(Tables.IdentityAccountDeletion).del();
     await testDbClient(Tables.IdentityLoginThrottle).del();
     await testDbClient(Tables.IdentitySession).del();
     await testDbClient(Tables.IdentityVerificationCode).del();
@@ -109,6 +110,7 @@ describe('LogIn (e2e)', () => {
   });
 
   afterAll(async () => {
+    await testDbClient(Tables.IdentityAccountDeletion).del();
     await testDbClient(Tables.IdentityLoginThrottle).del();
     await testDbClient(Tables.IdentitySession).del();
     await testDbClient(Tables.IdentityVerificationCode).del();
@@ -182,6 +184,60 @@ describe('LogIn (e2e)', () => {
         query: LOG_IN_MUTATION,
         variables: { input: { email, password, rememberMe } },
       });
+
+  it('refuses the right password of an account being deleted exactly like a wrong password, creating no session (PEND-02)', async () => {
+    const email = `negar-deleting-${randomUUID()}@example.com`;
+    await signUpAndVerify(email);
+    const user = await testDbClient(Tables.IdentityUser)
+      .where({ email })
+      .first();
+    await testDbClient(Tables.IdentityAccountDeletion).insert({
+      id: randomUUID(),
+      userId: user.id,
+      completedAt: null,
+    });
+    const sessionsBefore = await testDbClient(Tables.IdentitySession).where({
+      userId: user.id,
+    });
+
+    const response = await logIn(email, PASSWORD);
+
+    const wrongPassword = await logIn(email, 'not-the-password');
+    expect(response.body.data).toBeNull();
+    expect(response.body.errors[0].extensions.originalError).toEqual(
+      expect.objectContaining({
+        reason: 'INVALID_CREDENTIALS',
+        message: 'Incorrect email or password.',
+      }),
+    );
+    expect(response.body.errors[0].extensions.originalError).toEqual(
+      wrongPassword.body.errors[0].extensions.originalError,
+    );
+    const sessionsAfter = await testDbClient(Tables.IdentitySession).where({
+      userId: user.id,
+    });
+    expect(sessionsAfter).toHaveLength(sessionsBefore.length);
+  });
+
+  it('still signs in an unrelated user while another account is being deleted (PEND-02)', async () => {
+    const deletingEmail = `negar-pending-${randomUUID()}@example.com`;
+    const otherEmail = `negar-other-${randomUUID()}@example.com`;
+    await signUpAndVerify(deletingEmail);
+    await signUpAndVerify(otherEmail);
+    const deleting = await testDbClient(Tables.IdentityUser)
+      .where({ email: deletingEmail })
+      .first();
+    await testDbClient(Tables.IdentityAccountDeletion).insert({
+      id: randomUUID(),
+      userId: deleting.id,
+      completedAt: null,
+    });
+
+    const response = await logIn(otherEmail, PASSWORD);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.logIn.status).toBe('SIGNED_IN');
+  });
 
   it('signs in a verified user with the right password (AUTH-31)', async () => {
     const email = `negar-login-${randomUUID()}@example.com`;

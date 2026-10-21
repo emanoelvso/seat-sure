@@ -50,4 +50,14 @@ export class SessionRepository extends DefaultTypeOrmRepository<IdentitySession>
       .andWhere('revokedAt IS NULL')
       .execute();
   }
+
+  // A true DELETE of every one of the user's sessions, for account erasure
+  async deleteAllForUser(userId: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(IdentitySession)
+      .where('"userId" = :userId', { userId })
+      .execute();
+  }
 }

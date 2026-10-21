@@ -55,6 +55,17 @@ export interface BillingPaymentCard {
   last4: string;
 }
 
+// What one run of the gateway token reconciliation did. Counts only: no
+// token, payment-method id or customer id.
+export interface TokenReconciliationSummary {
+  customersScanned: number;
+  methodsScanned: number;
+  orphansDetached: number;
+  recentSkipped: number;
+  missingCustomers: number;
+  failures: number;
+}
+
 export interface BillingApi {
   validateCard(
     card: BillingCardInput,
@@ -75,6 +86,8 @@ export interface BillingApi {
   findPaymentAction(paymentId: string): Promise<PaymentAction | null>;
   refund(paymentId: string): Promise<void>;
   findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null>;
+  // Detaches the gateway payment methods no card row points to (REC-01..05)
+  reconcileGatewayTokens(now: Date): Promise<TokenReconciliationSummary>;
 }
 
 export const BillingApi = Symbol('BillingApi');

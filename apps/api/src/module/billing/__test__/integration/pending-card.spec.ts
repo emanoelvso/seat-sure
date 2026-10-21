@@ -7,6 +7,7 @@ import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adap
 import { NewPaymentCard } from '@billingModule/core/model/payment-card.model';
 import { MAX_PAYMENT_CARDS } from '@billingModule/core/service/payment-card.service';
 import { PendingCardService } from '@billingModule/core/service/pending-card.service';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { Tables } from '@testInfra/enum/table.enum';
 import { testDbClient } from '@testInfra/knex.database';
 import { DataSource } from 'typeorm';
@@ -148,6 +149,62 @@ describe('PendingCardService (integration)', () => {
     expect(await pendingRows()).toEqual([]);
     expect(await savedCards()).toEqual([]);
     expect(detach).toHaveBeenCalledWith(card.providerToken);
+  });
+
+  it('discards a held card even when its detach throws: the row is gone and discard resolves (CLN-02)', async () => {
+    const paymentId = randomUUID();
+    await service.hold(paymentId, userId, cardToSave());
+    detach.mockRejectedValueOnce(new Error('gateway down'));
+    const errorSpy = jest
+      .spyOn(AppLogger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    await expect(service.discard(paymentId)).resolves.toBeUndefined();
+
+    expect(await pendingRows()).toEqual([]);
+    errorSpy.mockRestore();
+  });
+
+  it('drops a refused duplicate card even when its detach throws (CLN-02)', async () => {
+    const existing = billingPaymentCardFactory.build({ userId });
+    await testDbClient.batchInsert(Tables.BillingPaymentCard, [existing]);
+    const paymentId = randomUUID();
+    await service.hold(
+      paymentId,
+      userId,
+      cardToSave({ fingerprint: existing.fingerprint }),
+    );
+    detach.mockRejectedValueOnce(new Error('gateway down'));
+    const errorSpy = jest
+      .spyOn(AppLogger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    await expect(service.promote(paymentId)).resolves.toBeUndefined();
+
+    expect(await pendingRows()).toEqual([]);
+    expect(await savedCards()).toHaveLength(1);
+    errorSpy.mockRestore();
+  });
+
+  it('logs the payment id and no token when the detach of a dropped card throws (CLN-02)', async () => {
+    const paymentId = randomUUID();
+    const card = cardToSave();
+    await service.hold(paymentId, userId, card);
+    detach.mockRejectedValueOnce(
+      new Error(`gateway refused ${card.providerToken}`),
+    );
+    const errorSpy = jest
+      .spyOn(AppLogger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    await service.discard(paymentId);
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy.mock.calls[0][1]).toEqual({ paymentId });
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(
+      card.providerToken,
+    );
+    errorSpy.mockRestore();
   });
 
   it('does nothing when promoting or discarding a payment with no held card', async () => {

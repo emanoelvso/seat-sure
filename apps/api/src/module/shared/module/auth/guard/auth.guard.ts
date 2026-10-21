@@ -2,7 +2,9 @@ import {
   CanActivate,
   ContextType,
   ExecutionContext,
+  Inject,
   Injectable,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
@@ -10,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { ClsService } from 'nestjs-cls';
 import { ConfigService } from '@sharedModules/config/service/config.service';
+import { AccountStatusApi } from '@sharedModules/integration/interface/account-status.interface';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -17,6 +20,10 @@ export class AuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly clsService: ClsService,
     private readonly configService: ConfigService,
+    // Absent in apps that don't load Identity; those keep the JWT-only check
+    @Optional()
+    @Inject(AccountStatusApi)
+    private readonly accountStatus?: AccountStatusApi,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,6 +36,10 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get('auth.jwtSecret'),
       });
+      // Otherwise a deleted account's access token lives out its 15 minutes
+      if (await this.accountStatus?.isDeleted(payload.sub)) {
+        throw new UnauthorizedException();
+      }
 
       this.clsService.set('userId', payload.sub);
       this.clsService.set('sessionId', payload.sid);

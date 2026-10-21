@@ -69,4 +69,15 @@ export class UserProfileUserRepository extends DefaultTypeOrmRepository<UserProf
 
     return (result.affected ?? 0) > 0;
   }
+
+  // A true DELETE that also removes a soft-deleted row: the profile holds
+  // personal data, so account erasure must not leave it behind.
+  async hardDeleteById(id: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(UserProfileUser)
+      .where('id = :id', { id })
+      .execute();
+  }
 }

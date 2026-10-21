@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
+import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
 import { PaymentGateway } from '@billingModule/core/adapter/payment-gateway.adapter.interface';
 import { BillingModule } from '@billingModule/billing.module';
 import { GraphqlModule } from '@sharedModules/graphql/graphql.module';
@@ -171,6 +172,24 @@ describe('BillingResolver addPaymentMethod (e2e, stub Stripe gateway)', () => {
     expect(reasonOf(body)).toBe('DUPLICATE_CARD');
     expect(gateway.detach).toHaveBeenCalledWith('pm_2');
     expect(await testDbClient(Tables.BillingPaymentCard)).toHaveLength(1);
+  });
+
+  it('still answers DUPLICATE_CARD when the cleanup detach throws, and logs the user id without the token (CLN-01)', async () => {
+    await call(ADD_PAYMENT_METHOD, { paymentMethodId: 'pm_card_visa' });
+    gateway.attachPaymentMethod.mockResolvedValue(attached({ token: 'pm_2' }));
+    gateway.detach.mockRejectedValue(new Error('gateway refused pm_2'));
+    const errorSpy = jest
+      .spyOn(AppLogger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const body = await call(ADD_PAYMENT_METHOD, { paymentMethodId: 'pm_2' });
+
+    expect(reasonOf(body)).toBe('DUPLICATE_CARD');
+    expect(await testDbClient(Tables.BillingPaymentCard)).toHaveLength(1);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy.mock.calls[0][1]).toEqual({ userId });
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('pm_2');
+    errorSpy.mockRestore();
   });
 
   it('is throttled like addPaymentCard: five failures lock it before the gateway', async () => {

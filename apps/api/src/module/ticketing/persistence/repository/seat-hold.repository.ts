@@ -91,4 +91,14 @@ export class SeatHoldRepository extends DefaultTypeOrmRepository<SeatHold> {
       .andWhere('hold.seatId IN (:...seatIds)', { seatIds })
       .getMany();
   }
+
+  // Every hold of the user, expired or not; hard delete like the others
+  async deleteForUser(userId: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(SeatHold)
+      .where('"userId" = :userId', { userId })
+      .execute();
+  }
 }

@@ -9,12 +9,17 @@ import {
   ChargeOutcome,
   PaymentAction,
   SettleOutcome,
+  TokenReconciliationSummary,
 } from '@sharedModules/integration/interface/billing-integration.interface';
+import { TokenReconciliationService } from '@billingModule/core/service/token-reconciliation.service';
 import { BillingService } from '@billingModule/core/service/billing.service';
 
 @Injectable()
 export class BillingPublicApiProvider implements BillingApi {
-  constructor(private readonly billingService: BillingService) {}
+  constructor(
+    private readonly billingService: BillingService,
+    private readonly tokenReconciliation: TokenReconciliationService,
+  ) {}
 
   async validateCard(
     card: BillingCardInput,
@@ -53,5 +58,9 @@ export class BillingPublicApiProvider implements BillingApi {
 
   async findPaymentCard(paymentId: string): Promise<BillingPaymentCard | null> {
     return this.billingService.findPaymentCard(paymentId);
+  }
+
+  async reconcileGatewayTokens(now: Date): Promise<TokenReconciliationSummary> {
+    return this.tokenReconciliation.reconcile(now);
   }
 }

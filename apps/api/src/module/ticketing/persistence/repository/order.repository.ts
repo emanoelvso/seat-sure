@@ -238,4 +238,21 @@ export class OrderRepository extends DefaultTypeOrmRepository<Order> {
       Object.assign(order, { quantity: quantities.get(order.id) ?? 0 }),
     );
   }
+
+  // An order that still holds the buyer's seats and payment: open and not
+  // yet expired by the API clock. Expired orders never block (AD-025).
+  async hasOpenOrder(userId: string, now: Date): Promise<boolean> {
+    return this.entityManager
+      .createQueryBuilder(Order, 'o')
+      .where('o.userId = :userId', { userId })
+      .andWhere('o.status IN (:...open)', {
+        open: [
+          OrderStatus.PENDING,
+          OrderStatus.PROCESSING,
+          OrderStatus.REQUIRES_ACTION,
+        ],
+      })
+      .andWhere('o.expiresAt > :now', { now })
+      .getExists();
+  }
 }

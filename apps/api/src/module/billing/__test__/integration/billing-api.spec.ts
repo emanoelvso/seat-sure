@@ -1219,6 +1219,37 @@ describe('BillingPublicApiProvider (integration)', () => {
         );
       });
 
+      it('completes the capture of a payment whose held card is refused while the detach throws (CLN-02)', async () => {
+        const userId = randomUUID();
+        const authorized = recorded(await charge(userId, VALID_CARD, true));
+        const [held] = await testDbClient(Tables.BillingPendingCard).select();
+        await testDbClient(Tables.BillingPaymentCard).insert(
+          billingPaymentCardFactory.build({
+            userId,
+            provider: held.provider,
+            fingerprint: held.fingerprint,
+          }),
+        );
+        jest
+          .spyOn(gatewayOf(), 'detach')
+          .mockRejectedValue(new Error('gateway down'));
+        jest
+          .spyOn(AppLogger.prototype, 'error')
+          .mockImplementation(() => undefined);
+
+        await expect(
+          billingApi.capture(authorized.paymentId),
+        ).resolves.toBeUndefined();
+
+        expect(await paymentRow(authorized.paymentId)).toMatchObject({
+          status: 'succeeded',
+        });
+        expect(await testDbClient(Tables.BillingPendingCard).select()).toEqual(
+          [],
+        );
+        expect(await testDbClient(Tables.BillingPaymentCard)).toHaveLength(1);
+      });
+
       it('retries a failing capture with the same key: two throws then a success is 3 calls', async () => {
         const authorized = recorded(await charge(randomUUID(), VALID_CARD));
         const gateway = gatewayOf();
@@ -1475,6 +1506,21 @@ describe('BillingPublicApiProvider (integration)', () => {
         ).toBeNull();
         expect(await billingApi.findPaymentAction(randomUUID())).toBeNull();
         expect(await billingApi.findPaymentAction('not-a-uuid')).toBeNull();
+      });
+    });
+  });
+
+  describe('reconcileGatewayTokens (REC-04, REC-05)', () => {
+    it('returns the zero summary through BillingApi with the simulated gateway', async () => {
+      await expect(
+        billingApi.reconcileGatewayTokens(new Date()),
+      ).resolves.toEqual({
+        customersScanned: 0,
+        methodsScanned: 0,
+        orphansDetached: 0,
+        recentSkipped: 0,
+        missingCustomers: 0,
+        failures: 0,
       });
     });
   });

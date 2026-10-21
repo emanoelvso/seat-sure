@@ -4,6 +4,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { CodeSenderPurpose } from '@identityModule/core/adapter/code-sender.adapter.interface';
+import { DeleteAccountUseCase } from '@identityModule/core/use-case/delete-account.use-case';
 import { AuthenticationService } from '@identityModule/core/service/authentication.service';
 import { PasswordResetService } from '@identityModule/core/service/password-reset.service';
 import { RegistrationService } from '@identityModule/core/service/registration.service';
@@ -12,6 +13,7 @@ import { VerificationCodeService } from '@identityModule/core/service/verificati
 import { CodeDelivery } from '@identityModule/http/graphql/type/code-delivery.type';
 import { ConfirmPasswordResetCodeInput } from '@identityModule/http/graphql/type/confirm-password-reset-code-input.type';
 import { CurrentUser } from '@identityModule/http/graphql/type/current-user.type';
+import { DeleteMyAccountInput } from '@identityModule/http/graphql/type/delete-my-account-input.type';
 import { LogInInput } from '@identityModule/http/graphql/type/log-in-input.type';
 import { LogInResult } from '@identityModule/http/graphql/type/log-in-result.type';
 import { PasswordResetGrant } from '@identityModule/http/graphql/type/password-reset-grant.type';
@@ -42,6 +44,7 @@ export class IdentityResolver {
     private readonly authenticationService: AuthenticationService,
     private readonly sessionService: SessionService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly deleteAccountUseCase: DeleteAccountUseCase,
     private readonly clsService: ClsService,
   ) {}
 
@@ -120,6 +123,18 @@ export class IdentityResolver {
       new Date(),
     );
     return true;
+  }
+
+  @UseGuards(AuthGuard)
+  @Mutation(() => Boolean)
+  async deleteMyAccount(
+    @Args('input') input: DeleteMyAccountInput,
+  ): Promise<boolean> {
+    return this.deleteAccountUseCase.execute(
+      this.clsService.get<string>('userId'),
+      input.confirmation,
+      new Date(),
+    );
   }
 
   @UseGuards(AuthGuard)

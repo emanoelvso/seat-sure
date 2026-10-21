@@ -69,4 +69,14 @@ export class VerificationCodeRepository extends DefaultTypeOrmRepository<Identit
 
     return (result.affected ?? 0) > 0;
   }
+
+  // A true DELETE of every one of the user's verification codes, for account erasure
+  async deleteAllForUser(userId: string): Promise<void> {
+    await this.entityManager
+      .createQueryBuilder()
+      .delete()
+      .from(IdentityVerificationCode)
+      .where('"userId" = :userId', { userId })
+      .execute();
+  }
 }

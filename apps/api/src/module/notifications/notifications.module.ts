@@ -4,6 +4,7 @@ import { AuthModule } from '@sharedModules/auth/auth.module';
 import { NotificationsApi } from '@sharedModules/integration/interface/notifications-integration.interface';
 import { NotificationsResolver } from './http/graphql/notifications.resolver';
 import { NotificationService } from './core/service/notification.service';
+import { NotificationsAccountEraser } from './integration/provider/account-eraser.provider';
 import { NotificationsPublicApiProvider } from './integration/provider/public-api.provider';
 
 @Module({
@@ -11,6 +12,7 @@ import { NotificationsPublicApiProvider } from './integration/provider/public-ap
   providers: [
     NotificationsResolver,
     NotificationService,
+    NotificationsAccountEraser,
     { provide: NotificationsApi, useClass: NotificationsPublicApiProvider },
   ],
   exports: [NotificationsApi],

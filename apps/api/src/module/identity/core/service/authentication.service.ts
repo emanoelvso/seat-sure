@@ -9,6 +9,7 @@ import {
 } from '@identityModule/core/service/session.service';
 import { VerificationCodeService } from '@identityModule/core/service/verification-code.service';
 import { LogInStatus } from '@identityModule/http/graphql/type/log-in-status.type';
+import { AccountDeletionRepository } from '@identityModule/persistence/repository/account-deletion.repository';
 import { UserRepository } from '@identityModule/persistence/repository/user.repository';
 import { UserProfileApi } from '@sharedModules/integration/interface/user-profile-integration.interface';
 import { AppLogger } from '@sharedModules/logger/service/app-logger.service';
@@ -49,6 +50,7 @@ export class AuthenticationService {
     private readonly loginThrottleService: LoginThrottleService,
     private readonly sessionService: SessionService,
     private readonly verificationCodeService: VerificationCodeService,
+    private readonly accountDeletionRepository: AccountDeletionRepository,
     @Inject(UserProfileApi) private readonly userProfileApi: UserProfileApi,
     private readonly logger: AppLogger,
   ) {}
@@ -65,9 +67,15 @@ export class AuthenticationService {
     }
 
     const user = await this.userRepository.findByEmail(email);
-    const passwordMatches = user
-      ? await bcrypt.compare(input.password, user.passwordHash)
+    // An account being deleted is refused like an unknown email, so the error
+    // doesn't reveal that it exists (PEND-02)
+    const beingDeleted = user
+      ? await this.accountDeletionRepository.exists(user.id)
       : false;
+    const passwordMatches =
+      user && !beingDeleted
+        ? await bcrypt.compare(input.password, user.passwordHash)
+        : false;
 
     if (!user || !passwordMatches) {
       await this.loginThrottleService.recordFailure(email, now);
